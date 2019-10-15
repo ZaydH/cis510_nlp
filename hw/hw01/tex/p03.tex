@@ -1,17 +1,93 @@
 \begin{problem}
-  Problem first line
+  \textnormal{[Word2Vec with gensim and nltk]} Professor Heidi Kaufman from the Department of English would like to conduct research on the black rebellions in nineteenth-century print culture. Using ``rebellion'' and ``slave'' as the keywords, she would like to search for these words in a large collection of articles in the nineteenth century to understand the time and location distributions of such words in the documents.
 
-  Problem second line
+  Prof.\ Kaufman discussed with Fred, a student in the Department of Computer and Information Science to see if he could help to do this task. Fred suggested that Prof.\ Kaufman could extend the keyword list to include similar words using the natural language processing technologies. This could help to improve the coverage of the search and provide a better estimations about the rebellions. In this problem, we will implement Fred’s idea using \texttt{word2vec}, the word representation/embedding model we learn in class.
 \end{problem}
 
-First line answer.
-
-
-Second line answer.
-
-
 \begin{subproblem}
-  Subproblem line.
+  Show the top ten words that are most similar to ``rebellion'' and ``slave'' based on the cosine similarity of the word vectors in the Word2Vec model you trained in step~2. Please include the cosine similarity for each word you report.
 \end{subproblem}
 
-Subproblem answer.
+For this problem, I used the default \texttt{word2vec} settings in \texttt{gensim}.  I also used the approach specified in the Kaggle link.  Tables~\ref{tab:P03:Brown:Rebellion} and~\ref{tab:P03:Brown:Slave} show the 10~most similar words for rebellion and slave respectively.
+
+\begin{table}[h]
+  \centering
+  \caption{Brown dataset top~10 most similar words for ``rebellion''}\label{tab:P03:Brown:Rebellion}
+  \begin{tabular}{|c|c|}
+    \hline
+    \textbf{Word} & \textbf{Similarlity} \\\hline\hline
+    incidence     & 0.9646 \\\hline
+    Dominican     & 0.9646 \\\hline
+    lacks         & 0.9639 \\\hline
+    warrant       & 0.9632 \\\hline
+    appestat      & 0.9626 \\\hline
+    regime        & 0.9624 \\\hline
+    vigorous      & 0.9613 \\\hline
+    spectacular   & 0.9599 \\\hline
+    underlying    & 0.9594 \\\hline
+    X             & 0.9589 \\\hline
+  \end{tabular}
+\end{table}
+
+\begin{table}[h]
+  \centering
+  \caption{Brown dataset top~10 most similar words for ``slave''}\label{tab:P03:Brown:Slave}
+  \begin{tabular}{|c|c|}
+    \hline
+    \textbf{Word} & \textbf{Similarlity} \\\hline\hline
+    finding       & 0.9639 \\\hline
+    female        & 0.9602 \\\hline
+    exciting      & 0.9564 \\\hline
+    unusual       & 0.9562 \\\hline
+    superiority   & 0.9552 \\\hline
+    trap          & 0.9538 \\\hline
+    released      & 0.9536 \\\hline
+    displayed     & 0.9533 \\\hline
+    substance     & 0.9529 \\\hline
+    childhood     & 0.9525 \\\hline
+  \end{tabular}
+\end{table}
+
+\begin{subproblem}
+  Redo step~3, but instead of using the word2vec model trained in step 2, use the 300d pre-trained word2vec model provided by Google at \url{https://drive.google.com/file/d/0B7XkCwpI5KDYNlNUTTlSS21pQmM/edit}. You will need to download this file (about 1.6GB) and load it (using \texttt{gensim}) to retrieve the most similar words. More information about this pre-trained model can be found at \url{https://code.google.com/archive/p/word2vec/} while the Kaggle link above might help to show how to load the vectors. Do you see any difference between the lists of words in steps~3 and~4?
+\end{subproblem}
+
+Tables~\ref{tab:P03:Word2Vec:Rebellion} and~\ref{tab:P03:Word2Vec:Slave} contain the 10~most similar words for rebellion and slave using Word2Vec.  Based on my own human understanding, the words identified by \texttt{word2vec} seem to be much more closely related to both ``rebellion'' and ``slave'' than what was found using the Brown corpus.  This is most likely due to the \texttt{word2vec} corpus being substantially larger.
+
+\begin{table}[h]
+  \centering
+  \caption{\texttt{word2vec} dataset top~10 most similar words for ``rebellion''}\label{tab:P03:Word2Vec:Rebellion}
+  \begin{tabular}{|c|c|}
+    \hline
+    \textbf{Word} & \textbf{Similarlity} \\\hline\hline
+    revolt        & 0.8357 \\\hline
+    insurrection  & 0.7862 \\\hline
+    rebellions    & 0.7244 \\\hline
+    uprising      & 0.6939 \\\hline
+    revolts       & 0.6581 \\\hline
+    mutiny        & 0.6445 \\\hline
+    uprisings     & 0.6043 \\\hline
+    rebellious    & 0.5893 \\\hline
+    rebelled      & 0.5875 \\\hline
+    insurrections & 0.5765 \\\hline
+  \end{tabular}
+\end{table}
+
+\begin{table}[h]
+  \centering
+  \caption{\texttt{word2vec} dataset top~10 most similar words for ``slave''}\label{tab:P03:Word2Vec:Slave}
+  \begin{tabular}{|c|c|}
+    \hline
+    \textbf{Word} & \textbf{Similarlity} \\\hline\hline
+    slaves            & 0.8382 \\\hline
+    slavery           & 0.7260 \\\hline
+    enslaved          & 0.7017 \\\hline
+    enslaved\_Africans  & 0.6437 \\\hline
+    slaver            & 0.6239 \\\hline
+    slavers           & 0.5992 \\\hline
+    Abraham\_Lincoln\_emancipation & 0.5779 \\\hline
+    slave\_masters    & 0.5764 \\\hline
+    abhorred\_slavery & 0.5687 \\\hline
+    slaveholders      & 0.5585 \\\hline
+  \end{tabular}
+\end{table}
