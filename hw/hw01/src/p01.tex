@@ -1,0 +1,82 @@
+\begin{problem}
+  \points{40} [\textnormal{Document Similarity}] Suppose our pets have produced two documents:
+
+  D1 = [\texttt{woof woof meow}] \\ D2 = [\texttt{woof woof squeak}]
+\end{problem}
+
+\begin{subproblem}\label{P01:A}
+  \points{15} What is the cosine similarity of D1 and D2, not using idf weighting?
+\end{subproblem}
+
+  \begin{table}[h]
+    \centering
+    \caption{Problem~\ref{P01:A} Term Frequencies}\label{tab:P01:TermFreq}
+    \begin{tabular}{|c|c|c|c|}
+      \hline
+      \textbf{Document} & \texttt{woof} & \texttt{meow} & \texttt{squeak} \\\hline\hline
+      D1                & 2             & 1             & 0 \\\hline
+      D2                & 2             & 0             & 1 \\\hline
+    \end{tabular}
+  \end{table}
+
+The cosine similar is defined in Eq.~\eqref{eq:P01:Cosine}.
+
+\begin{equation}\label{eq:P01:Cosine}
+  \text{similarity} = \frac{D1 \cdot D2}{\norm{D1}_{2}\norm{D2}_{2}}
+\end{equation}
+
+\noindent
+Therefore, given the term frequencies in Table~\ref{tab:P01:TermFreq}, the cosine similarity is:
+
+\begin{aligncustom}
+  \text{similarity} &= \frac{2 * 2 + 1 * 0 + 0 * 1}{\sqrt{2^2 + 1^2 + 0^2} * \sqrt{2^2 + 0^2 + 1^2}} \\
+                    &= \frac{4}{\sqrt{5}} = \boxed{0.8} \text{.}
+\end{aligncustom}
+
+\begin{subproblem}\label{P01:B}
+  \points{15} What is the cosine similarity if idf weighting is used?
+\end{subproblem}
+
+The inverse document frequency,~$idf_i$, for the $i^{\text{th}}$ word is defined in Eq.~\eqref{eq:P01:IDF}, where $N$ is the number of document (e.g.,~size of the corpus) while $n_i$~is the number of documents containing the $i^{\text{th}}$~term.
+
+\begin{equation}\label{eq:P01:IDF}
+  idf = \log \left( \frac{N}{n_i} \right)
+\end{equation}
+
+\noindent
+The weighting for each of the words in D1 and~D2 is shown in Table~\ref{tab:P01:IDF}.
+
+  \begin{table}[h]
+    \centering
+    \caption{Problem~\ref{P01:B} Inverse Document Frequencies}\label{tab:P01:IDF}
+    \begin{tabular}{|c|c|c|c|}
+      \hline
+          & \texttt{woof} & \texttt{meow}  & \texttt{squeak} \\\hline\hline
+      IDF & 0             & $\log 2$       & $\log 2$ \\\hline
+    \end{tabular}
+  \end{table}
+
+\noindent
+The TF-IDF vectors are shown in Table~\ref{tab:P01:TFIDF}; the two vectors are orthogonal so their cosine similarity is~\boxed{0}.
+
+  \begin{table}[h]
+    \centering
+    \caption{Problem~\ref{P01:A} Term Frequencies}\label{tab:P01:TFIDF}
+    \begin{tabular}{|c|c|c|c|}
+      \hline
+      \textbf{Document} & \texttt{woof} & \texttt{meow} & \texttt{squeak} \\\hline\hline
+      D1                & 0             & $\log 2$      & 0 \\\hline
+      D2                & 0             & 0             & $\log 2$ \\\hline
+    \end{tabular}
+  \end{table}
+
+\begin{subproblem}\label{P01:C}
+  \points{10} How would the answer to~(\ref{P01:B}) change if we added a third document:
+
+  D3 = [\texttt{meow squeak}]
+
+  \noindent
+  to the collection? [10 points]
+\end{subproblem}
+
+D3~changes the IDF such that each word appears in two of the three documents.  Therefore, IDF can be treated as a constant scalar that cancels out when used in the similar calculations.  This means the cosine similarity is the same as in Problem~\ref{P01:A} and equals~$\boxed{0.8}$.
