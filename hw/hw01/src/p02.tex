@@ -1,17 +1,126 @@
 \begin{problem}
-  Problem first line
-
-  Problem second line
+  \points{40} [Naive Bayes and smoothing] Do exercises 4.1 and 4.2 in third (on-line) edition of the text (\url{https://web.stanford.edu/~jurafsky/slp3/ed3book.pdf}) (page 81). Show the intermediate steps in your calculation. Compute using probabilities, not logs of probabilities (so instead of adding logs of probabilities, you multiply probabilities).
 \end{problem}
 
-First line answer.
+\begin{subproblem}\label{P02:A}
+  Assume the following likelihoods for each word being part of a positive or negative movie review, and equal prior probabilities for each class.
 
+  \begin{table}[h]
+    \centering
+    \caption{Jurafsky Exercise~4.1 word probabilities}\label{tab:}
+    \begin{tabular}{ccc}
+              & pos  & neg \\\hline
+      I       & 0.09 & 0.16 \\
+      always  & 0.07 & 0.06 \\
+      like    & 0.29 & 0.06 \\
+      foreign & 0.04 & 0.15 \\
+      films   & 0.08 & 0.11 \\
+    \end{tabular}
+  \end{table}
 
-Second line answer.
-
-
-\begin{subproblem}
-  Subproblem line.
+  What  class  will  Naive  bayes  assign  to  the  sentence  ``I  always  like  foreign films.''
 \end{subproblem}
 
-Subproblem answer.
+For a class~${c \in \mathcal{C}}$, the Naive Bayes probability is:
+
+\begin{aligncustom}
+  \Pr \sbrack{c \vert \vec{w}} &= \frac{\Pr\sbrack{c} \Pr\sbrack{\vec{w} \vert c}}{\Pr\sbrack{\vec{w}}} \\
+                               &= \frac{\Pr\sbrack{c} \prod_{w \in \vec{w}} \Pr\sbrack{w \vert c}}{\Pr\sbrack{\vec{w}}}\text{.}
+\end{aligncustom}
+
+\noindent
+When doing the analysis in this problem, ${\Pr\sbrack{\vec{w}}}$~applies for all ${c \in \mathcal{C}}$ so it can be ignored in the calculations.  Similarly, since ${\Pr\sbrack{\text{pos}} = \Pr\sbrack{\text{neg}}}$, ${\Pr\sbrack{c}}$ can also be ignored.  Therefore:
+
+\begin{aligncustom}
+  \Pr\sbrack{\text{pos} \vert \vec{w}} &\propto 0.09 * 0.07 * 0.29 * 0.04 * 0.08 \\
+                                       &\approx \boxed{5.85 * 10^{-6}}\text{.}
+\end{aligncustom}
+
+\begin{aligncustom}
+  \Pr\sbrack{\text{neg} \vert \vec{w}} &\propto 0.16 * 0.06 * 0.06 * 0.15 * 0.11 \\
+                                       &\approx \boxed{9.50 * 10^{-6}}\text{.}
+\end{aligncustom}
+
+
+\noindent
+Therefore, it is more likely that the review ``I always like foreign films'' is \boxed{\text{neg}}.
+
+\newpage
+\begin{subproblem}\label{P02:B}
+Given the following short movie reviews,  each labeled with a genre,  either comedy or action:
+
+\begin{enumerate}
+  \item fun, couple, love, love \hspace{6pt}\textbf{comedy}
+  \item fast, furious, shoot \hspace{6pt}\textbf{action}
+  \item couple, fly, fast, fun, fun \hspace{6pt}\textbf{comedy}
+  \item furious, shoot, shoot, fun \hspace{6pt}\textbf{action}
+  \item fly, fast, shoot, love \hspace{6pt}\textbf{action}
+\end{enumerate}
+
+\noindent
+and a new document~D:
+
+\noindent
+\hspace{6pt}
+fast, couple, shoot, fly
+
+\noindent
+compute the most likely class for~D. Assume a naive Bayes classifier and use add\-/1 smoothing for the likelihoods.
+\end{subproblem}
+
+From the above description, there are three \textbf{action} and two \textbf{comedy} movies.  Therefore,\linebreak ${\Pr\sbrack{\text{action}}=\frac{3}{5}=0.6}$ and ${\Pr\sbrack{\text{comedy}}=\frac{2}{5}=0.4}$.  The unnormalized word probabilities are shown in Table~\ref{tab:P02:UnnormalWordProb}.  The Bernoulli model for word probability was used where:
+
+\begin{equation}\label{eq:P02:BernoulliWordProb}
+  \Pr\sbrack{w_i \vert c} = \frac{\text{\# Docs Labeled } c \text{ containing } w_i}{\text{\# Docs Labeled } c}
+\end{equation}
+
+\noindent
+Observe that only the words relevant to this problem (e.g.,~fast, couple, shoot, fly) are shown in the table.
+
+\begin{table}[h]
+  \centering
+  \caption{Jurafsky Exercise~4.2 unnormalized word probabilities}\label{tab:P02:UnnormalWordProb}
+  \begin{tabular}{|c||c|c|}
+    \hline
+    \textbf{Word}  & $\Pr\sbrack{w \vert \text{action}}$ & $\Pr\sbrack{w \vert \text{comedy}}$ \\\hline\hline
+    fast           &  $\frac{2}{3}$  &  $\frac{1}{2}$ \\\hline
+    couple         &  $\frac{0}{3}$  &  $\frac{2}{2}$ \\\hline
+    shoot          &  $\frac{3}{3}$  &  $\frac{0}{2}$ \\\hline
+    fly            &  $\frac{1}{3}$  &  $\frac{1}{2}$ \\\hline
+  \end{tabular}
+\end{table}
+
+Table~\ref{tab:P02:NormalWordProb} shows the probabilities normalized with add\-/1 smoothing.
+
+\begin{table}[h]
+  \centering
+  \caption{Jurafsky Exercise~4.2 word probabilities with add\-/1 smoothing}\label{tab:P02:NormalWordProb}
+  \begin{tabular}{|c||c|c|}
+    \hline
+    \textbf{Word}  & $\Pr\sbrack{w \vert \text{action}}$ & $\Pr\sbrack{w \vert \text{comedy}}$ \\\hline\hline
+    fast           &  $\frac{3}{4}$  &  $\frac{2}{3}$ \\\hline
+    couple         &  $\frac{1}{4}$  &  $\frac{3}{3}$ \\\hline
+    shoot          &  $\frac{4}{4}$  &  $\frac{1}{3}$ \\\hline
+    fly            &  $\frac{2}{4}$  &  $\frac{2}{3}$ \\\hline
+  \end{tabular}
+\end{table}
+
+Similar to part~(\ref{P02:B}), the denominator ${\Pr\sbrack{\vec{w}}}$ is identical for both classes so this normalizing factor can be ignored.  Therefore:
+
+\begin{aligncustom}
+  \Pr\sbrack{\text{action} \vert \vec{w}} &\propto \Pr\sbrack{\text{action}} \prod_{w \in \vec{w}} \Pr\sbrack{w \vert \text{action}} \\
+                            &= 0.6 * \left( \frac{3 * 1 *4 * 2}{4^4} \right) \\
+                            &\approx \boxed{0.0563}
+\end{aligncustom}
+
+\noindent
+and
+
+\begin{aligncustom}
+  \Pr\sbrack{\text{comedy} \vert \vec{w}} &\propto \Pr\sbrack{\text{comedy}} \prod_{w \in \vec{w}} \Pr\sbrack{w \vert \text{comedy}} \\
+                            &= 0.4 * \left( \frac{2 * 3 *1 * 2}{3^4} \right) \\
+                            &\approx \boxed{0.0593}\text{.}
+\end{aligncustom}
+
+\noindent
+Given the above proportional probabilities, this movie review is more likely to be a \boxed{\text{comedy}}.
