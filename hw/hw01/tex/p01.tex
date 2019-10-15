@@ -1,11 +1,11 @@
 \begin{problem}
-  \points{40} [\textnormal{Document Similarity}] Suppose our pets have produced two documents:
+  \points{40} \textnormal{[Document Similarity]} Suppose our pets have produced two documents:
 
-  D1 = [\texttt{woof woof meow}] \\ D2 = [\texttt{woof woof squeak}]
+  D1 = [\texttt{woof woof meow}] \\ D2 = [\texttt{woof woof squeak}].
 \end{problem}
 
 \begin{subproblem}\label{P01:A}
-  \points{15} What is the cosine similarity of D1 and D2, not using idf weighting?
+  \points{15} What is the cosine similarity of~D1 and~D2, not using idf weighting?
 \end{subproblem}
 
   \begin{table}[h]
@@ -30,7 +30,7 @@ Therefore, given the term frequencies in Table~\ref{tab:P01:TermFreq}, the cosin
 
 \begin{aligncustom}
   \text{similarity} &= \frac{2 * 2 + 1 * 0 + 0 * 1}{\sqrt{2^2 + 1^2 + 0^2} * \sqrt{2^2 + 0^2 + 1^2}} \\
-                    &= \frac{4}{\sqrt{5}} = \boxed{0.8} \text{.}
+                    &= \frac{4}{5} = \boxed{0.8} \text{.}
 \end{aligncustom}
 
 \begin{subproblem}\label{P01:B}
@@ -76,7 +76,7 @@ The TF-IDF vectors are shown in Table~\ref{tab:P01:TFIDF}; the two vectors are o
   D3 = [\texttt{meow squeak}]
 
   \noindent
-  to the collection? [10 points]
+  to the collection?
 \end{subproblem}
 
-D3~changes the IDF such that each word appears in two of the three documents.  Therefore, IDF can be treated as a constant scalar that cancels out when used in the similar calculations.  This means the cosine similarity is the same as in Problem~\ref{P01:A} and equals~$\boxed{0.8}$.
+D3~changes the IDF such that each word appears in two of the three documents.  Therefore, IDF can be treated as a constant scalar that cancels out when used in the similarity calculations.  This means the cosine similarity is the same as in Problem~\ref{P01:A} and equals~$\boxed{0.8}$.
