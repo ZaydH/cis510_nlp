@@ -52,7 +52,7 @@ For this problem, I used the default \texttt{word2vec} settings in \texttt{gensi
   Redo step~3, but instead of using the word2vec model trained in step 2, use the 300d pre-trained word2vec model provided by Google on \href{https://drive.google.com/file/d/0B7XkCwpI5KDYNlNUTTlSS21pQmM/edit}{Google Drive}. You will need to download this file (about 1.6GB) and load it (using \texttt{gensim}) to retrieve the most similar words. More information about this pre-trained model can be found at \url{https://code.google.com/archive/p/word2vec/} while the Kaggle link above might help to show how to load the vectors. Do you see any difference between the lists of words in steps~3 and~4?
 \end{subproblem}
 
-Tables~\ref{tab:P03:Word2Vec:Rebellion} and~\ref{tab:P03:Word2Vec:Slave} contain the 10~most similar words for rebellion and slave using Word2Vec.  Based on my own human understanding, the words identified by \texttt{word2vec} seem to be much more closely related to both ``rebellion'' and ``slave'' than what was found using the Brown corpus.  This is most likely due to the \texttt{word2vec} corpus being substantially larger.
+Tables~\ref{tab:P03:Word2Vec:Rebellion} and~\ref{tab:P03:Word2Vec:Slave} contain the 10~most similar words for rebellion and slave using Word2Vec.  Based on my own human understanding, the words identified by the pretrained \texttt{word2vec} seem to be much more closely related to both ``rebellion'' and ``slave'' than what was found using the Brown corpus.  This is most likely due to the pretrained \texttt{word2vec} corpus being substantially larger.
 
 \begin{table}[h]
   \centering
