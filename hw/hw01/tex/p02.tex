@@ -90,7 +90,7 @@ Observe that only the words relevant to this problem (e.g.,~fast, couple, shoot,
   \end{tabular}
 \end{table}
 
-Table~\ref{tab:P02:NormalWordProb} shows the probabilities normalized with add\-/1 smoothing.
+Table~\ref{tab:P02:NormalWordProb} shows the probabilities normalized with add\-/1 smoothing.  Since there are only two classes (e.g.,~\text{action} and \text{comedy}), ${k=2}$ is added to the denominator.
 
 \begin{table}[h]
   \centering
@@ -98,19 +98,20 @@ Table~\ref{tab:P02:NormalWordProb} shows the probabilities normalized with add\-
   \begin{tabular}{|c||c|c|}
     \hline
     \textbf{Word}  & $\Pr\sbrack{w \vert \text{action}}$ & $\Pr\sbrack{w \vert \text{comedy}}$ \\\hline\hline
-    fast           &  $\frac{3}{4}$  &  $\frac{2}{3}$ \\\hline
-    couple         &  $\frac{1}{4}$  &  $\frac{3}{3}$ \\\hline
-    shoot          &  $\frac{4}{4}$  &  $\frac{1}{3}$ \\\hline
-    fly            &  $\frac{2}{4}$  &  $\frac{2}{3}$ \\\hline
+    fast           &  $\frac{3}{5}$  &  $\frac{2}{4}$ \\\hline
+    couple         &  $\frac{1}{5}$  &  $\frac{3}{4}$ \\\hline
+    shoot          &  $\frac{4}{5}$  &  $\frac{1}{4}$ \\\hline
+    fly            &  $\frac{2}{5}$  &  $\frac{2}{4}$ \\\hline
   \end{tabular}
 \end{table}
 
+\noindent
 Similar to part~(\ref{P02:B}), the denominator ${\Pr\sbrack{\vec{w}}}$ is identical for both classes so this normalizing factor can be ignored.  Therefore:
 
 \begin{aligncustom}
   \Pr\sbrack{\text{action} \vert \vec{w}} &\propto \Pr\sbrack{\text{action}} \prod_{w \in \vec{w}} \Pr\sbrack{w \vert \text{action}} \\
-                            &= 0.6 * \left( \frac{3 * 1 *4 * 2}{4^4} \right) \\
-                            &\approx \boxed{0.0563}
+                            &= 0.6 * \left( \frac{3 * 1 *4 * 2}{5^4} \right) \\
+                            &\approx \boxed{0.0230}
 \end{aligncustom}
 
 \noindent
@@ -118,9 +119,9 @@ and
 
 \begin{aligncustom}
   \Pr\sbrack{\text{comedy} \vert \vec{w}} &\propto \Pr\sbrack{\text{comedy}} \prod_{w \in \vec{w}} \Pr\sbrack{w \vert \text{comedy}} \\
-                            &= 0.4 * \left( \frac{2 * 3 *1 * 2}{3^4} \right) \\
-                            &\approx \boxed{0.0593}\text{.}
+                            &= 0.4 * \left( \frac{2 * 3 *1 * 2}{4^4} \right) \\
+                            &\approx \boxed{0.0188}\text{.}
 \end{aligncustom}
 
 \noindent
-Given the above proportional probabilities, this movie review is more likely to be a \boxed{\text{comedy}}.
+Given the above proportional probabilities, this movie review is more likely to be a \boxed{\text{action}}.
