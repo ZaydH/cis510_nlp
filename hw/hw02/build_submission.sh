@@ -36,14 +36,18 @@ function build_src() {
     printf "COMPLETED\n"
 
     printf "Copying source files..."
-    cp {${OUT_FILE},*.py} ${SUBMISSION_DIR} > /dev/null
+    OUT_SRC_DIR=${SUBMISSION_DIR}/src
+    rm -rf ${OUT_SRC_DIR} > /dev/null
+    mkdir -p ${OUT_SRC_DIR} > /dev/null
+    cp *.py ${OUT_SRC_DIR} > /dev/null
+    cp ${OUT_FILE} ${SUBMISSION_DIR} > /dev/null
     printf "COMPLETED\n"
     cd - > /dev/null
 }
 
 
 function build_tex() {
-    cd ${TEX_DIR}
+    cd ${TEX_DIR} > /dev/null
     printf "Clearing existing TeX files..."
     # Clear LaTeX temp files
     latexmk -C &> /dev/null
@@ -73,5 +77,5 @@ function zip_submission() {
 
 build_submission_dir
 build_src
-# build_tex
+build_tex
 zip_submission

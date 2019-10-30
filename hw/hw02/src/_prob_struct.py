@@ -30,7 +30,7 @@ class ProbStruct:
     END = "END"
     POS_IDX = 1
 
-    SMOOTH_FACTOR = 1E-2
+    SMOOTH_FACTOR = 3E-3
 
     def __init__(self, corpus: LabeledCorpus, smooth: bool):
         r"""
@@ -64,9 +64,9 @@ class ProbStruct:
             # In theory possible to go from start to end, so cover structure code for it in case
             self._trans_cnt[prev_state, self.get_pos_id(self.END)] += 1
 
-        self._trans_mat = np.empty(self._trans_cnt.shape, dtype=np.float32)
+        self._trans_mat = np.empty(self._trans_cnt.shape, dtype=np.float64)
         for row in range(self.num_state() - 1):  # Subtract 1 since never transition from end
-            numerator = self._trans_cnt[row].astype(np.float32)
+            numerator = self._trans_cnt[row].astype(np.float64)
             denom = np.sum(numerator)
             if self._smooth:
                 numerator += self.SMOOTH_FACTOR
@@ -95,7 +95,7 @@ class ProbStruct:
         # calculate transition probs
         self._trans_prob = defaultdict(lambda: np.full(self.num_state(), 1 / self.num_state()))
         for word, pos_cnts in self._like_counts.items():
-            pos_cnts = pos_cnts.astype(np.float32)
+            pos_cnts = pos_cnts.astype(np.float64)
             tot_usage = pos_cnts.sum()
             if self._smooth:
                 pos_cnts += self.SMOOTH_FACTOR
