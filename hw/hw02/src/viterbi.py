@@ -18,7 +18,7 @@ def parse_args():
     args = args.parse_args()
 
     for fld in ["train", "test"]:
-        path = Path(args.__getattr__(fld))
+        path = Path(args.__getattribute__(fld))
         if not path.is_file(): raise ValueError(f"Unknown {fld} file {path}")
         args.__setattr__(fld, path)
     return args
@@ -42,6 +42,11 @@ def perform_viterbi(sentence: UnlabeledSentence, probs: ProbStruct) -> List[str]
             probs[row, col] = np.max(combo)
             best_prev[row, col + 1] = np.argmax(combo)
 
+    lbls = [best_prev.shape[1][-1]]
+    for j in range(best_prev.shape[1][-1] - 1, 1, step=-1):  # Start after last
+        lbls.append(best_prev[lbls[-1], j])
+    return [probs.lookup_pos(pos_id) for pos_id in lbls[::-1]]
+
 
 def _main(args: Namespace):
     train_corpus = import_labeled_corpus(args.train)
@@ -56,7 +61,7 @@ def _main(args: Namespace):
     with open(str(args.out), "w+") as f_out:
         for i, sentence in enumerate(seq_lbls):
             if i > 0: f_out.write("\n")
-            f_out.write(f"{sentence[0]}\t{prob_struct.lookup_pos(sentence[1])}")
+            f_out.write("\t".join(sentence))
 
 
 if __name__ == '__main__':

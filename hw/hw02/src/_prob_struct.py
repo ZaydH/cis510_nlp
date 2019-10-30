@@ -1,5 +1,5 @@
 import itertools
-from collections import Counter, defaultdict
+from collections import defaultdict
 from typing import List, Tuple
 
 import numpy as np
@@ -40,9 +40,7 @@ class ProbStruct:
 
         self._all_pos = self._get_all_pos(corpus)
         # Each part of speech given a unique ID for use in Viterbi
-        self._pos_id = {pos: idx + 1 for (idx, pos) in enumerate(sorted(self._all_pos))}
-        self._pos_id[self.START] = 0
-        self._pos_id[self.END] = len(self._all_pos) + 1
+        self._pos_id = {pos: idx for (idx, pos) in enumerate(self._all_pos)}
 
         self._calc_transition_probs(corpus)
 
@@ -53,27 +51,28 @@ class ProbStruct:
         Calculate the probability of moving from state y_{i{ to state y_{i+1}
         :param corpus: List of labeled sentences
         """
-        self._trans_cnt = np.ndarray((self.num_state(), self.num_state()))
+        self._trans_cnt = np.zeros((self.num_state(), self.num_state()), dtype=np.int32)
         for s in corpus:
             prev_state = self.get_pos_id(self.START)
             for _, pos in s:
                 pos = self.get_pos_id(pos)
                 self._trans_cnt[prev_state, pos] += 1
                 prev_state = pos
-            # In theory possible to go from start to end, so cover that basis
+            assert prev_state != self.get_pos_id(self.START), "Should not have empty sentences"
+            # In theory possible to go from start to end, so cover structure code for it in case
             self._trans_cnt[prev_state, self.get_pos_id(self.END)] += 1
 
-        self._trans_mat = np.ndarray((self.num_state(), self.num_state()))
+        self._trans_mat = np.empty(self._trans_cnt.shape, dtype=np.float32)
         for row in range(self.num_state() - 1):  # Subtract 1 since never transition from end
             numerator = self._trans_cnt[row]
-            denom = np.sum(self._trans_cnt[row], axis=1)
+            denom = np.sum(numerator)
             if self._smooth:
                 numerator += 1
                 denom += self.num_state()
-            self._trans_mat[row] = numerator / denom
+            self._trans_mat[row] = numerator.astype(np.float32) / denom
 
         # Verify each row is a probability vector
-        for i in self._trans_mat.shape[0]:
+        for i in range(self.num_state() - 1):  # Subtract to exclude
             assert np.allclose(self._trans_mat[i].sum(), [1.]), "Not a probability vector"
 
     def get_transition_prob_vec(self, end_state: int):
@@ -85,30 +84,22 @@ class ProbStruct:
         Calculate the likelihood of word :math:`x_t` in state :math:`y_t`.
         :param corpus: List of labeled sentences
         """
-        chained_pos = itertools.chain(*corpus)
-        self._word_counts = Counter(word for (word, _) in chained_pos)
-
-        self._like_counts = defaultdict(lambda _: np.zeros((self.num_state(),)))
-        for word, pos in chained_pos:
+        self._like_counts = defaultdict(lambda: np.zeros(self.num_state(), dtype=np.int32))
+        for word, pos in itertools.chain(*corpus):
             self._like_counts[word][self.get_pos_id(pos)] += 1
 
         # calculate transition probs
-        self._trans_prob = defaultdict(lambda _: np.full((self.num_state(),), 1 / self.num_state()))
+        self._trans_prob = defaultdict(lambda: np.full(self.num_state(), 1 / self.num_state()))
         for word, pos_cnts in self._like_counts.items():
             tot_usage = pos_cnts.sum()
             if self._smooth:
                 pos_cnts += 1
                 tot_usage += self.num_state()
-            self._trans_prob[word] = pos_cnts / tot_usage
-            assert np.allclose(self._trans_prob[word], [1])
-
-    # @property
-    # def all_pos(self):
-    #     r""" Accessor for the set of parts of speech """
-    #     return self._all_pos
+            self._trans_prob[word] = pos_cnts.astype(np.float32) / tot_usage
+            assert np.allclose(self._trans_prob[word].sum(), [1.])
 
     def get_pos_id(self, pos: str) -> int:
-        r""" Gets the part of speed ID number associated with \p pos """
+        r""" Gets the part of speech ID number associated with \p pos """
         try:
             return self._pos_id[pos]
         except KeyError:

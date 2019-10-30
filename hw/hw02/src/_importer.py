@@ -6,7 +6,7 @@ from _prob_struct import LabeledCorpus, UnlabeledCorpus
 
 def _base_import(path: Path, is_labeled: bool) -> Union[LabeledCorpus, UnlabeledCorpus]:
     with open(str(path), "r") as f_in:
-        lines = f_in.readlines()
+        lines = f_in.read().splitlines()
 
     sentences, is_new = [], True
     for line in lines:
@@ -42,4 +42,4 @@ def import_test_corpus(path: Path) -> UnlabeledCorpus:
     :param path: Path to the file containing the test set
     :return: \p List of sentences. Each sentence is a \p List of words.
     """
-    return _base_import(path, is_labeled=True)
+    return _base_import(path, is_labeled=False)
