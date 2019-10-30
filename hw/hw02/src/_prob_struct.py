@@ -1,6 +1,8 @@
 import itertools
 from collections import Counter, defaultdict
-from typing import Collection, List, Tuple
+from typing import List, Tuple
+
+import numpy as np
 
 LABELED_WORD_TYPE = Tuple[str, str]
 LabeledSentence = List[LABELED_WORD_TYPE]
@@ -42,7 +44,6 @@ class ProbStruct:
         self._pos_id[self.START] = 0
         self._pos_id[self.END] = len(self._all_pos) + 1
 
-        self._trans_cnt = defaultdict(lambda _: defaultdict(int))
         self._calc_transition_probs(corpus)
 
         self._calc_likelihoods(corpus)
@@ -52,17 +53,32 @@ class ProbStruct:
         Calculate the probability of moving from state y_{i{ to state y_{i+1}
         :param corpus: List of labeled sentences
         """
+        self._trans_cnt = np.ndarray((self.num_state(), self.num_state()))
         for s in corpus:
-            prev_state = self.START
-            for word, pos in s:
-                self._trans_cnt[prev_state][pos] += 1
+            prev_state = self.get_pos_id(self.START)
+            for _, pos in s:
+                pos = self.get_pos_id(pos)
+                self._trans_cnt[prev_state, pos] += 1
                 prev_state = pos
             # In theory possible to go from start to end, so cover that basis
-            self._trans_cnt[prev_state][self.END] += 1
+            self._trans_cnt[prev_state, self.get_pos_id(self.END)] += 1
 
-        # Number of visits to each state
-        self._state_counts = {state: sum(values) for state, values in self._trans_cnt.items()}
-        self._trans_memo = dict()
+        self._trans_mat = np.ndarray((self.num_state(), self.num_state()))
+        for row in range(self.num_state() - 1):  # Subtract 1 since never transition from end
+            numerator = self._trans_cnt[row]
+            denom = np.sum(self._trans_cnt[row], axis=1)
+            if self._smooth:
+                numerator += 1
+                denom += self.num_state()
+            self._trans_mat[row] = numerator / denom
+
+        # Verify each row is a probability vector
+        for i in self._trans_mat.shape[0]:
+            assert np.allclose(self._trans_mat[i].sum(), [1.]), "Not a probability vector"
+
+    def get_transition_prob_vec(self, end_state: int):
+        r""" Accessor for """
+        return self._trans_mat[:, end_state]
 
     def _calc_likelihoods(self, corpus: LabeledCorpus) -> None:
         r"""
@@ -72,11 +88,24 @@ class ProbStruct:
         chained_pos = itertools.chain(*corpus)
         self._word_counts = Counter(word for (word, _) in chained_pos)
 
-        self._like_counts = {pos: defaultdict(int) for pos in self._all_pos}
+        self._like_counts = defaultdict(lambda _: np.zeros((self.num_state(),)))
         for word, pos in chained_pos:
-            self._like_counts[pos][word] += 1
+            self._like_counts[word][self.get_pos_id(pos)] += 1
 
-        self._likelihood_memo = dict()
+        # calculate transition probs
+        self._trans_prob = defaultdict(lambda _: np.full((self.num_state(),), 1 / self.num_state()))
+        for word, pos_cnts in self._like_counts.items():
+            tot_usage = pos_cnts.sum()
+            if self._smooth:
+                pos_cnts += 1
+                tot_usage += self.num_state()
+            self._trans_prob[word] = pos_cnts / tot_usage
+            assert np.allclose(self._trans_prob[word], [1])
+
+    # @property
+    # def all_pos(self):
+    #     r""" Accessor for the set of parts of speech """
+    #     return self._all_pos
 
     def get_pos_id(self, pos: str) -> int:
         r""" Gets the part of speed ID number associated with \p pos """
@@ -85,41 +114,13 @@ class ProbStruct:
         except KeyError:
             raise ValueError(f"Unknown part of speech {pos}")
 
-    def get_trans_prob(self, prev_state: str, new_state: str) -> float:
-        r""" Returns likelihood of transitioning from state \p prev_state to state \p new_state """
-        if prev_state not in self._trans_memo:
-            self._trans_memo[prev_state] = dict()
+    def lookup_pos(self, pos_id: int) -> str:
+        r""" Get the part of speech corresponding to ID \p pos_id"""
+        return self._all_pos[pos_id]
 
-        # Uses a memo to eliminate need to recalculate transition probabilities
-        if new_state not in self._trans_memo[prev_state]:
-            denom = self._state_counts[prev_state]
-            numerator = self._trans_cnt[prev_state][new_state]
-            if self._smooth:
-                numerator += 1
-                denom = self.num_state()
-            self._trans_memo[prev_state][new_state] = numerator / denom
-        return self._trans_memo[prev_state][new_state]
-
-    def get_likelihood(self, state: str, word: str) -> float:
-        r""" Returns the likelihood of word \p word given the state is \p state """
-        assert state in self._all_pos, "Unknown state"
-
-        # Use uniform for unknown words
-        if word not in self._word_counts: return 1 / self.num_pos
-
-        # Likelihood memo used to speed up calculations
-        if state not in self._likelihood_memo:
-            self._likelihood_memo[state] = dict()
-
-        if word not in self._likelihood_memo[state]:
-            tot_word_usage = self._word_counts[word]
-            state_word_usage = self._like_counts[state][word]
-            if self._smooth:
-                state_word_usage += 1
-                tot_word_usage += self.num_pos
-            self._likelihood_memo[state][word] = state_word_usage / tot_word_usage
-
-        return self._likelihood_memo[state][word]
+    def get_likelihood_vec(self, word: str) -> np.ndarray:
+        r""" Returns likelihood of a given word for all parts of speech"""
+        return self._trans_prob[word]
 
     def num_state(self):
         r"""
@@ -134,8 +135,8 @@ class ProbStruct:
         return len(self._all_pos)
 
     @classmethod
-    def _get_all_pos(cls, corpus: LabeledCorpus) -> Collection[str]:
+    def _get_all_pos(cls, corpus: LabeledCorpus) -> List[str]:
         r""" Extract all the pos """
-        corpus_pos = set(pos for (_, pos) in itertools.chain(*corpus))
-        # corpus_pos.update({cls.START, cls.END})
+        corpus_pos = list(sorted(set(pos for (_, pos) in itertools.chain(*corpus))))
+        corpus_pos = [cls.START, *corpus_pos, cls.END]
         return corpus_pos
