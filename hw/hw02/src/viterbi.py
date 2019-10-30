@@ -14,38 +14,47 @@ def parse_args():
     args.add_argument("train", help="Path from where to read the training file")
     args.add_argument("test", help="Path from where to read the test file")
     args.add_argument("out", help="Path write the generated labels")
-    args.add_argument("smooth", help="Perform add-1 smoothing", action="store_true")
+    args.add_argument("--smooth", help="Perform add-1 smoothing", action="store_true")
     args = args.parse_args()
 
     for fld in ["train", "test"]:
         path = Path(args.__getattribute__(fld))
         if not path.is_file(): raise ValueError(f"Unknown {fld} file {path}")
         args.__setattr__(fld, path)
+    args.out = Path(args.out)
+    if args.out.exists() and not args.out.is_file():
+        raise ValueError(f"Out file \"{args.out}\" appears not to be a file.  Cannot overwrite")
     return args
 
 
-def perform_viterbi(sentence: UnlabeledSentence, probs: ProbStruct) -> List[str]:
-    probs = np.zeros((probs.num_state(), len(sentence) + 2))
-    best_prev = probs.copy()
+def perform_viterbi(sentence: UnlabeledSentence, prob_struct: ProbStruct) -> List[str]:
+    vit_dp = np.zeros((prob_struct.num_state(), len(sentence) + 2))
+    best_prev = np.zeros(vit_dp.shape, dtype=np.int32)
 
-    # Set initial setup
-    probs[0, probs.get_pos_id(probs.START)] = 1
-    best_prev[:, 1] = probs.get_pos_id(probs.START)
+    # Set first column for start symbols
+    vit_dp[prob_struct.get_pos_id(prob_struct.START), 0] = 1
+    # Inner columns are for sentence words
+    for col, word in zip(range(1, len(sentence) + 2), sentence):  # offset range for START
+        prev_prob = vit_dp[:, col - 1]
+        likelihood_vec = prob_struct.get_likelihood_vec(word)
+        for row in range(1, prob_struct.num_state() - 1):  # ignore end
+            p_vec = prob_struct.get_transition_prob_vec(row)
+            combo = prev_prob * likelihood_vec[row] * p_vec
 
-    for col in range(1, len(sentence) + 2):  # Add to since start at 1 and need to consider END
-        prev_prob = best_prev[:, col - 1]
-        p_vec = probs.get_transition_prob_vec(col)
-        for row in range(1, len(sentence) + 2):
-            likelihood_vec = probs.get_likelihood_vec(sentence[col - 1])
-            combo = prev_prob * likelihood_vec * p_vec
+            vit_dp[row, col] = np.max(combo)
+            best_prev[row, col] = np.argmax(combo)
+    # Get final probability and last tag
+    end_pos_id = prob_struct.get_pos_id(prob_struct.END)
+    combo = vit_dp[:, -2] * prob_struct.get_transition_prob_vec(end_pos_id)
+    vit_dp[end_pos_id, -1] = np.max(combo)
+    best_prev[end_pos_id, -1] = np.argmax(combo)
 
-            probs[row, col] = np.max(combo)
-            best_prev[row, col + 1] = np.argmax(combo)
-
-    lbls = [best_prev.shape[1][-1]]
-    for j in range(best_prev.shape[1][-1] - 1, 1, step=-1):  # Start after last
+    # Reconstruct sequence of labels
+    lbls = [best_prev[end_pos_id, -1]]
+    # Start before last element which was manually added above
+    for j in range(best_prev.shape[1] - 2, 1, -1):
         lbls.append(best_prev[lbls[-1], j])
-    return [probs.lookup_pos(pos_id) for pos_id in lbls[::-1]]
+    return [prob_struct.lookup_pos(pos_id) for pos_id in lbls[::-1]]
 
 
 def _main(args: Namespace):
@@ -59,9 +68,11 @@ def _main(args: Namespace):
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     with open(str(args.out), "w+") as f_out:
-        for i, sentence in enumerate(seq_lbls):
+        for i, (sentence, lbls) in enumerate(zip(test_corpus, seq_lbls)):
             if i > 0: f_out.write("\n")
-            f_out.write("\t".join(sentence))
+            for word, lbl in zip(sentence, lbls):
+                f_out.write(f"{word}\t{lbl}\n")
+        f_out.write("\n")  # File has an extra space I assume to make extra clear last is sentence
 
 
 if __name__ == '__main__':

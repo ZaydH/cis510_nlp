@@ -30,6 +30,8 @@ class ProbStruct:
     END = "END"
     POS_IDX = 1
 
+    SMOOTH_FACTOR = 1E-2
+
     def __init__(self, corpus: LabeledCorpus, smooth: bool):
         r"""
         Calculates state transition probabilities
@@ -64,16 +66,18 @@ class ProbStruct:
 
         self._trans_mat = np.empty(self._trans_cnt.shape, dtype=np.float32)
         for row in range(self.num_state() - 1):  # Subtract 1 since never transition from end
-            numerator = self._trans_cnt[row]
+            numerator = self._trans_cnt[row].astype(np.float32)
             denom = np.sum(numerator)
             if self._smooth:
-                numerator += 1
-                denom += self.num_state()
-            self._trans_mat[row] = numerator.astype(np.float32) / denom
+                numerator += self.SMOOTH_FACTOR
+                denom += self.num_state() * self.SMOOTH_FACTOR
+            elif denom == 0:
+                numerator, denom = np.ones_like(numerator), numerator.size
+            self._trans_mat[row] = numerator / denom
 
         # Verify each row is a probability vector
         for i in range(self.num_state() - 1):  # Subtract to exclude
-            assert np.allclose(self._trans_mat[i].sum(), [1.]), "Not a probability vector"
+            assert np.allclose(self._trans_mat[i].sum(), [1.]), f"Not a probability vector for {i}"
 
     def get_transition_prob_vec(self, end_state: int):
         r""" Accessor for """
@@ -91,11 +95,12 @@ class ProbStruct:
         # calculate transition probs
         self._trans_prob = defaultdict(lambda: np.full(self.num_state(), 1 / self.num_state()))
         for word, pos_cnts in self._like_counts.items():
+            pos_cnts = pos_cnts.astype(np.float32)
             tot_usage = pos_cnts.sum()
             if self._smooth:
-                pos_cnts += 1
-                tot_usage += self.num_state()
-            self._trans_prob[word] = pos_cnts.astype(np.float32) / tot_usage
+                pos_cnts += self.SMOOTH_FACTOR
+                tot_usage += self.num_state() * self.SMOOTH_FACTOR
+            self._trans_prob[word] = pos_cnts / tot_usage
             assert np.allclose(self._trans_prob[word].sum(), [1.])
 
     def get_pos_id(self, pos: str) -> int:
