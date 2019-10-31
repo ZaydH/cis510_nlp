@@ -1,4 +1,5 @@
 import collections
+from enum import Enum
 from typing import Callable
 
 import torch
@@ -6,6 +7,13 @@ from torch import Tensor
 import torch.nn as nn
 
 from tensor_utils import TensorUtils
+
+
+class LossType(Enum):
+    r""" Loss type to train the learner """
+    PN = "PU"
+    NNPU = "nnPU"
+    PUBN = "PUbN"
 
 
 def _default_loss(x: Tensor) -> Tensor:
@@ -150,12 +158,14 @@ class PUbN:
         l_pos = self.prior * self.loss_func(dec_scores[p_mask]) if p_mask.any() else torch.zeros(())
         l_bn = self.rho * self.loss_func(dec_scores[bn_mask]) if bn_mask.any() else torch.zeros(())
 
-        sigma_x = self.sigma(x)
+        self.sigma.eval()
+        with torch.no_grad():
+            sigma_x = self.sigma(x)
         l_u_n = self._unlabeled_neg_loss(u_mask, sigma_x, dec_scores, is_unlabeled=True) \
                 + self._unlabeled_neg_loss(p_mask, sigma_x, dec_scores, is_unlabeled=False) \
                 + self._unlabeled_neg_loss(bn_mask, sigma_x, dec_scores, is_unlabeled=False)
 
-        return l_pos + l_bn + l_u_n
+        return l_u_n + self.prior * l_pos + self.rho * l_bn
 
     def _unlabeled_neg_loss(self, mask: Tensor, sigma_x: Tensor, dec_scores: Tensor,
                             is_unlabeled: bool) -> Tensor:
