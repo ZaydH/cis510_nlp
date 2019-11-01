@@ -17,19 +17,19 @@
     \vspace{6pt}Zayd Hammoudeh
   \end{center}
 
-  Consider the task of binary (supervised) classification.  Each sample is a tuple of feature vector~${\X \in \domain}$ and label~${\y \in \lbls}$.  Samples are generated from unknown joint probability distribution~$\joint$.  Given a hypothesis class~${\hypoCls=\setbuild{\dec}{\func{\dec}{\domain}{\real}}}$ and loss function~$\func{\loss}{\real \times \lbls}{\real}$, the ideal classifier is:
+  Consider the task of binary (supervised) classification.  Each sample is a tuple of feature vector~${\X \in \domain}$ and label~${\y \in \lbls}$.  Samples are generated from unknown, joint probability distribution~$\joint$.  Given hypothesis class~${\hypoCls=\setbuild{\dec}{\func{\dec}{\domain}{\real}}}$ and loss function~$\func{\loss}{\real \times \lbls}{\real}$, the ideal classifier is:
 
   \begin{equation}\label{eq:IdealClassifier}
     \dec\opt = \argmin_{\dec \in \hypoCls} \mathbb{E}_{(\X, \y) \sim \joint} \sbrack{\fLoss{\fDec{\X}, \y}}\text{.}
   \end{equation}
 
-  Since $\joint$ is unknown, Eq.~\eqref{eq:IdealClassifier} cannot be determined exactly.  \textit{Empirical Risk Minimization}, defined in Eq.~\eqref{eq:ERM}, is used in practice for selection of the optimal learner,~${\dec\opt}$. Observe that the true expected loss is replaced with an empirical estimate using i.i.d.\ training set~${\train \sim \joint}$.
+  Since $\joint$~is unknown, Eq.~\eqref{eq:IdealClassifier} cannot be determined exactly.  \textit{Empirical risk minimization}, defined in Eq.~\eqref{eq:ERM}, is used in practice for selection of the optimal learner,~${\dec\opt}$. Observe that the true expected loss is replaced with an empirical estimate using i.i.d.\ training set~${\train \sim \joint}$.
 
   \begin{equation}\label{eq:ERM}
     \dec\opt = \argmin_{\dec \in \hypoCls} \sum_{(\X_i,\y_i) \in \train} \fLoss{\fDec{\X_i}, \y_i}
   \end{equation}
 
-  There are many real-world applications where $\train$ is not an i.i.d.\ sample. For example, given a huge (unlabeled) news corpus, a particular user may only be interested in a single topic,~$\interest$.  There are numerous irrelevant news topics,~${\irrel_1,\ldots,\irrel_n}$ where~$n$ is huge.  This user could label a few relevant articles she manually found as positive~($\pCls$). She could also label any irrelevant articles she encountered negative. Such an ad-hoc labeling mechanism generally induces \textit{covariate shift} (i.e.,~train and test marginal distributions) for the negative class. For instance, the user may fail to label documents from each negative topic~$\irrel_i$. Similarly, the training set's negative topic prior probabilities will not match the corresponding true priors. Constructing a classifier given negative covariate shift is know as \textit{positive, unlabeled, biased negative} (PUbN)~\textit{learning}.
+  There are many real-world applications where $\train$~is not an i.i.d.\ sample. For example, given a huge (unlabeled) news corpus, a particular user may only be interested in a single topic,~$\interest$.  There are numerous irrelevant news topics,~${\irrel_1,\ldots,\irrel_n}$ where~$n$ is huge.  This user could label a few relevant articles she manually found as positive~($\pCls$). She could also label any irrelevant articles she encountered negative. Such an ad-hoc labeling mechanism generally induces \textit{covariate shift} (i.e.,~train and test marginal distributions) for the negative class. For instance, the user may fail to label documents from each negative topic~$\irrel_i$. Similarly, the training set's negative topic prior probabilities will not match the corresponding true priors. Constructing a classifier given negative covariate shift is know as \textit{positive, unlabeled, biased negative} (PUbN)~\textit{learning}.
 
   There are three common approaches to PUbN learning:
 
@@ -43,20 +43,37 @@
 
   \paragraph{Goal} This project will explore negative covariate shift's effect on news topic classification.  The experiments in this section are inspired by Fei \&~Liu~\cite{Fei:2015} and Hsieh\etal~\cite{Hsieh:2019}.
 
-  \paragraph{Experimental Setup} Using the 20~newsgroups dataset, one topic will be selected as the positive class and all remaining~(19) topics will form joint form the negative class.  The experiments will be divided into three categories:
+  \paragraph{Experimental Setup} This project will use the 20~newsgroups dataset~\cite{20Newsgroups}.  The dataset statistics are shown in Table~\ref{tab:DatasetComparison}.  We will use the latest (cleaned) version of the dataset published by Jason Rennie where duplicate and empty documents were removed.
+
+  \begin{table}[b]
+    \centering
+    \caption{Dataset statistics for 20~Newsgroups}\label{tab:DatasetComparison}
+    \begin{tabular}{|c|c|c|}
+      \hline
+      \#~Classes     & 20                     \\\hline
+      Train Size     & 13,180                 \\\hline
+      Test Size      & 5,648                  \\\hline
+      Test Set Prior & Nearly uniform         \\\hline
+    \end{tabular}
+  \end{table}
+
+
+  When constructing the experimental datasets, one topic will be selected as the positive class and all remaining~(19) topics will form joint form the negative class.  The experiments will be divided into three categories:
 
   \begin{itemize}
-    \item \textit{In-Training}: All negative subclasses (${\irrel_i,\ldots,\irrel_n}$) are present in both the train and test sets.  The only difference is their train/test marginal distributions.
+    \item \textit{In-Training}: All negative subclasses (${\irrel_1,\ldots,\irrel_n}$) are present in both the training and test sets.  The only difference is their train/test marginal distributions.
 
     \item \textit{Out-of-Training}: Some negative subclasses are only present in the test set. Beside that difference, the train and test marginal distributions are identical.
 
-    \item \textit{Combined}: Synthesis of in-training and out-of-training.  Bias includes missing train set subclasses as well as marginal distribution shifts.  Most challenging case.
+    \item \textit{Combined}: Synthesis of in-training and out-of-training.  Bias includes missing training set subclasses and a marginal distribution shifts  Most challenging case.
   \end{itemize}
 
   \noindent
   This procedure will be repeated with different topics as the positive class to ensure as representative of an experiment set as possible.
 
-  \paragraph{Implementation Plan} The PN, PU, and PUbN implementations will share the same standard neural network architecture implemented in PyTorch.  There is an embedding of some kind (at minimum word but potentially also character as well), a bidirectional (possibly stacked) RNN, and an output feed forward. Where the architectures differ is in the risk estimator used for gradient descent.  PN~will use standard logistic loss.  PU~will use the nnPU risk estimator by Kiryo\etal\ in~\cite{Kiryo:2017}.  PUbN will use~\cite{Hsieh:2019}'s risk estimator.
+  \paragraph{Implementation Plan} The PN, PU, and PUbN implementations will share the same standard neural network architecture implemented in PyTorch.  There will be an embedding of some kind (at minimum a word embedding but potentially also character as well), a bidirectional (possibly stacked) RNN, and an output feed forward.
+
+  Where the three learning classes differ is the risk estimator used in gradient descent training.  PN~will use standard logistic loss.  PU~will use the nnPU risk estimator by Kiryo\etal\ in~\cite{Kiryo:2017}.  PUbN will use~\cite{Hsieh:2019}'s risk estimator.
 
   \bibliographystyle{ieeetr}
   \bibliography{bib/ref.bib}
