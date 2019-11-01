@@ -157,7 +157,7 @@
 
   \section{Development Set Accuracy}
 
-  The accuracy on the development set is:~$\boxed{94.424\%}$.
+  The accuracy on the development set is:~$\boxed{94.485\%}$.
 
   \section{Implementation Notes}
 
@@ -168,6 +168,8 @@
   A small dataset like the one provided with this homework is unlikely to have training examples that entail all valid transitions.  This makes add\-/1 smoothing particularly useful. However, I observed that an additive factor of~1 actually decreased accuracy by about~4\%.  As such, the additive scalar (referred to as~$\alpha$ in the slides) is~3E-3.
 
   I tried making the token case-insensitive, but it made the results worse.
+
+  I also tried experimenting with non-uniform priors over unknown words.  I specifically tried using the true class priors (calculated from the training) set as the default vector for unknown words, but that made the performance slightly worse.  I settled on using transfer learning to predict unknown words.  Specifically I used the \texttt{nltk} to predict the POS of unknown words in isolation.  This improved development set accuracy by~\textasciitilde0.05\%.
 
   \section{Running the Program}
 

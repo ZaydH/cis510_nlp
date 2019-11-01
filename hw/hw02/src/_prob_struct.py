@@ -1,8 +1,11 @@
-import itertools
 from collections import defaultdict
+import itertools
+import re
 from typing import List, Tuple
 
 import numpy as np
+
+import nltk
 
 LABELED_WORD_TYPE = Tuple[str, str]
 LabeledSentence = List[LABELED_WORD_TYPE]
@@ -10,6 +13,9 @@ LabeledCorpus = List[LabeledSentence]
 
 UnlabeledSentence = List[str]
 UnlabeledCorpus = List[UnlabeledSentence]
+
+nltk.download('punkt', quiet=True)
+nltk.download('averaged_perceptron_tagger', quiet=True)
 
 
 def calculate_priors(pos_info: List[Tuple[str, str]]) -> dict:
@@ -93,7 +99,10 @@ class ProbStruct:
             self._like_counts[word][self.get_pos_id(pos)] += 1
 
         # calculate transition probs
-        self._trans_prob = defaultdict(lambda: np.full(self.num_state(), 1 / self.num_state()))
+        # unknown_vec = self._get_unknown_word_vec()
+        # unknown_vec = np.ones(self.num_state(), dtype=np.float64) / self.num_state()
+        # self._trans_prob = defaultdict(lambda: unknown_vec)
+        self._trans_prob = dict()
         for word, pos_cnts in self._like_counts.items():
             pos_cnts = pos_cnts.astype(np.float64)
             tot_usage = pos_cnts.sum()
@@ -102,6 +111,40 @@ class ProbStruct:
                 tot_usage += self.num_state() * self.SMOOTH_FACTOR
             self._trans_prob[word] = pos_cnts / tot_usage
             assert np.allclose(self._trans_prob[word].sum(), [1.])
+
+    def _calc_nltk_pos_freq(self, word):
+        r""" Use NLTK to predict unknown POS """
+        text = nltk.word_tokenize(word)
+        pos_tags = nltk.pos_tag(text)
+        p_vec = np.zeros(self.num_state(), dtype=np.float64)
+        try:
+            p_vec[self.get_pos_id(pos_tags[0][1])] = 1
+            return p_vec
+        except KeyError:
+            return np.ones(self.num_state(), dtype=np.float64) / self.num_state()
+
+    def _calc_pos_priors(self):
+        r""" Calculate the prior probabilities for each part of speech """
+        pos_cnts = np.zeros(self.num_state(), dtype=np.int32)
+        for val in self._like_counts.values():
+            pos_cnts += val
+
+        tot_cnts = sum(pos_cnts)
+        self._priors = pos_cnts.astype(np.float64) / tot_cnts
+
+    def _get_unknown_word_vec(self):
+        r""" Creates the default vector used for unknown word prediction """
+        self._calc_pos_priors()
+
+        unk_vec = self._priors.copy()
+        # Unknown words never start or end
+        unk_vec[self.get_pos_id(self.START)] = 0
+        unk_vec[self.get_pos_id(self.END)] = 0
+        # Unknown words are not punctuation
+        for pos in self._all_pos:
+            if re.match(r"^[A-Z]+$", pos): continue
+            unk_vec[self.get_pos_id(pos)] = 0
+        return unk_vec
 
     def get_pos_id(self, pos: str) -> int:
         r""" Gets the part of speech ID number associated with \p pos """
@@ -116,6 +159,8 @@ class ProbStruct:
 
     def get_likelihood_vec(self, word: str) -> np.ndarray:
         r""" Returns likelihood of a given word for all parts of speech"""
+        if word not in self._trans_prob:
+            self._trans_prob[word] = self._calc_nltk_pos_freq(word)
         return self._trans_prob[word]
 
     def num_state(self):
