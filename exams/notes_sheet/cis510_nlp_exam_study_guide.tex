@@ -1,0 +1,51 @@
+\documentclass[9pt]{extarticle}
+\usepackage{comment} % enables the use of multi-line comments (\ifx \fi)
+% \usepackage{fullpage} % changes the margin
+\usepackage[margin=0.3in]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{multicol}
+
+\usepackage{subcaption}
+
+\usepackage{titlesec}  % Used to adjust title heading
+% Format:  \titlespacing{command}{left spacing}{before spacing}{after spacing}[right]
+\titlespacing\subsection{0pt}{6pt plus 4pt minus 0pt}{4pt plus 2pt minus 0pt}
+
+\setlength\parindent{8pt}
+
+\newcommand{\horizontalbreak}{
+  {
+    \begin{center}
+      \noindent\rule{7.5in}{0.4pt}
+    \end{center}
+  }
+}
+
+\input{global_macros}
+
+\begin{document}
+\begin{center}
+CIS510 NLP Exam Notes Sheet -- Zayd Hammoudeh
+\end{center}
+\begin{multicols}{3}
+  \subsection*{Lecture~\#1: Introduction}
+  \subsection*{Lecture~\#2: Text Classification}
+  \textit{Examples}: Topic, sentiment, language, authorship
+
+  \begin{equation*}\label{eq:L02:NaiveBayes}
+    \argmax_c \Pr\sbrack{c \vert X} = \argmax_{c} \frac{\Pr[X \vert c] \Pr[c]}{\Pr[X]}
+  \end{equation*}
+  \begin{equation*}\label{eq:L02:Bernoulli}
+    \Pr[c] = \frac{\text{\#docs label } c \text{ in } D}{\text{\#docs in } D}
+  \end{equation*}
+  \subsection*{Lecture~\#3: Word Embeddings}
+  \subsection*{Lecture~\#4: Deep Learning}
+  \subsection*{Lecture~\#5: Sequential Labeling}
+  \subsection*{Lecture~\#6: Constituent Parsing}
+  \subsection*{Lecture~\#7: Dependency Parsing}
+
+\end{multicols}
+
+
+\end{document}
