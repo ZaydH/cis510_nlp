@@ -36,7 +36,7 @@ class Corpus:
             # Position in the sentence
             # self._fields["idx"] = idx
             self._fields["is_first"] = int(idx == 0)
-            # self._fields["last_label"] = "@@"
+            self._fields["last_label"] = "@@"
 
             self._add_pos_fields()
             self._add_name_fields("this", self)
@@ -45,6 +45,7 @@ class Corpus:
 
             self._fields["prev_chunk_mismatch"] = int(prv is None or self._chunk != prv._chunk)
             self._fields["next_chunk_mismatch"] = int(nxt is None or self._chunk != nxt._chunk)
+            self._fields["is_np"] = int(self._chunk == "I-NP")
 
             self._fields["is_punc"] = int(self._pos in string.punctuation)
             self._fields["any_punc"] = int(any(punc in self._pos for punc in string.punctuation))
@@ -66,6 +67,8 @@ class Corpus:
             self._fields["is_verb"] = int(self._pos[:2] == "VB")
             self._fields["is_adj"] = int(self._pos[:2] == "JJ")
             self._fields["is_sym"] = int(self._pos == "SYM")
+            self._fields["is_dig"] = int(self._pos == "CD")
+            self._fields["is_fw"] = int(self._pos == "FW")
 
         def _add_name_fields(self, prefix: str, token: 'Optional[Corpus.Token]'):
             r""" Add fields related to standard names """
@@ -88,14 +91,14 @@ class Corpus:
             self._fields[_name_ds_fld("first")] = Corpus.NAMES_DS.search_first_name(word)
             self._fields[_name_ds_fld("last")] = Corpus.NAMES_DS.search_last_name(word)
 
-        def _test_against_set(self, field_prefix: str, set_to_test: Optional[Set[str]],
+        def _test_against_set(self, prefix: str, set_to_test: Optional[Set[str]],
                               prev_tok, next_tok):
             r""" Checks whether token is in the set \p set_to_test """
             if not set_to_test: return
 
             def _check_concat(suffix: str, *args):
                 r""" Checks whether concatenated string is in the dictionary """
-                fld_name = field_prefix + "_" + suffix
+                fld_name = prefix + "_" + suffix
                 if any(x is None for x in args):
                     self._fields[fld_name] = int(False)
                     return
@@ -104,7 +107,12 @@ class Corpus:
                 comb = " ".join(x._word.lower() for x in args)
                 self._fields[fld_name] = int(comb in set_to_test)
 
-            self._fields[field_prefix + "_self"] = int(self._word.lower() in set_to_test)
+            self_fld = prefix + "_self"
+            self._fields[self_fld] = int(self._word.lower() in set_to_test)
+            if self._fields[self_fld] == 0 and "-" in self._word:
+                no_hyp = self._word.replace("-", " ").lower()
+                self._fields[self_fld] = int(no_hyp in set_to_test)
+
             _check_concat("_prev", prev_tok, self)
             _check_concat("_next", self, next_tok)
             _check_concat("_all", prev_tok, self, next_tok)
