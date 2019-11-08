@@ -13,7 +13,7 @@
 
 # Need python 3
 
-#To run: python score.name.py keyFileName responseFileName
+#To run: python score_name.py keyFileName responseFileName
 
 import sys
 
@@ -99,4 +99,7 @@ def score (keyFileName, responseFileName):
     print("  precision: %5.2f" % precision)
     print("  recall:    %5.2f" % recall)
     print("  F1:        %5.2f" % F)
-score (sys.argv[1],sys.argv[2])
+
+
+if __name__ == "__main__":
+    score (sys.argv[1],sys.argv[2])

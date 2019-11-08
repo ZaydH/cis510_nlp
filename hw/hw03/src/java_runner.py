@@ -28,8 +28,8 @@ def run_java_class(class_name: str, *args) -> None:
     :param class_name: Name of the Java class
     :param args: Arguments to pass to \p class_name's \p main method
     """
-    args = " ".join(args) if len(args) > 0 else ""
-    cmd = f"javac -cp \"{MAX_ENT_JAR}:{TROVE_JAR}:{JAVA_DIR}\" {class_name} {args}"
+    args = " ".join(str(arg) for arg in args) if len(args) > 0 else ""
+    cmd = f"java -cp \"{MAX_ENT_JAR}:{TROVE_JAR}:{JAVA_DIR}\" {class_name} {args}"
     proc = subprocess.Popen(cmd, shell=True)
     proc.wait()
 
@@ -42,9 +42,8 @@ def train_maxent_model(data_path: Path, model_path: Path) -> None:
     :param model_path: Path where to save the trained model
     """
     _compile_java_file(ME_TRAIN_PATH)
-    if not model_path.parent.exists(): model_path.parent.mkdir(exist_ok=True, parents=True)
 
-    class_name = ME_TRAIN_PATH.stem
+    class_name = str(ME_TRAIN_PATH.stem)
     run_java_class(class_name, data_path, model_path)
 
 
@@ -60,5 +59,5 @@ def label_with_maxent(data_path: Path, model_path: Path, output_file: Path) -> N
     _compile_java_file(ME_TAG_PATH)
     if not model_path.exists(): raise ValueError(f"Model path file \"{model_path}\" does not exist")
 
-    class_name = ME_TAG_PATH.stem
+    class_name = str(ME_TAG_PATH.stem)
     run_java_class(class_name, data_path, model_path, output_file)

@@ -1,0 +1,238 @@
+\documentclass{article}
+
+\newcommand{\name}{Zayd Hammoudeh}
+\newcommand{\course}{CIS510: Natural Lang. Processing}
+\newcommand{\assnName}{HW\#3}
+\newcommand{\dueDate}{November~16, 2019}
+
+\usepackage[margin=1in]{geometry}
+\usepackage[skip=4pt]{caption}      % ``skip'' sets the spacing between the figure and the caption.
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,decorations.markings,shadows,positioning,calc}
+\usepackage{pgfplots}               % Needed for plotting
+\pgfplotsset{compat=newest}
+\usepgfplotslibrary{fillbetween}    % Allow for highlighting under a curve
+\usepackage{amsmath}                % Allows for piecewise functions using the ``cases'' construct
+\usepackage{siunitx}                % Allows for ``S'' alignment in table to align by decimal point
+
+\usepackage[obeyspaces,spaces]{url} % Used for typesetting with the ``path'' command
+\usepackage[hidelinks]{hyperref}    % Make the cross references clickable hyperlinks
+\usepackage[bottom]{footmisc}       % Prevents the table going below the footnote
+\usepackage{nccmath}                % Needed in the workaround for the ``aligncustom'' environment
+\usepackage{amssymb}                % Used for black QED symbol
+\usepackage{bm}                     % Allows for bolding math symbols.
+\usepackage{tabto}                  % Allows to tab to certain point on a line
+\usepackage{float}
+\usepackage{subcaption}             % Allows use of the ``subfigure'' environment
+\usepackage{enumerate}              % Allow enumeration other than just numbers
+
+\usepackage[noend]{algpseudocode}
+\usepackage[Algorithm,ruled]{algorithm}
+\algnewcommand\algorithmicforeach{\textbf{for each}}
+\algdef{S}[FOR]{ForEach}[1]{\algorithmicforeach\ #1\ \algorithmicdo}
+
+%---------------------------------------------------%
+%     Define Distances Used for Document Margins    %
+%---------------------------------------------------%
+
+\newcommand{\hangindentdistance}{1cm}
+\newcommand{\defaultleftmargin}{0.25in}
+\newcommand{\questionleftmargin}{-.5in}
+
+\setlength{\parskip}{1em}
+\setlength{\oddsidemargin}{\defaultleftmargin}
+
+%---------------------------------------------------%
+%      Configure the Document Header and Footer     %
+%---------------------------------------------------%
+
+% Set up page formatting
+\usepackage{todonotes}
+\usepackage{fancyhdr}                   % Used for every page footer and title.
+\pagestyle{fancy}
+\fancyhf{}                              % Clears both the header and footer
+\renewcommand{\headrulewidth}{0pt}      % Eliminates line at the top of the page.
+\fancyfoot[LO]{\course\ -- \assnName}   % Left
+\fancyfoot[CO]{\thepage}                % Center
+\fancyfoot[RO]{\name}                   % Right
+
+%---------------------------------------------------%
+%           Define the Title Page Entries           %
+%---------------------------------------------------%
+
+\title{\textbf{\course\ -- \assnName}}
+\author{\name}
+
+%---------------------------------------------------%
+% Define the Environments for the Problem Inclusion %
+%---------------------------------------------------%
+
+\usepackage{scrextend}
+\newcounter{problemCount}
+\setcounter{problemCount}{0}  % Reset the subproblem counter
+
+\newcounter{subProbCount}[problemCount]   % Reset subProbCount any time problemCount changes.
+\renewcommand{\thesubProbCount}{\alph{subProbCount}}  % Make it so the counter is referenced as a number
+
+\newenvironment{problemshell}{
+  \begin{addmargin}[\questionleftmargin]{0em}
+    \par%
+    \medskip
+    \leftskip=0pt\rightskip=0pt%
+    \setlength{\parindent}{0pt}
+    \bfseries
+  }
+  {
+    \par\medskip
+  \end{addmargin}
+}
+\newenvironment{problem}
+{%
+  \refstepcounter{problemCount} % Increment the subproblem counter.  This must be before the exercise to ensure proper numbering of claims and lemmas.
+  \begin{problemshell}
+    \noindent \textit{Exercise~\#\arabic{problemCount}} \\
+  }
+  {
+  \end{problemshell}
+  %  \setcounter{subProbCount}{0} % Reset the subproblem counter
+}
+\newenvironment{subproblem}
+{%
+  \begin{problemshell}
+    \refstepcounter{subProbCount} % Increment the subproblem counter
+    \setlength{\leftskip}{\hangindentdistance}
+    % Print the subproblem count and offset to the left
+    \hspace{-\hangindentdistance}(\alph{subProbCount}) \tabto{0pt}
+  }
+  {
+  \end{problemshell}
+}
+
+% Change interline spacing.
+\renewcommand{\baselinestretch}{1.1}
+\newenvironment{aligncustom}
+{ \csname align*\endcsname % Need to do this instead of \begin{align*} because of LaTeX bug.
+  \centering
+}
+{
+  \csname endalign*\endcsname
+}
+
+%---------------------------------------------------%
+%       Define commands related to managing         %
+%    floats (e.g., images) across multiple pages    %
+%---------------------------------------------------%
+
+\usepackage{placeins}     % Allows \FloatBarrier
+
+% Prevent preceding floats going to this page
+\newcommand{\floatnewpage}{\FloatBarrier\newpage}
+
+% Add the specified input file and prevent any floated figures/tables going onto the same page as new input
+\newcommand{\problemFile}[1]{
+  \floatnewpage
+  \input{#1}
+}
+
+\input{global_macros}
+\newcommand{\points}[1]{\textnormal{(#1~Points)}}
+
+
+\begin{document}
+  \maketitle
+
+  \noindent
+  \textbf{Name}: \name\\
+  \textbf{Course}: \course\\
+  \textbf{Assignment}: \assnName\\
+  \textbf{Due Date}: \dueDate
+
+  % \noindent
+  % \textbf{Other Student Discussions}: I discussed the problems in this homework with the following student(s) below.  All write-ups were prepared independently.
+  % \vspace{-1em}
+  % \begin{itemize}
+  %   \item Viet Lai
+  %   \item Dave Patterson
+  % \end{itemize}
+
+  \section{Development Set Performance Metrics}
+
+  \begin{enumerate}
+    \item \textbf{Accuracy}: \blue{95.12\%}
+    \item \textbf{Precision}: \blue{0.6562}
+    \item \textbf{Recall}: \blue{0.6862}
+    \item \textbf{F1-Score}: \blue{0.6709}
+  \end{enumerate}
+
+  \section{Implementation Notes}
+
+  This section describes the features I tried when creating my learner.  Those features which degraded performance and were removed are noted.
+
+  \begin{itemize}
+    \item \textbf{Parts of Speech}
+      \begin{itemize}
+        \item \textit{is\_adj}: Binary feature that equals \texttt{0b1} if the token word is any form of adjective.
+        \item \textit{is\_noun}: Binary feature that equals \texttt{0b1} if the token word is any form of noun.
+        \item \textit{is\_punc}: Binary feature that equals \texttt{0b1} if the token word is any form of punctuation.
+        \item \textit{is\_sym}: Binary feature that equals \texttt{0b1} if the token word is a symbolic part of speech.
+        \item \textit{is\_verb}: Binary feature that equals \texttt{0b1} if the token word is any form of verb.
+      \end{itemize}
+    \item \textbf{Capitalization}:
+      \begin{itemize}
+        \item \textit{has\_cap}: Binary feature that equals \texttt{0b1} if the token word has any capital letter.
+        \item \textit{prev\_has\_cap}: Binary feature that equals \texttt{0b1} if preceding token (if any) has any capital letter. This feature degraded performance and was removed.
+        \item \textit{next\_has\_cap}: Binary feature that equals \texttt{0b1} if succeeding token (if any) has any capital letter. This feature degraded performance and was removed.
+        \item \textit{all\_caps}: Binary feature that equals \texttt{0b1} if the token word is all capital letters
+      \end{itemize}
+    \item \textbf{Miscellaneous}:
+      \begin{itemize}
+        \item \textit{idx}: Index of the word in the sentence.  This feature decreased accuracy and was removed.
+      \end{itemize}
+  \end{itemize}
+
+  \subsection{More Advanced Features}
+
+  \begin{itemize}
+    \item \texttt{LargestCity.txt}: This file was supplied as part of the homework, and my program has three features associated with this city list.  They are:
+      \begin{itemize}
+        \item \texttt{Token Word}: Binary feature which is \texttt{0b1} if the token word itself appears in the city list.
+        \item \texttt{Previous Token} + \texttt{Token Word}: Binary feature which equals \texttt{0b1} if the previous token word (if any) and the current token word appear together in the city list as a pair.
+        \item \texttt{Token Word} + \texttt{Next Token}: Binary feature which equals \texttt{0b1} if the current token word and the next token word (if any) appear together in the city list as a pair.
+      \end{itemize}
+    \item \texttt{names}: Python package with common first and last names.  My program has three features associated with the names set.  They are:
+      \begin{itemize}
+        \item \texttt{Female First Name}: If the token word matches a popular \textit{female} first name, a real-valued feature is added corresponding to the percentage of females with that name.  Otherwise, this feature equals zero.
+        \item \texttt{Male First Name}: If the token word matches a popular \textit{male} first name, a real-valued feature is added corresponding to the percentage of males with that name.  Otherwise, this feature equals zero.
+        \item \texttt{Last Name}: If the token word matches a popular \textit{last} name, a real-valued feature is added corresponding to the percentage of people with that last name.  Otherwise, this feature equals zero.
+      \end{itemize}
+  \end{itemize}
+  \end{itemize}
+
+  \section{Running the Program}
+
+  The implementation was tested using Python~3.7.1.  The script is evoked on the command line as:
+
+  \begin{center}
+    \texttt{python max\_ent\_trainer.py train test out [--key key\_file]}
+  \end{center}
+
+  \noindent
+  Each command line parameter is described below.
+
+  \begin{itemize}
+    \item \texttt{train}: Path to the \texttt{*.pos-chunk-name} training file
+    \item \texttt{test}: Path to the (test) \texttt{*.pos-chunk} file to be labeled
+    \item \texttt{out}: Path to the output file to write
+    \item \texttt{key\_file}: Optionally allows the user to specify a key file.  If specified, the scorer script is automatically run comparing \p key\_file and \p out.
+  \end{itemize}
+
+  \subsection{Non-standard Python Packages}
+
+  The following non-standard packages are used in this program:
+
+  \begin{itemize}
+    \item \texttt{names}: This contains common US names based on the 1990~census. Any name in the database is associated with a popularity score making it more insightful than just whether a word is a name.
+    \item \texttt{names-dataset}: A large dataset of 160,000 first names and 100,000 last names.
+    \item \texttt{subprocess}: Used to manage the automatic building and running of the Java code.
+  \end{itemize}
+\end{document}
