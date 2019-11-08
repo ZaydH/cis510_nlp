@@ -43,6 +43,9 @@ class Corpus:
             self._add_name_fields("prev", prv)
             self._add_name_fields("next", nxt)
 
+            self._fields["prev_chunk_mismatch"] = int(prv is None or self._chunk != prv._chunk)
+            self._fields["next_chunk_mismatch"] = int(nxt is None or self._chunk != nxt._chunk)
+
             self._fields["is_punc"] = int(self._pos in string.punctuation)
             self._fields["any_punc"] = int(any(punc in self._pos for punc in string.punctuation))
             # If True, then the word has a capital letter
