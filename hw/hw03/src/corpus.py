@@ -40,7 +40,7 @@ class Corpus:
                          nxt: 'Optional[Corpus.Token]'):
             # Position in the sentence
             # self._fields["idx"] = idx
-            self._fields["is_first"] = int(idx == 0)
+            # self._fields["is_first"] = int(idx == 0)
             self._fields["last_label"] = "@@"
 
             self._add_pos_fields()
@@ -53,7 +53,7 @@ class Corpus:
             self._fields["is_np"] = int(self._chunk == "I-NP")
 
             self._fields["is_punc"] = int(self._pos in string.punctuation)
-            self._fields["any_punc"] = int(any(punc in self._pos for punc in string.punctuation))
+            # self._fields["any_punc"] = int(any(punc in self._pos for punc in string.punctuation))
             # If True, then the word has a capital letter
             self._fields["has_cap"] = int(self._word != self._word.lower())
             # self._fields["prev_has_cap"] = int(prv is not None and prv._word != prv._word.lower())
@@ -70,12 +70,14 @@ class Corpus:
         def _add_pos_fields(self):
             r""" Add high level fields based on whether the term is a specific POS type """
             # Basic part of speech checks
-            self._fields["is_noun"] = int(self._pos[:2] == "NN")
-            self._fields["is_verb"] = int(self._pos[:2] == "VB")
             self._fields["is_adj"] = int(self._pos[:2] == "JJ")
-            self._fields["is_sym"] = int(self._pos == "SYM")
-            self._fields["is_dig"] = int(self._pos == "CD")
-            self._fields["is_fw"] = int(self._pos == "FW")
+            self._fields["is_adv"] = int(self._pos[:1] == "R")
+            # self._fields["is_dt"] = int(self._pos[-2:] == "DT")
+            self._fields["is_noun"] = int(self._pos[:2] == "NN")
+            # self._fields["is_sym"] = int(self._pos == "SYM")
+            self._fields["is_verb"] = int(self._pos[:2] == "VB")
+            # self._fields["is_dig"] = int(self._pos == "CD")
+            # self._fields["is_fw"] = int(self._pos == "FW")
 
         def _add_name_fields(self, prefix: str, token: 'Optional[Corpus.Token]'):
             r""" Add fields related to standard names """
@@ -151,7 +153,6 @@ class Corpus:
                     self._fields[fld_name] = bit_str
                 else:
                     self._fields[fld_name] = bit_str[:n_bits]
-
 
     class Sentence:
         def __init__(self, lines: List[str], is_labeled: bool):
