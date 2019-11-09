@@ -58,9 +58,7 @@ def label_chunk_file(file_to_label: Path, output_file: Path):
 
 
 def _main(args: Namespace):
-    Corpus.build_city_list()
-    Corpus.build_name_lists()
-    Corpus.build_world_city_info()
+    Corpus.configure_external_sources()
 
     build_model(args.pos_name)
     label_chunk_file(file_to_label=args.pos_chunk, output_file=args.output_file)

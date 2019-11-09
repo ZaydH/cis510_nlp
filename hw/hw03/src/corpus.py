@@ -5,16 +5,21 @@ from typing import List, Optional, Set, TextIO, Union
 import names
 from names_dataset import NameDataset
 
+EXTERNAL_DATA_DIR = Path("feature_info")
+
 
 class Corpus:
     NAME_FILE_EXT = ".pos-chunk-name"
     CHUNK_FILE_EXT = ".pos-chunk"
 
     CITY_LIST = None
-    CITY_LIST_PATH = Path("feature_info") / "LargestCity.txt"
+    CITY_LIST_PATH = EXTERNAL_DATA_DIR / "LargestCity.txt"
 
-    WORLD_CITY_LIST_PATH = Path("feature_info") / "world-cities.csv"
+    WORLD_CITY_LIST_PATH = EXTERNAL_DATA_DIR / "world-cities.csv"
     WORLD_CITY_INFO = None
+
+    BROWN_CORPUS_PATH = EXTERNAL_DATA_DIR / "brown-c1000-freq1.txt"
+    BROWN_CORPUS = None
 
     NAMES_DS = NameDataset()
 
@@ -59,6 +64,8 @@ class Corpus:
             if Corpus.WORLD_CITY_INFO is not None:
                 for key in Corpus.WORLD_CITY_INFO.keys():
                     self._test_against_set(key, Corpus.WORLD_CITY_INFO[key], prv, nxt)
+
+            self._add_brown_corpus([2, 4, 6, 8, 10, 11])
 
         def _add_pos_fields(self):
             r""" Add high level fields based on whether the term is a specific POS type """
@@ -126,6 +133,26 @@ class Corpus:
 
             if self._tag is not None: f_out.write(f"\t{self._tag}")
 
+        def _add_brown_corpus(self, wc_length: List[int]) -> None:
+            r"""
+            Add the brown corpus to disk
+
+            :param wc_length: Number of bits to add as a feature
+            """
+            if Corpus.BROWN_CORPUS is None: return
+
+            word = self._word.lower()
+            if word not in Corpus.BROWN_CORPUS: return
+
+            bit_str = Corpus.BROWN_CORPUS[word]
+            for n_bits in wc_length:
+                fld_name = f"wd_02d"
+                if n_bits > len(bit_str):
+                    self._fields[fld_name] = bit_str
+                else:
+                    self._fields[fld_name] = bit_str[:n_bits]
+
+
     class Sentence:
         def __init__(self, lines: List[str], is_labeled: bool):
             self._tokens = []
@@ -181,7 +208,15 @@ class Corpus:
             # f_out.write("\n")
 
     @classmethod
-    def build_city_list(cls):
+    def configure_external_sources(cls):
+        r""" Configures and builds any data structures for external data """
+        cls._build_city_list()
+        cls._build_name_lists()
+        cls._build_world_city_info()
+        cls._import_brown_clustering()
+
+    @classmethod
+    def _build_city_list(cls):
         r""" Build a list of the well known cities """
         if not cls.CITY_LIST_PATH.exists():
             raise ValueError(f"Unable to file city list file: {cls.CITY_LIST_PATH}")
@@ -190,7 +225,7 @@ class Corpus:
             cls.CITY_LIST = set([x.lower() for x in f_in.read().splitlines()[2:]])
 
     @classmethod
-    def build_name_lists(cls):
+    def _build_name_lists(cls):
         r""" Builds list of common first names """
         flds = [(cls.MALE_FIRST_NAMES, "first:male"), (cls.FEMALE_FIRST_NAMES, "first:female"),
                 (cls.LAST_NAMES, "last")]
@@ -202,7 +237,8 @@ class Corpus:
                 name_dict[spl[0]] = float(spl[1])
 
     @classmethod
-    def build_world_city_info(cls):
+    def _build_world_city_info(cls):
+        r""" Import the world city information"""
         cls.WORLD_CITY_INFO = {"city": set(), "country": set(), "state": set()}
         with open(cls.WORLD_CITY_LIST_PATH, "r") as f_in:
             lines = f_in.read().splitlines()
@@ -212,3 +248,13 @@ class Corpus:
             cls.WORLD_CITY_INFO["city"].add(spl[0].lower())
             cls.WORLD_CITY_INFO["country"].add(spl[1].lower())
             cls.WORLD_CITY_INFO["state"].add(spl[2].lower())
+
+    @classmethod
+    def _import_brown_clustering(cls):
+        r""" Imports the Brown bit clustering information from disk """
+        cls.BROWN_CORPUS = dict()
+
+        with open(str(cls.BROWN_CORPUS_PATH), "r") as f_in:
+            for line in f_in:
+                spl = line.strip().split()
+                cls.BROWN_CORPUS[spl[1].lower()] = spl[0]
