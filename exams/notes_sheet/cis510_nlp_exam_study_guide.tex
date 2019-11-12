@@ -24,6 +24,8 @@
 }
 
 \input{global_macros}
+\usepackage[dvipsnames]{xcolor}
+\renewcommand{\green}[1]{{\color{ForestGreen} #1}}
 
 \begin{document}
 \begin{center}
@@ -56,7 +58,7 @@ CIS510 NLP Exam Notes Sheet -- Zayd Hammoudeh
 
   \textbf{\blue{Continuous Bag of Words}} (CBOW) ${\Pr\sbrack{w_t \vert w_{t-2}, w_{t-1}, w_{t+1}, w_{t+2}}}$
 
-  \textbf{\blue{Skip-Grams}} (SG) ${\Pr\sbrack{w_{t+i} \vert w_{t}}, i \in \set{-2,-1,1,2}}$
+  \textbf{\blue{Skip-Grams}} (SG): \\ ${\Pr\sbrack{w_{t+i} \vert w_{t}}, i \in \set{-2,-1,1,2}}$
 
   \section*{Lecture~\#4: Deep Learning}
   \textbf{Logistic Regression}:
@@ -64,9 +66,26 @@ CIS510 NLP Exam Notes Sheet -- Zayd Hammoudeh
     \mathcal{L}(\mathbf{w},b) = -\sum_{\mathbf{x}_i,y_i \in \mathbf{d}} \log \sigma\big( y_i(\mathbf{w}\cdot \mathbf{x}_i + b) \big)
   \end{equation*}
   \section*{Lecture~\#5: Sequential Labeling}
-  \subsection*{HMM}
+  \subsection*{\blue{Hidden Markov Model}}
 
-  \subsection*{MEMM}
+  \begin{align*}
+    \argmax_{\vec{y}} \Pr\sbrack{\vec{y} \vert \vec{x}} &= \argmax_{\vec{y}} \frac{\Pr\sbrack{\vec{x} \vert \vec{y}}\Pr[\vec{y}]}{\Pr[\vec{x}]} \\
+                                                        &= \argmax_{\vec{y}} \Pr\sbrack{\vec{x} \vert \vec{y}} \Pr[\vec{y}]
+  \end{align*}
+
+  \textbf{\green{First-Order Markov Assumption}}:
+
+  \begin{equation*}
+    \Pr\sbrack{y_{1},\ldots,y_{n}} = \prod_{i=1}^{n} \Pr[y_{i} \vert y_{i-1}]
+  \end{equation*}
+
+  \textbf{\green{Indepen.\ Assum}} $\Pr\sbrack{\vec{x} \vert \vec{y}} = \prod_{i=1}^{n} \Pr[x_{i} \vert y_{i}]$
+
+  \textbf{\green{Transition Prob}}: $\Pr\sbrack{y_{t} \vert y_{t-1}}$
+
+  \textbf{\green{Emission Prob}}: $\Pr\sbrack{x_{t} \vert y_{t}}$
+
+  \subsection*{Max.\ Entropy Markov Model}
   \subsection*{CRF}
   \section*{Lecture~\#6: Constituent Parsing}
   \section*{Lecture~\#7: Dependency Parsing}
