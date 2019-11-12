@@ -10,9 +10,10 @@
 
 \usepackage{titlesec}  % Used to adjust title heading
 % Format:  \titlespacing{command}{left spacing}{before spacing}{after spacing}[right]
-\titlespacing\subsection{0pt}{6pt plus 4pt minus 0pt}{4pt plus 2pt minus 0pt}
+\titlespacing\section{0pt}{6pt plus 4pt minus 0pt}{4pt plus 2pt minus 0pt}
 
-\setlength\parindent{8pt}
+\setlength\parindent{0pt}
+\setlength\itemsep{0pt}
 
 \newcommand{\horizontalbreak}{
   {
@@ -29,8 +30,16 @@
 CIS510 NLP Exam Notes Sheet -- Zayd Hammoudeh
 \end{center}
 \begin{multicols}{3}
-  \subsection*{Lecture~\#1: Introduction}
-  \subsection*{Lecture~\#2: Text Classification}
+  \section*{Lecture~\#1: Introduction}
+
+  \textbf{Challenges of NLP}:
+  \begin{itemize}
+    \item Language is \textit{discrete}. Many CV techniques do not work
+    \item Language is \textit{compositonal}. Meaning comes form understanding individual words \& how they combine
+    \item \textit{Ambiguity}:
+  \end{itemize}
+
+  \section*{Lecture~\#2: Text Classification}
   \textit{Examples}: Topic, sentiment, language, authorship
 
   \begin{equation*}\label{eq:L02:NaiveBayes}
@@ -39,11 +48,28 @@ CIS510 NLP Exam Notes Sheet -- Zayd Hammoudeh
   \begin{equation*}\label{eq:L02:Bernoulli}
     \Pr[c] = \frac{\text{\#docs label } c \text{ in } D}{\text{\#docs in } D}
   \end{equation*}
-  \subsection*{Lecture~\#3: Word Embeddings}
-  \subsection*{Lecture~\#4: Deep Learning}
-  \subsection*{Lecture~\#5: Sequential Labeling}
-  \subsection*{Lecture~\#6: Constituent Parsing}
-  \subsection*{Lecture~\#7: Dependency Parsing}
+
+  \section*{Lecture~\#3: Word Embeddings}
+  \textit{Distributional Semantics}: A word's meaning is given by words frequently appear close-by.
+
+  \textit{Context}: Set of words that appear nearby in fixed-size window
+
+  \textbf{\blue{Continuous Bag of Words}} (CBOW) ${\Pr\sbrack{w_t \vert w_{t-2}, w_{t-1}, w_{t+1}, w_{t+2}}}$
+
+  \textbf{\blue{Skip-Grams}} (SG) ${\Pr\sbrack{w_{t+i} \vert w_{t}}, i \in \set{-2,-1,1,2}}$
+
+  \section*{Lecture~\#4: Deep Learning}
+  \textbf{Logistic Regression}:
+  \begin{equation*}\label{eq:L04:LogReg}
+    \mathcal{L}(\mathbf{w},b) = -\sum_{\mathbf{x}_i,y_i \in \mathbf{d}} \log \sigma\big( y_i(\mathbf{w}\cdot \mathbf{x}_i + b) \big)
+  \end{equation*}
+  \section*{Lecture~\#5: Sequential Labeling}
+  \subsection*{HMM}
+
+  \subsection*{MEMM}
+  \subsection*{CRF}
+  \section*{Lecture~\#6: Constituent Parsing}
+  \section*{Lecture~\#7: Dependency Parsing}
 
 \end{multicols}
 
