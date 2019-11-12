@@ -34,37 +34,119 @@ CIS510 NLP Exam Notes Sheet -- Zayd Hammoudeh
 \begin{multicols}{3}
   \section*{Lecture~\#1: Introduction}
 
+  \textbf{NLP Applications}: Machine translation, question answering, interactive systems (SIRI), information extraction, text mining
+
   \textbf{Challenges of NLP}:
   \begin{itemize}
-    \item Language is \textit{discrete}. Many CV techniques do not work
-    \item Language is \textit{compositonal}. Meaning comes form understanding individual words \& how they combine
-    \item \textit{Ambiguity}:
+    \item Language \textit{discrete}. Harder to optimize
+    \item Language \textit{compositional}. Meaning comes from individual words \& how they combine
+    \item \textit{Flexible}: Multiple ways to talk about same thing
+    \item \textit{Ambiguity}: Context needed to understand word/sentence
+  \end{itemize}
+
+  \textbf{Necessary Functionality}
+  \begin{itemize}
+    \item \textit{Word Segmentation}: Some languages (e.g.,~Chinese) have no spaces between words
+    \item \textit{Morphology}: Words appear different forms. Sing.\ v plural. Pres.\ v past tense
+    \item \textit{Polysemous}: Single word has multiple meanings
   \end{itemize}
 
   \section*{Lecture~\#2: Text Classification}
-  \textit{Examples}: Topic, sentiment, language, authorship
+  \textit{Example Tasks}: Topic, sentiment, language, authorship (forensics), filtering (spam)
+
+  \textbf{\green{Cosine Similarity}} $\frac{u \cdot v}{\norm{u}_{2} \norm{v}_{2}}$
+
+  \subsection*{\blue{Naive Bayes}}
+
+  Based on \textit{bag of words} and \textit{naive assumption of independence of word probabilities}. Fast w.\ low storage requirements. Robust to irrelevant features. Extendable to more feats.
 
   \begin{equation*}\label{eq:L02:NaiveBayes}
     \argmax_c \Pr\sbrack{c \vert X} = \argmax_{c} \frac{\Pr[X \vert c] \Pr[c]}{\Pr[X]}
   \end{equation*}
-  \begin{equation*}\label{eq:L02:Bernoulli}
-    \Pr[c] = \frac{\text{\#docs label } c \text{ in } D}{\text{\#docs in } D}
-  \end{equation*}
+
+  \green{\textbf{Prior}}: $\Pr[c] = \frac{\text{\#docs label } c \text{ in } D}{\text{\#docs in } D}$
+
+  \green{\textbf{Bernoulli}}: \\ $\Pr[w_ i \vert c] = \frac{\text{\# docs labeled } c \text{ containing } w_i \text{ in } D}{\text{\#docs labeled } c \text{ in } D}$
+
+  \green{\textbf{Multinomial}}: \\ $\Pr[w_i \vert c] = \frac{\text{\# inst.\ } w_i \text{ in doc labeled } c \text{ in } D}{\text{Tot.\ len docs labeled } c \text{ in } D}$
+
+  \green{\textbf{Add-1 Smoothing}}: Add $\alpha$ to numerator and $\alpha\abs{V}$ to denominator of all words
+
+  \textbf{\green{IDF}}: $idf_i = \log \left(N/n_i\right)$ \\ $N$ size of collection \& $n_i$ \#docs contain $w_i$
+
+  \subsection*{Metrics}
+
+  \textbf{\green{Precision}} $\frac{\text{TP}}{\text{TP} + \text{FP}}$
+
+  \textbf{\green{Recall}} $\frac{\text{TP}}{\text{TP} + \text{FN}}$
+
+  \textbf{\green{F1}} $\frac{2 \cdot \text{Precision} \cdot \text{Recall}}{\text{Precision} + \text{Recall}}$
 
   \section*{Lecture~\#3: Word Embeddings}
   \textit{Distributional Semantics}: A word's meaning is given by words frequently appear close-by.
 
   \textit{Context}: Set of words that appear nearby in fixed-size window
 
-  \textbf{\blue{Continuous Bag of Words}} (CBOW) ${\Pr\sbrack{w_t \vert w_{t-2}, w_{t-1}, w_{t+1}, w_{t+2}}}$
+  \subsection*{\blue{Word2Vec}}
 
-  \textbf{\blue{Skip-Grams}} (SG): \\ ${\Pr\sbrack{w_{t+i} \vert w_{t}}, i \in \set{-2,-1,1,2}}$
+  \textbf{\green{Continuous Bag of Words}} \\ ${\Pr\sbrack{w_t \vert w_{t-2}, w_{t-1}, w_{t+1}, w_{t+2}}}$
+
+  \textbf{\green{Skip-Grams}} ${\Pr\sbrack{w_{t+i} \vert w_{t}}, i \in \set{-2,-1,1,2}}$
+  \begin{itemize}
+    \item $v_w$: $w$ is center word
+    \item $u_w$: $w$ is context word
+  \end{itemize}
+
+  \begin{equation*}
+    \Pr\sbrack{w_{i+j} \vert w_{i} ; \theta} = \frac{\exp\left(u_{w_{i+j}} \cdot v_{w_i} \right)}{\sum_{w \in V} \exp\left(u_{w} \cdot v_{w_i} \right)}
+  \end{equation*}
+
+  \subsection*{\blue{Co-occurrence Counts}}
+
+  Create $A$ is ${\abs{V} \times \abs{V}}$ matrix of where $a_{i,j}$ is \#docs words $w_i$ \& $w_j$ appear together
+
+  \green{\textbf{Method~\#1}}: Dimensionality reduction (e.g.,~SVD)
+
+  \green{\textbf{Method~\#2}}: GloVe
+  \begin{itemize}
+    \item Ratio of co-occurrences can encode relationships between words
+  \end{itemize}
+
+  \subsection*{Evaluation of Embeddings}
+
+  \textbf{\green{Intrinsic}}: Evaluate on specific/intermediate task
+  \begin{itemize}
+    \item Fast to compute
+    \item Helps to understand system
+    \item Unclear if really helpful unless correlates real task
+  \end{itemize}
+
+  \textbf{\green{Extrinsic}}: Evaluate on real task e.g.,~NER
+  \begin{itemize}
+    \item Long time to evaluate
+  \end{itemize}
 
   \section*{Lecture~\#4: Deep Learning}
-  \textbf{Logistic Regression}:
+  \textbf{\blue{Logistic Regression}} (MaxEnt):
   \begin{equation*}\label{eq:L04:LogReg}
     \mathcal{L}(\mathbf{w},b) = -\sum_{\mathbf{x}_i,y_i \in \mathbf{d}} \log \sigma\big( y_i(\mathbf{w}\cdot \mathbf{x}_i + b) \big)
   \end{equation*}
+
+  \textbf{\green{Cross Entropy}} $H(p,q) = \mathbb{E}_{p(x)} \sbrack{-\log q}$
+
+  \subsection*{Activation Functions}
+
+  $\sigma(a) = \frac{1}{1+exp(-a)}$
+
+  $\text{SoftPlus}(a) = \log(1 + e{a})$
+
+  $\text{ELU}(a) = \begin{cases}
+                      a & a \geq 0 \\
+                      \alpha (e^{a} - 1) & a < 0
+                   \end{cases}$
+
+  \textbf{\green{Chain Rule}}: $(f \circ g)' = (f' \cdot g)g'$
+
   \section*{Lecture~\#5: Sequential Labeling}
   \subsection*{\blue{Hidden Markov Model}}
 
@@ -86,7 +168,20 @@ CIS510 NLP Exam Notes Sheet -- Zayd Hammoudeh
   \textbf{\green{Emission Prob}}: $\Pr\sbrack{x_{t} \vert y_{t}}$
 
   \subsection*{Max.\ Entropy Markov Model}
-  \subsection*{CRF}
+  \subsection*{\blue{Conditional Random Field}}
+
+  \begin{equation*}
+    \Pr[y\vert x ; \theta] = \frac{\exp(\Phi(\vec{x},\vec{y})\transpose\theta))}{\sum_{\vec{y}' \in Y} \exp(\Phi(\vec{x}, \vec{y'})\transpose\theta)}
+  \end{equation*}
+
+  where:
+
+  \begin{align*}
+      \Phi(\vec{x},\vec{y}) &= \sbrack{\Phi_{1}(\vec{x},\vec{y}),\ldots,\Phi_{K}(\vec{x},\vec{y})} \\
+      \Phi_{k}(\vec{x},\vec{y}) &= \sum_{i=1}^{n} \phi_{k}(y_{i-1},y_{i},\vec{x},i)
+  \end{align*}
+
+
   \section*{Lecture~\#6: Constituent Parsing}
   \section*{Lecture~\#7: Dependency Parsing}
 
