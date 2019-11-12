@@ -74,16 +74,14 @@ CIS510 NLP Exam Notes Sheet -- Zayd Hammoudeh
 
   \textbf{\green{IDF}}: $idf_i = \log \left(N/n_i\right)$ \\ $N$ size of collection \& $n_i$ \#docs contain $w_i$
 
-  \subsection*{Metrics}
+  \subsection*{\blue{Metrics}}
 
-  \textbf{\green{Precision}} $\frac{\text{TP}}{\text{TP} + \text{FP}}$
-
-  \textbf{\green{Recall}} $\frac{\text{TP}}{\text{TP} + \text{FN}}$
+  \textbf{\green{Precision}} $\frac{\text{TP}}{\text{TP} + \text{FP}}$ \hspace{0.1cm} \textbf{\green{Recall}} $\frac{\text{TP}}{\text{TP} + \text{FN}}$
 
   \textbf{\green{F1}} $\frac{2 \cdot \text{Precision} \cdot \text{Recall}}{\text{Precision} + \text{Recall}}$
 
   \section*{Lecture~\#3: Word Embeddings}
-  \textit{Distributional Semantics}: A word's meaning is given by words frequently appear close-by.
+  \textbf{\green{Distributional Semantics}}: Word's meaning given by words frequently appear close-by
 
   \textit{Context}: Set of words that appear nearby in fixed-size window
 
@@ -98,8 +96,14 @@ CIS510 NLP Exam Notes Sheet -- Zayd Hammoudeh
   \end{itemize}
 
   \begin{equation*}
+    L = \prod_{i=1}^{N} \prod_{\substack{-m \leq j \leq m \\ j \ne 0}} \Pr\sbrack{w_{i+j} \vert w_{i} ; \theta}
+  \end{equation*}
+
+  \begin{equation*}
     \Pr\sbrack{w_{i+j} \vert w_{i} ; \theta} = \frac{\exp\left(u_{w_{i+j}} \cdot v_{w_i} \right)}{\sum_{w \in V} \exp\left(u_{w} \cdot v_{w_i} \right)}
   \end{equation*}
+
+  \green{\textbf{Negative Sampling}}: Sample words u.a.r.\ \& and use to estimate denominator
 
   \subsection*{\blue{Co-occurrence Counts}}
 
@@ -114,7 +118,7 @@ CIS510 NLP Exam Notes Sheet -- Zayd Hammoudeh
 
   \subsection*{Evaluation of Embeddings}
 
-  \textbf{\green{Intrinsic}}: Evaluate on specific/intermediate task
+  \textbf{\green{Intrinsic}}: Eval.\ on specific/intermediate task
   \begin{itemize}
     \item Fast to compute
     \item Helps to understand system
@@ -167,6 +171,24 @@ CIS510 NLP Exam Notes Sheet -- Zayd Hammoudeh
 
   \textbf{\green{Emission Prob}}: $\Pr\sbrack{x_{t} \vert y_{t}}$
 
+  \subsubsection*{\red{Decoding}}
+
+  \textbf{\green{Greedy Decoding}}: \\${y_t = \argmax_{y'} \Pr[x_t \vert y'] \Pr[y' \vert y_{t-1}]}$
+
+  \textbf{\green{Viterbi}}
+  \begin{itemize}
+    \item \textit{Complexity}: $O(\abs{S}^{2} n)$
+    \item \textit{Initialization}: $v_0(s) = \begin{cases}
+                                               1 & s = \text{start} \\
+                                               0 & \text{Otherwise}
+                                             \end{cases}$
+    \item \textit{Termination}: $t = n+1$
+  \end{itemize}
+
+  \begin{equation*}
+    v_{t}(s) = \max_{s' \in Y}\set{v_{t-1}(s') \Pr[s \vert s'] \Pr[x_t \vert s]}
+  \end{equation*}
+
   \subsection*{Max.\ Entropy Markov Model}
   \subsection*{\blue{Conditional Random Field}}
 
@@ -181,9 +203,52 @@ CIS510 NLP Exam Notes Sheet -- Zayd Hammoudeh
       \Phi_{k}(\vec{x},\vec{y}) &= \sum_{i=1}^{n} \phi_{k}(y_{i-1},y_{i},\vec{x},i)
   \end{align*}
 
+  \subsection*{Bidirectional RNN}
+
+  \begin{itemize}
+    \item Can incorporate CRF as final layer in sequence labeling
+  \end{itemize}
 
   \section*{Lecture~\#6: Constituent Parsing}
+
+  \textbf{\green{Constituency}}: Group of words that behave as single unit
+
+  \textbf{\green{Context-Free Grammar}}: Formal way to define meaningful constituents and how a constituent is formed from other constituents
+  \begin{itemize}
+    \item $N$: Set of non-terminal symbols
+    \item $\Sigma$: Alphabet terminal symbols
+  \end{itemize}
+
+  \textbf{Language}: All strings derivable from start symbol
+
+  \textbf{Preterminals}: Set symbols can be rewritten as terminals
+
+  \textbf{Syntax}: Move from label discrete items to structure between items
+
+  \subsection*{CYK Parsing}
+
+  \begin{itemize}
+    \item Checks whether sentence grammatical in CFG's language
+    \item Enumerate all possible parses for sentence
+  \end{itemize}
+
+  for $j \gets 1 \text{ to } Length(Sentence)$ \\
+  \hspace*{0.2cm}for $i \gets j-2 \text{ down to } 0$ \\
+  \hspace*{0.4cm}for $k \gets i+1 \text{ to } j - 1$ \\
+  \hspace*{0.6cm}for $\set{A \vert A \rightarrow BC \in G \wedge B \in table[i,k] \wedge C \in table[k,j]}$
+  \hspace*{0.8cm}$table[i,j] \gets table[i,j] \cup A$
+
+  \textbf{\green{Probabilistic Context-Free Grammar}}: Tells which parse of sentence more likely
+
   \section*{Lecture~\#7: Dependency Parsing}
+
+  \textbf{\green{Dependency Structure}}: Directed graph consisting of set of vertices $V$ and arcs~$A$
+  \begin{itemize}
+    \item Except root, exactly one incoming edge
+    \item Not tied to linear order of words making more language syntax independent
+  \end{itemize}
+
+  \section*{Lecture~\#8: Information \& Relation Extraction}
 
 \end{multicols}
 
