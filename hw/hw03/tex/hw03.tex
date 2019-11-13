@@ -159,10 +159,10 @@
 
   \begin{itemize}
     \setlength{\itemsep}{0pt}
-    \item \textbf{Accuracy}: \blue{96.45\%}
-    \item \textbf{Precision}: \blue{0.7645}
-    \item \textbf{Recall}: \blue{0.7823}
-    \item \textbf{F1-Score}: \blue{0.7733}
+    \item \textbf{Accuracy}: \blue{97.24\%}
+    \item \textbf{Precision}: \blue{0.8326}
+    \item \textbf{Recall}: \blue{0.8332}
+    \item \textbf{F1-Score}: \blue{0.8329}
   \end{itemize}
 
   \section{Implementation Notes}
@@ -185,6 +185,7 @@
       \end{itemize}
     \item \textbf{Miscellaneous}:
       \begin{itemize}
+        \item \textit{word}: The word of interest itself is used as a feature.  This is used for both the previous and subsequent words.
         \item \textit{any\_punc}: Binary feature that equals \texttt{0b1} if any punctuation symbol appears in the current token.  This feature either had no effect or slightly degraded performance so it was removed.
         \item \textit{is\_first}: Binary feature that equals \texttt{0b1} if the token is the first word in the sequence.
         \item \textit{idx}: Index of the word in the sentence.  This feature decreased accuracy and was removed.
@@ -204,7 +205,7 @@
   \subsection{More Advanced Features}
 
   \begin{itemize}
-    \item \textbf{Brown Clustering}: Using the file supplied with the homework, Brown bit strings of length 2, 4, 6, 8, 10, and~11 bits are included as features.  This approach improved accuracy by approximately 0.75\%.
+    \item \textbf{Brown Clustering}: Using the file supplied with the homework, Brown bit strings of length 2, 4, 6, 8, 10, and~11 bits are included as features.  This approach improved accuracy by approximately 0.75\%.  Brown clustering bit strings are added for the preceding and subsequent word (if applicable).
     \item \texttt{LargestCity.txt}: This file was supplied as part of the homework, and my program has three features associated with this city list.  They are:
       \begin{itemize}
         \item \texttt{Token Word}: Binary feature which is \texttt{0b1} if the token word itself appears in the city list.

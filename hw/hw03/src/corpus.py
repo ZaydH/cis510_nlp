@@ -29,7 +29,7 @@ class Corpus:
 
     class Token:
         def __init__(self, word: str, pos: str, chunk: str, tag: Optional[str]):
-            self._word = word
+            self.word = word
             self._pos = pos
             self._chunk = chunk
             self._tag = tag
@@ -42,6 +42,9 @@ class Corpus:
             # self._fields["idx"] = idx
             # self._fields["is_first"] = int(idx == 0)
             self._fields["last_label"] = "@@"
+            for (name, token) in (("self", self), ("prv", prv), ("nxt", nxt)):
+                if token is None: continue
+                self._fields[f"{name}_word"] = token.word.lower()
 
             self._add_pos_fields()
             self._add_name_fields("this", self)
@@ -55,17 +58,19 @@ class Corpus:
             self._fields["is_punc"] = int(self._pos in string.punctuation)
             # self._fields["any_punc"] = int(any(punc in self._pos for punc in string.punctuation))
             # If True, then the word has a capital letter
-            self._fields["has_cap"] = int(self._word != self._word.lower())
-            # self._fields["prev_has_cap"] = int(prv is not None and prv._word != prv._word.lower())
-            # self._fields["next_has_cap"] = int(nxt is not None and nxt._word != nxt._word.lower())
-            self._fields["all_caps"] = int(self._word.isupper())
+            self._fields["has_cap"] = int(self.word != self.word.lower())
+            # self._fields["prev_has_cap"] = int(prv is not None and prv.word != prv.word.lower())
+            # self._fields["next_has_cap"] = int(nxt is not None and nxt.word != nxt.word.lower())
+            self._fields["all_caps"] = int(self.word.isupper())
 
             self._test_against_set("is_city", Corpus.CITY_LIST, prv, nxt)
             if Corpus.WORLD_CITY_INFO is not None:
                 for key in Corpus.WORLD_CITY_INFO.keys():
                     self._test_against_set(key, Corpus.WORLD_CITY_INFO[key], prv, nxt)
 
-            self._add_brown_corpus([2, 4, 6, 8, 10, 11])
+            self._add_brown_corpus("self", self, [2, 4, 6, 8, 10, 11])
+            self._add_brown_corpus("prv", prv, [2, 4, 6, 8, 10, 11])
+            self._add_brown_corpus("nxt", nxt, [2, 4, 6, 8, 10, 11])
 
         def _add_pos_fields(self):
             r""" Add high level fields based on whether the term is a specific POS type """
@@ -89,14 +94,14 @@ class Corpus:
                     self._fields[name] = 0.
                     continue
                 try:
-                    self._fields[name] = name_dict[token._word.upper()]
+                    self._fields[name] = name_dict[token.word.upper()]
                 except KeyError:
                     self._fields[name] = 0.
 
             def _name_ds_fld(attr: str) -> str:
                 return prefix + "_" + attr + "_names-ds"
 
-            word = "XXXXXX" if token is None else token._word  # Check is case sensitive below
+            word = "XXXXXX" if token is None else token.word  # Check is case sensitive below
             self._fields[_name_ds_fld("first")] = Corpus.NAMES_DS.search_first_name(word)
             self._fields[_name_ds_fld("last")] = Corpus.NAMES_DS.search_last_name(word)
 
@@ -112,14 +117,13 @@ class Corpus:
                     self._fields[fld_name] = int(False)
                     return
 
-                # noinspection PyProtectedMember
-                comb = " ".join(x._word.lower() for x in args)
+                comb = " ".join(x.word.lower() for x in args)
                 self._fields[fld_name] = int(comb in set_to_test)
 
             self_fld = prefix + "_self"
-            self._fields[self_fld] = int(self._word.lower() in set_to_test)
-            if self._fields[self_fld] == 0 and "-" in self._word:
-                no_hyp = self._word.replace("-", " ").lower()
+            self._fields[self_fld] = int(self.word.lower() in set_to_test)
+            if self._fields[self_fld] == 0 and "-" in self.word:
+                no_hyp = self.word.replace("-", " ").lower()
                 self._fields[self_fld] = int(no_hyp in set_to_test)
 
             _check_concat("_prev", prev_tok, self)
@@ -128,27 +132,29 @@ class Corpus:
 
         def export(self, f_out: TextIO):
             r""" Export the \p Token object to a data file """
-            f_out.write(f"{self._word}\t")
+            f_out.write(f"{self.word}\t")
 
             sorted_keys = sorted(self._fields.keys())
             f_out.write("\t".join(f"{key}={self._fields[key]}" for key in sorted_keys))
 
             if self._tag is not None: f_out.write(f"\t{self._tag}")
 
-        def _add_brown_corpus(self, wc_length: List[int]) -> None:
+        def _add_brown_corpus(self, prefix: str,  token: 'Optional[Corpus.Token]',
+                              wc_length: List[int]) -> None:
             r"""
             Add the brown corpus to disk
 
             :param wc_length: Number of bits to add as a feature
             """
+            if token is None: return
             if Corpus.BROWN_CORPUS is None: return
 
-            word = self._word.lower()
+            word = token.word.lower()
             if word not in Corpus.BROWN_CORPUS: return
 
             bit_str = Corpus.BROWN_CORPUS[word]
             for n_bits in wc_length:
-                fld_name = f"wd_02d"
+                fld_name = f"{prefix}_wd_02d"
                 if n_bits > len(bit_str):
                     self._fields[fld_name] = bit_str
                 else:
