@@ -56,7 +56,7 @@
   \begin{itemize}
     \item Language \textit{discrete}. Harder to optimize
     \item Language \textit{compositional}. Meaning from individual words \& how combine
-    \item \textit{Flexible}: Multiple ways to talk about same thing
+    \item \textit{Flexible}: Mult way say same thing
     \item \textit{Ambiguity}: Context needed to understand word/sentence
   \end{itemize}
 
@@ -100,7 +100,7 @@
 
   \greenbf{Microaveraging}: Collect decisions for all class, compute confusion, evaluate. \textit{Dominated by score on common classes}
 
-  Microaveraging preferable if classes imbalanced
+  Microaveraging prefer class imbalanced
 
   \section*{Lecture~\#3: \hl{Word Embeddings}}
   \greenbf{Distributional Semantics}: Word's meaning given by words frequently appear close-by
@@ -116,11 +116,9 @@
     \item $v_w$: $w$ is center word
     \item $u_w$: $w$ is context word
   \end{itemize}
-
   \begin{equation*}
     L = \prod_{i=1}^{N} \prod_{\substack{-m \leq j \leq m \\ j \ne 0}} \Pr\sbrack{w_{i+j} \vert w_{i} ; \theta}
   \end{equation*}
-
   \begin{equation*}
     \Pr\sbrack{w_{i+j} \vert w_{i} ; \theta} = \frac{\exp\left(u_{w_{i+j}} \cdot v_{w_i} \right)}{\sum_{w \in V} \exp\left(u_{w} \cdot v_{w_i} \right)}
   \end{equation*}
@@ -137,7 +135,10 @@
   \begin{itemize}
     \item Ratio of co-occurrences can encode relationships between words
   \end{itemize}
-
+  \begin{equation*}
+    J = \sum_{i,j=1}^{\abs{V}} f(X_{ij})(w_{i}\transpose\tilde{w}_j + b_i + \tilde{b}_j - \log X_{ij})^{2}
+  \end{equation*}
+  for weight function~$f$ and $X_{ij}$ number times word~$j$ occur in context of word~$i$
   \subsection*{Evaluation of Embeddings}
 
   \greenbf{Intrinsic}: Eval.\ on specific/intermediate task
@@ -171,7 +172,7 @@
                       \alpha (e^{a} - 1) & a < 0
                    \end{cases}$
 
-  \greenbf{Chain Rule}: $(f \circ g)' = (f' \cdot g)g'$
+  \greenbf{Chain Rule}: $(f \circ g)' = (f' \circ g)g'$
 
   \section*{Lecture~\#5: \hl{Sequential Labeling}}
   \subsection*{\blue{Hidden Markov Model}}
@@ -182,7 +183,6 @@
   \end{align*}
 
   \greenbf{First-Order Markov Assumption}:
-
   \begin{equation*}
     \Pr\sbrack{y_{1},\ldots,y_{n}} = \prod_{i=1}^{n} \Pr[y_{i} \vert y_{i-1}]
   \end{equation*}
@@ -212,11 +212,21 @@
   \end{equation*}
 
   \subsection*{\blue{Max.\ Entropy Markov Model}}
-  \subsection*{\blue{Conditional Random Field}}
-  \begin{itemize}
-    \item Complexity: $O(n\abs{Y}^{2})$ where $Y$ set of label vectors
-  \end{itemize}
+  \begin{align*}
+    \Pr[y\vert x] &= \prod_{i=1}^{n} \Pr(y_t \vert y_{t-1},x) \\
+    \Pr[y_{t} \vert t_{t-i}, x] &= \frac{\exp\left(\sum_{i=1}^{K}w_{i}^{y_t}f_{i}(y_{t-1},x) \right)}{Z(y_{t-1},x)}
+  \end{align*}
+  \begin{equation*}
+    L(\theta) = -\sum_{x,y\in D} \log \Pr(y \vert x)
+  \end{equation*}
 
+  Both MEMM \& CRF model $\Pr(y\vert x)$
+  \greenbf{Local Norm}: Normalize at each state (MEMM). \redbf{Label bias}
+
+  \greenbf{Global Normalization}: Normalizes over entire input. Leads to CRF\@.
+
+  \subsection*{\blue{Conditional Random Field}}
+  \textbf{Complexity}: $O(n\abs{Y}^{2})$ where $Y$ set label vectors
   \begin{equation*}
     \Pr[y \vert x; \theta] = \frac{\exp(\Phi(\vec{x},\vec{y})\transpose\theta))}{\sum_{\vec{y}' \in Y} \exp(\Phi(\vec{x}, \vec{y'})\transpose\theta)}
   \end{equation*}
@@ -226,9 +236,12 @@
       \Phi(\vec{x},\vec{y}) &= \sbrack{\Phi_{1}(\vec{x},\vec{y}),\ldots,\Phi_{K}(\vec{x},\vec{y})} \\
       \Phi_{k}(\vec{x},\vec{y}) &= \sum_{i=1}^{n} \phi_{k}(y_{i-1},y_{i},\vec{x},i)
   \end{align*}
+  $\Phi_{k}(\vec{x},\vec{y})$: Captures features of transition from $y_{i-1}$ to $y_i$
+
   \subsection*{\blue{Bidirectional RNN}}
 
   \begin{itemize}
+    \item \textbf{Input}: Data vec \& previous hidden vec
     \item Can incorporate CRF as final layer in sequence labeling
   \end{itemize}
 
@@ -265,6 +278,11 @@
   \greenbf{Treebank}: Collection of sentences annotated with syntactic structure
 
   \greenbf{Chomsky Normal Form} (CNF): All rules have form ${A \rightarrow \beta}$ where $\beta$~either single terminal in~$\Sigma$ or two non-terminals in~$N$
+  \begin{itemize}
+    \item Fix mix terminals/non-terminals
+    \item Fix more than 2 non-terminals
+    \item Fix single non-terminal
+  \end{itemize}
 
   \subsection*{\blue{CYK Parsing}}
 
@@ -278,9 +296,15 @@
   \greenbf{Probabilistic Context-Free Grammar}: Tells which parse of sentence more likely
   \begin{itemize}
     \item Each production associated w.\ prob.
-    \item \textbf{Strong Independence Assumption} where ${\Pr(T) = \prod_{i=1}^{n} \Pr(\beta \vert A)}$. In practice, productions strongly dependent on place in tree.
   \end{itemize}
 
+  \redbf{Strong Independence Assumption} where ${\Pr(T) = \prod_{i=1}^{n} \Pr(\beta \vert A)}$. In practice, productions strongly dependent on place in tree.
+
+  \textbf{Improving PCFG}
+  \begin{itemize}
+    \item Different probabilities for based on whether subject/object
+    \item \greenbf{Lexicalized PCFG} include POS \& word in calc transition probabilities
+  \end{itemize}
   \begin{equation*}
     \Pr(\beta \vert A) = \frac{\text{Count}(A \rightarrow \beta)}{\text{Count}(A)}
   \end{equation*}
@@ -298,23 +322,28 @@
 
   \textit{Approaches}: DP, graph alg, CSP, transition-based parsing
 
-  \begin{itemize}
-    \item Closer to semantic relations than constituents
-    \item Except root, exactly one incoming edge. Tail is dependent on head word
-    \item Not tied to linear order of words making more language syntax independent. \textit{Free of word order}
-    \item \textbf{DP Complexity}: $O(n^3)$ (Eisner's)
-  \end{itemize}
+  Most dependency parsing algs only handle projective trees.
+
+  Closer to semantic relations than constituents
+
+  Except root, exactly one incoming edge. Tail is dependent on head word. Arcs have a type
+
+  Not tied linear word order so more language syntax independent. \textit{Free word order}
+
+  \textbf{DP Complexity}: $O(n^3)$ (Eisner's)
 
   \subsection*{Greedy Dependency Parsing}
 
-  \greenbf{Guide}: Predicts next transition given current config
+  \greenbf{Guide}: Predict transition given cur config
 
   \greenbf{Arc-Standard Algorithm}
+
+  \textbf{Transition-based parsing}
 
   No guarantee finds the best tree.
 
   \begin{itemize}
-    \item \textbf{Complexity}: $O(n)$
+    \item \textbf{Complexity}: $O(n)$ Projective, $O(n^2)$
     \item \textbf{Configuration}: Buffer, stack \& dependency tree
     \item \textbf{Init Config}: Stack \& tree empty. All words in buffer
     \item \textbf{Term Config}: Buffer empty. Stack is single word
@@ -326,13 +355,14 @@
     \item \texttt{shift}: Move from buffer to top of stack
     \item \texttt{left-arc}: Add arc from top of stack to penultimate on stack. Pop penultimate.
     \item \texttt{right-arc}: Add arc from penultimate of stack to top. Pop top.
+    \item \texttt{swap}: Only if non-projective
   \end{itemize}
 
   \redbf{Problem}: Feature calculation slow so slow use DNN.
 
-  Arcs also have a type.
+  \greenbf{Projective}: Has directed path between head of arc and all words between head and tail. \textit{No crossing dependency arcs}
 
-  \subsection*{\blue{Evaluation}}
+  \subsection*{\blue{Dependency Evaluation}}
 
   \greenbf{Labeled Attachment Score} (LAS): Percentage of correct arcs relative to gold
 
@@ -340,7 +370,9 @@
 
   \greenbf{Unlabeled Attachment Score/Exact Match} (UAS/UEM): Same as above but ignore arc labels
 
-  \section*{Lecture~\#8: \hl{Information \& Relation Extraction}}
+  \textbf{Word-Level}: Microaverage. \textbf{Sentence-Level}: Macro average
+
+  \section*{Lecture~\#8: \hl{IE \& RE}}
 
   \greenbf{Information Extraction}: Automatic extraction of structured information from unstructured or semi-structure docs
   \begin{itemize}
@@ -358,11 +390,27 @@
 
   \greenbf{Entity Linking}: Task recognize \& disambiguate named entities to a knowledge base
 
-  \redbf{Trigger Prediction}:
+  \redbf{Trigger Prediction}: Indicate event start
 
-  \redbf{Argument Prediction}:
+  \redbf{Argument Prediction}: After trigger found, identify objects associated with trigger
 
-  \greenbf{Gazetteer}: List of common names for different types
+  \greenbf{Gazetteer}: List common names for diff type
+
+  \textbf{Transformations}
+  \begin{itemize}
+    \item Remove passive voice
+    \item Remove relative (Harry\st{, who})
+    \item Subject control to duplicate subject for dependent phrase
+  \end{itemize}
+
+  \greenbf{Tree Kernel}: Meas similarity btwn two tree
+
+  \greenbf{Confidence}
+  \begin{itemize}
+    \item \textit{Binary Classification}: $2(P-0.5)$
+    \item \textit{Multi-class}: $P_1 - P_2$
+    \item \textit{SVM}: Distance from hyperplane
+  \end{itemize}
 
   \subsection*{\blue{Evaluation}}
 
@@ -370,12 +418,9 @@
 
   \subsection*{\blue{Semi-Supervised Learning}}
 
-  \textbf{Termination Conditions}
-  \begin{itemize}
-    \item $U$ exhausted
-    \item Performance goal reached
-    \item Fixed number of iterations
-  \end{itemize}
+  \greenbf{Semantic Drift}: In iterative learning, target may shift from target class to other class
+
+  \textbf{Termination Conditions}: 1) $U$ exhausted 2) Performance goal hit 3) Fixed \#iteration
 
   \redbf{Problem}: Errors in early greedy confidence choices rapidly magnified
 
@@ -394,7 +439,7 @@
     \begin{algorithm}[H]
       \caption{CYK algorithm}
       \begin{algorithmic}[1]
-        \For{$j \gets 1 \mathbf{to} \textproc{Length}(words)$}
+        \For{$j \gets 1 \text{ \textbf{to} } \textproc{Length}(words)$}
           \ForEach{$\set{A \vert A \rightarrow words[j] \in grammar}$}
             \State $table[j-1,j] \gets table[j-1,j] \cup A$
           \EndFor
@@ -419,12 +464,12 @@
     \begin{algorithm}[H]
       \caption{Probabilistic CYK algorithm}
       \begin{algorithmic}[1]
-        \For{$j \gets 1 \mathbf{to} \textproc{Length}(words)$}
+        \For{$j \gets 1 \text{ \textbf{to} } \textproc{Length}(words)$}
           \ForEach{$\set{A \vert A \rightarrow words[j] \in grammar}$}
           \State $table[j-1,j, A] \gets \Pr(A \rightarrow words[j])$
           \EndFor
-          \For{$i \gets j-2 \text{ down to } 0$}
-            \For{$k \gets i+1 \text{ to } j - 1$}
+          \For{$i \gets j-2 \text{ \textbf{down to} } 0$}
+          \For{$k \gets i+1 \text{ \textbf{to} } j - 1$}
               \ForEach{$\set{A \vert A \rightarrow BC \in grammar \wedge table[i,k, B] > 0 \wedge table[k,j,C] > 0}$}
                 \State $table[i,j] \gets table[i,j] \cup A$
               \EndFor
@@ -436,8 +481,8 @@
   \end{minipage}
 \end{figure}
 
-\begin{table}[b]
-  \centering
+% \begin{table}[b]
+%   \centering
   % \caption{}\label{tab:}
   \begin{tabular}{|c|l|c|l|}
     \hline
@@ -453,6 +498,6 @@
     \bluebf{JJR} Comparative Adj. & Adjective end in \texttt{-er}. \textit{More}, \textit{less} & \bluebf{JJS} Superlative Adj. & Adjective end in \texttt{-est}. \textit{Most}, \textit{least} \\\hline
     \bluebf{PRP\$} Possess.\ Pronoun & \textit{my}, \textit{their}, \textit{its}, \textit{his}, \textit{her} & \bluebf{IN} Preposition & All preposition except ``to''. \textit{On}, \textit{because}, \textit{from} \\\hline
   \end{tabular}
-\end{table}
+% \end{table}
 
 \end{document}
