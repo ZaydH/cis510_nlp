@@ -8,12 +8,16 @@
 
 \usepackage{subcaption}
 
+\usepackage{enumitem}
+\setitemize{itemsep=0pt,topsep=0pt}
+
 \usepackage{titlesec}  % Used to adjust title heading
 % Format:  \titlespacing{command}{left spacing}{before spacing}{after spacing}[right]
-\titlespacing\section{0pt}{6pt plus 4pt minus 0pt}{4pt plus 2pt minus 0pt}
+\titlespacing{\section}{0pt}{6pt plus 4pt minus 0pt}{4pt plus 2pt minus 0pt}
+\titlespacing{\subsection}{0pt}{2pt}{2pt}
+\titlespacing{\subsubsection}{0pt}{2pt}{2pt}
 
-\setlength\parindent{0pt}
-\setlength\itemsep{0pt}
+\setlength{\parindent}{0pt}
 
 \newcommand{\horizontalbreak}{
   {
@@ -27,7 +31,14 @@
 \usepackage[dvipsnames]{xcolor}
 \renewcommand{\green}[1]{{\color{ForestGreen} #1}}
 
+\newcommand{\bluebf}[1]{\textbf{\blue{#1}}}
+\newcommand{\greenbf}[1]{\textbf{\green{#1}}}
+
 \begin{document}
+% Space above and below equation
+\setlength{\abovedisplayskip}{0pt}
+\setlength{\belowdisplayskip}{0pt}
+
 \begin{center}
 CIS510 NLP Exam Notes Sheet -- Zayd Hammoudeh
 \end{center}
@@ -46,15 +57,15 @@ CIS510 NLP Exam Notes Sheet -- Zayd Hammoudeh
 
   \textbf{Necessary Functionality}
   \begin{itemize}
-    \item \textit{Word Segmentation}: Some languages (e.g.,~Chinese) have no spaces between words
+    \item \textit{Word Segmentation}: Some languages (Chinese) have no spaces between words
     \item \textit{Morphology}: Words appear different forms. Sing.\ v plural. Pres.\ v past tense
-    \item \textit{Polysemous}: Single word has multiple meanings
+    \item \textit{Polysemous}: Sing.\ word mult.\ meaning
   \end{itemize}
 
   \section*{Lecture~\#2: Text Classification}
   \textit{Example Tasks}: Topic, sentiment, language, authorship (forensics), filtering (spam)
 
-  \textbf{\green{Cosine Similarity}} $\frac{u \cdot v}{\norm{u}_{2} \norm{v}_{2}}$
+  \greenbf{Cosine Similarity} $\frac{u \cdot v}{\norm{u}_{2} \norm{v}_{2}}$
 
   \subsection*{\blue{Naive Bayes}}
 
@@ -64,32 +75,32 @@ CIS510 NLP Exam Notes Sheet -- Zayd Hammoudeh
     \argmax_c \Pr\sbrack{c \vert X} = \argmax_{c} \frac{\Pr[X \vert c] \Pr[c]}{\Pr[X]}
   \end{equation*}
 
-  \green{\textbf{Prior}}: $\Pr[c] = \frac{\text{\#docs label } c \text{ in } D}{\text{\#docs in } D}$
+  \greenbf{Prior}: $\Pr[c] = \frac{\text{\#docs label } c \text{ in } D}{\text{\#docs in } D}$
 
-  \green{\textbf{Bernoulli}}: \\ $\Pr[w_ i \vert c] = \frac{\text{\# docs labeled } c \text{ containing } w_i \text{ in } D}{\text{\#docs labeled } c \text{ in } D}$
+  \greenbf{Bernoulli}: \\ $\Pr[w_ i \vert c] = \frac{\text{\# docs labeled } c \text{ containing } w_i \text{ in } D}{\text{\#docs labeled } c \text{ in } D}$
 
-  \green{\textbf{Multinomial}}: \\ $\Pr[w_i \vert c] = \frac{\text{\# inst.\ } w_i \text{ in doc labeled } c \text{ in } D}{\text{Tot.\ len docs labeled } c \text{ in } D}$
+  \greenbf{Multinomial}: \\ $\Pr[w_i \vert c] = \frac{\text{\# inst.\ } w_i \text{ in doc labeled } c \text{ in } D}{\text{Tot.\ len docs labeled } c \text{ in } D}$
 
-  \green{\textbf{Add-1 Smoothing}}: Add $\alpha$ to numerator and $\alpha\abs{V}$ to denominator of all words
+  \greenbf{Add-1 Smoothing}: Add $\alpha$ to numerator and $\alpha\abs{V}$ to denominator of all words
 
-  \textbf{\green{IDF}}: $idf_i = \log \left(N/n_i\right)$ \\ $N$ size of collection \& $n_i$ \#docs contain $w_i$
+  \greenbf{IDF}: $idf_i = \log \left(N/n_i\right)$ \\ $N$ size of collection \& $n_i$ \#docs contain $w_i$
 
   \subsection*{\blue{Metrics}}
 
-  \textbf{\green{Precision}} $\frac{\text{TP}}{\text{TP} + \text{FP}}$ \hspace{0.1cm} \textbf{\green{Recall}} $\frac{\text{TP}}{\text{TP} + \text{FN}}$
+  \greenbf{Precision} $\frac{\text{TP}}{\text{TP} + \text{FP}}$ \hspace{0.1cm} \greenbf{Recall} $\frac{\text{TP}}{\text{TP} + \text{FN}}$
 
-  \textbf{\green{F1}} $\frac{2 \cdot \text{Precision} \cdot \text{Recall}}{\text{Precision} + \text{Recall}}$
+  \greenbf{F1} $\frac{2 \cdot \text{Precision} \cdot \text{Recall}}{\text{Precision} + \text{Recall}}$
 
   \section*{Lecture~\#3: Word Embeddings}
-  \textbf{\green{Distributional Semantics}}: Word's meaning given by words frequently appear close-by
+  \greenbf{Distributional Semantics}: Word's meaning given by words frequently appear close-by
 
   \textit{Context}: Set of words that appear nearby in fixed-size window
 
   \subsection*{\blue{Word2Vec}}
 
-  \textbf{\green{Continuous Bag of Words}} \\ ${\Pr\sbrack{w_t \vert w_{t-2}, w_{t-1}, w_{t+1}, w_{t+2}}}$
+  \greenbf{Continuous Bag of Words} \\ ${\Pr\sbrack{w_t \vert w_{t-2}, w_{t-1}, w_{t+1}, w_{t+2}}}$
 
-  \textbf{\green{Skip-Grams}} ${\Pr\sbrack{w_{t+i} \vert w_{t}}, i \in \set{-2,-1,1,2}}$
+  \greenbf{Skip-Grams} ${\Pr\sbrack{w_{t+i} \vert w_{t}}, i \in \set{-2,-1,1,2}}$
   \begin{itemize}
     \item $v_w$: $w$ is center word
     \item $u_w$: $w$ is context word
@@ -103,40 +114,40 @@ CIS510 NLP Exam Notes Sheet -- Zayd Hammoudeh
     \Pr\sbrack{w_{i+j} \vert w_{i} ; \theta} = \frac{\exp\left(u_{w_{i+j}} \cdot v_{w_i} \right)}{\sum_{w \in V} \exp\left(u_{w} \cdot v_{w_i} \right)}
   \end{equation*}
 
-  \green{\textbf{Negative Sampling}}: Sample words u.a.r.\ \& and use to estimate denominator
+  \greenbf{Negative Sampling}: Sample words u.a.r.\ \& and use to estimate denominator
 
   \subsection*{\blue{Co-occurrence Counts}}
 
   Create $A$ is ${\abs{V} \times \abs{V}}$ matrix of where $a_{i,j}$ is \#docs words $w_i$ \& $w_j$ appear together
 
-  \green{\textbf{Method~\#1}}: Dimensionality reduction (e.g.,~SVD)
+  \greenbf{Method~\#1}: Dimensionality red.\ (SVD)
 
-  \green{\textbf{Method~\#2}}: GloVe
+  \greenbf{Method~\#2}: GloVe
   \begin{itemize}
     \item Ratio of co-occurrences can encode relationships between words
   \end{itemize}
 
   \subsection*{Evaluation of Embeddings}
 
-  \textbf{\green{Intrinsic}}: Eval.\ on specific/intermediate task
+  \greenbf{Intrinsic}: Eval.\ on specific/intermediate task
   \begin{itemize}
     \item Fast to compute
     \item Helps to understand system
     \item Unclear if really helpful unless correlates real task
   \end{itemize}
 
-  \textbf{\green{Extrinsic}}: Evaluate on real task e.g.,~NER
+  \greenbf{Extrinsic}: Evaluate on real task e.g.,~NER
   \begin{itemize}
     \item Long time to evaluate
   \end{itemize}
 
   \section*{Lecture~\#4: Deep Learning}
-  \textbf{\blue{Logistic Regression}} (MaxEnt):
+  \bluebf{Logistic Regression} (MaxEnt):
   \begin{equation*}\label{eq:L04:LogReg}
     \mathcal{L}(\mathbf{w},b) = -\sum_{\mathbf{x}_i,y_i \in \mathbf{d}} \log \sigma\big( y_i(\mathbf{w}\cdot \mathbf{x}_i + b) \big)
   \end{equation*}
 
-  \textbf{\green{Cross Entropy}} $H(p,q) = \mathbb{E}_{p(x)} \sbrack{-\log q}$
+  \greenbf{Cross Entropy} $H(p,q) = \mathbb{E}_{p(x)} \sbrack{-\log q}$
 
   \subsection*{Activation Functions}
 
@@ -149,7 +160,7 @@ CIS510 NLP Exam Notes Sheet -- Zayd Hammoudeh
                       \alpha (e^{a} - 1) & a < 0
                    \end{cases}$
 
-  \textbf{\green{Chain Rule}}: $(f \circ g)' = (f' \cdot g)g'$
+  \greenbf{Chain Rule}: $(f \circ g)' = (f' \cdot g)g'$
 
   \section*{Lecture~\#5: Sequential Labeling}
   \subsection*{\blue{Hidden Markov Model}}
@@ -159,23 +170,23 @@ CIS510 NLP Exam Notes Sheet -- Zayd Hammoudeh
                                                         &= \argmax_{\vec{y}} \Pr\sbrack{\vec{x} \vert \vec{y}} \Pr[\vec{y}]
   \end{align*}
 
-  \textbf{\green{First-Order Markov Assumption}}:
+  \greenbf{First-Order Markov Assumption}:
 
   \begin{equation*}
     \Pr\sbrack{y_{1},\ldots,y_{n}} = \prod_{i=1}^{n} \Pr[y_{i} \vert y_{i-1}]
   \end{equation*}
 
-  \textbf{\green{Indepen.\ Assum}} $\Pr\sbrack{\vec{x} \vert \vec{y}} = \prod_{i=1}^{n} \Pr[x_{i} \vert y_{i}]$
+  \greenbf{Indepen.\ Assum} $\Pr\sbrack{\vec{x} \vert \vec{y}} = \prod_{i=1}^{n} \Pr[x_{i} \vert y_{i}]$
 
-  \textbf{\green{Transition Prob}}: $\Pr\sbrack{y_{t} \vert y_{t-1}}$
+  \greenbf{Transition Prob}: $\Pr\sbrack{y_{t} \vert y_{t-1}}$
 
-  \textbf{\green{Emission Prob}}: $\Pr\sbrack{x_{t} \vert y_{t}}$
+  \greenbf{Emission Prob}: $\Pr\sbrack{x_{t} \vert y_{t}}$
 
   \subsubsection*{\red{Decoding}}
 
-  \textbf{\green{Greedy Decoding}}: \\${y_t = \argmax_{y'} \Pr[x_t \vert y'] \Pr[y' \vert y_{t-1}]}$
+  \greenbf{Greedy Decoding}: \\${y_t = \argmax_{y'} \Pr[x_t \vert y'] \Pr[y' \vert y_{t-1}]}$
 
-  \textbf{\green{Viterbi}}
+  \greenbf{Viterbi}
   \begin{itemize}
     \item \textit{Complexity}: $O(\abs{S}^{2} n)$
     \item \textit{Initialization}: $v_0(s) = \begin{cases}
@@ -189,21 +200,19 @@ CIS510 NLP Exam Notes Sheet -- Zayd Hammoudeh
     v_{t}(s) = \max_{s' \in Y}\set{v_{t-1}(s') \Pr[s \vert s'] \Pr[x_t \vert s]}
   \end{equation*}
 
-  \subsection*{Max.\ Entropy Markov Model}
+  \subsection*{\blue{Max.\ Entropy Markov Model}}
   \subsection*{\blue{Conditional Random Field}}
 
   \begin{equation*}
-    \Pr[y\vert x ; \theta] = \frac{\exp(\Phi(\vec{x},\vec{y})\transpose\theta))}{\sum_{\vec{y}' \in Y} \exp(\Phi(\vec{x}, \vec{y'})\transpose\theta)}
+    \Pr[y \vert x; \theta] = \frac{\exp(\Phi(\vec{x},\vec{y})\transpose\theta))}{\sum_{\vec{y}' \in Y} \exp(\Phi(\vec{x}, \vec{y'})\transpose\theta)}
   \end{equation*}
 
   where:
-
   \begin{align*}
       \Phi(\vec{x},\vec{y}) &= \sbrack{\Phi_{1}(\vec{x},\vec{y}),\ldots,\Phi_{K}(\vec{x},\vec{y})} \\
       \Phi_{k}(\vec{x},\vec{y}) &= \sum_{i=1}^{n} \phi_{k}(y_{i-1},y_{i},\vec{x},i)
   \end{align*}
-
-  \subsection*{Bidirectional RNN}
+  \subsection*{\blue{Bidirectional RNN}}
 
   \begin{itemize}
     \item Can incorporate CRF as final layer in sequence labeling
@@ -211,38 +220,46 @@ CIS510 NLP Exam Notes Sheet -- Zayd Hammoudeh
 
   \section*{Lecture~\#6: Constituent Parsing}
 
-  \textbf{\green{Constituency}}: Group of words that behave as single unit
+  \greenbf{Constituency}: Group of words that behave as single unit
 
-  \textbf{\green{Context-Free Grammar}}: Formal way to define meaningful constituents and how a constituent is formed from other constituents
+  \greenbf{Substitution Test}: If a constituent is replaced by another constituent of same type, does sentence remain \textit{grammatical}
+
+  \greenbf{Context-Free Grammar} Formal def.\ meaningful constituents \& how constituent is formed from other constituents.  \textit{Every internal tree node is a phrase that can be replaced by another of same type of constituent}
   \begin{itemize}
     \item $N$: Set of non-terminal symbols
     \item $\Sigma$: Alphabet terminal symbols
+    \item $R$: Set of production rules $A \rightarrow \beta$
+    \item $S$: Start symbol
   \end{itemize}
 
-  \textbf{Language}: All strings derivable from start symbol
+  \textbf{Language}: All strings derivable from $S$
 
   \textbf{Preterminals}: Set symbols can be rewritten as terminals
 
-  \textbf{Syntax}: Move from label discrete items to structure between items
+  \textbf{Syntax}: Move from labeling discrete items to structure between items
 
-  \subsection*{CYK Parsing}
+  \greenbf{Attachment Ambiguity}: A particular constituent can be attached to the parse tree at more than one place
+  \begin{itemize}
+    \item ``I saw the man with a telescope''
+  \end{itemize}
+  \greenbf{Coordination Ambiguity} Diff sets phrases can be conjoined by conjunction like ``and''
+  \begin{itemize}
+    \item ``Old man and woman''
+  \end{itemize}
+
+  \subsection*{\blue{CYK Parsing}}
 
   \begin{itemize}
     \item Checks whether sentence grammatical in CFG's language
     \item Enumerate all possible parses for sentence
   \end{itemize}
 
-  for $j \gets 1 \text{ to } Length(Sentence)$ \\
-  \hspace*{0.2cm}for $i \gets j-2 \text{ down to } 0$ \\
-  \hspace*{0.4cm}for $k \gets i+1 \text{ to } j - 1$ \\
-  \hspace*{0.6cm}for $\set{A \vert A \rightarrow BC \in G \wedge B \in table[i,k] \wedge C \in table[k,j]}$
-  \hspace*{0.8cm}$table[i,j] \gets table[i,j] \cup A$
 
-  \textbf{\green{Probabilistic Context-Free Grammar}}: Tells which parse of sentence more likely
+  \greenbf{Probabilistic Context-Free Grammar}: Tells which parse of sentence more likely
 
   \section*{Lecture~\#7: Dependency Parsing}
 
-  \textbf{\green{Dependency Structure}}: Directed graph consisting of set of vertices $V$ and arcs~$A$
+  \greenbf{Dependency Structure}: Directed graph consisting of set of vertices $V$ and arcs~$A$
   \begin{itemize}
     \item Except root, exactly one incoming edge
     \item Not tied to linear order of words making more language syntax independent
@@ -252,5 +269,43 @@ CIS510 NLP Exam Notes Sheet -- Zayd Hammoudeh
 
 \end{multicols}
 
+
+\begin{figure}
+  \centering
+  \begin{minipage}{.47\textwidth}
+    \begin{center}
+      \textbf{CYK Algorithm}
+    \end{center}
+    for $j \gets 1 \text{ to } Length(Sentence)$ \\
+    \hspace*{0.2cm}for $i \gets j-2 \text{ down to } 0$ \\
+    \hspace*{0.4cm}for $k \gets i+1 \text{ to } j - 1$ \\
+    \hspace*{0.6cm}for $\set{A \vert A \rightarrow BC \in G \wedge B \in table[i,k] \wedge C \in table[k,j]}$
+    \hspace*{0.8cm}$table[i,j] \gets table[i,j] \cup A$
+  \end{minipage}%
+  \begin{minipage}{.47\textwidth}
+    \begin{center}
+      \textbf{Probabilistic CYK Algorithm}
+    \end{center}
+  \end{minipage}
+\end{figure}
+
+\begin{table}[b]
+  \centering
+  % \caption{}\label{tab:}
+  \begin{tabular}{|c|l|c|l|}
+    \hline
+    \bluebf{PRP} Personal Pronoun & \multicolumn{3}{l|}{\textit{I}, \textit{me}, \textit{you}, \textit{he}, \textit{him}, \textit{it}, Reflective pronoun end in \texttt{-self} (\textit{himself}) nominal possessive pronoun (\textit{mine}, \textit{yours}, \textit{hers})} \\\hline
+    \bluebf{DT} Determiner & \multicolumn{3}{l|}{Articles (\textit{a}, \textit{the}, \textit{every}, \textit{no}), \textit{that}, \textit{these}, \textit{this}, \textit{those} precede noun. \textit{All}, \textit{both} not precede \texttt{DT} or \texttt{PRP\$}}  \\\hline
+    \bluebf{PDT} Predeterminer & Precede article or possessive pronoun & \bluebf{VB} Base Form & In imperative, infinites, subjectives \textit{do}\\\hline
+    \bluebf{CC} Coord.\ Conjunction & \multicolumn{3}{l|}{\textit{And}, \textit{but}, \textit{not}, \textit{or}, math operators (\textit{plus}, \textit{minus}, \textit{less}, \textit{times}), \textit{For} meaning because} \\\hline
+    \bluebf{RB} Adverb & \multicolumn{3}{l|}{Most words end in \texttt{-ly}, degree words (\textit{quite}, \textit{too}, \textit{very}), negative markers (\textit{not}, \textit{n't}, \textit{never})} \\\hline
+    \bluebf{VBP} Present & Non-3rd.\ I \textit{am}, You \textit{are} & \bluebf{VBZ} Third Person & She \textit{is}. He \textit{likes} \\\hline
+    \bluebf{VBG} \green{Present} Participle & Verb functions as noun ending \textit{-ing} & \bluebf{VBN} \red{Past} Participle & ends in \texttt{-en} or \texttt{-ed} \\\hline
+    \bluebf{RBR} Comparative Adv. & Adverb end in \texttt{-er}. \textit{More}, \textit{Less} & \bluebf{RBS} Superlative Adv. & Adverb end in \texttt{-est}. \textit{Most}, \textit{Least} \\\hline
+    \bluebf{RP} Particle & \textit{over}, \textit{down}, \textit{out}, \textit{on} & \bluebf{JJ} Adjective & General adj., ordinal number (\textit{fourth}) \\\hline
+    \bluebf{JJR} Comparative Adj. & Adjective end in \texttt{-er}. \textit{More}, \textit{less} & \bluebf{JJS} Superlative Adj. & Adjective end in \texttt{-est}. \textit{Most}, \textit{least} \\\hline
+    \bluebf{PRP\$} Possess.\ Pronoun & \textit{my}, \textit{their}, \textit{its}, \textit{his}, \textit{her} & \bluebf{IN} Preposition & All preposition except ``to''. \textit{On}, \textit{because}, \textit{from} \\\hline
+  \end{tabular}
+\end{table}
 
 \end{document}
