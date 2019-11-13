@@ -65,3 +65,11 @@
 % Imported via UltiSnips
 \usepackage{tikz}
 \usetikzlibrary{arrows,decorations.markings,shadows,positioning,calc,backgrounds,shapes}
+
+% Imported via UltiSnips
+\usepackage[noend]{algpseudocode}
+\usepackage[Algorithm,ruled]{algorithm}
+\algnewcommand\algorithmicforeach{\textbf{for each}}
+\algdef{S}[FOR]{ForEach}[1]{\algorithmicforeach\ #1\ \algorithmicdo}
+\newcommand{\algin}[1]{\hspace*{\algorithmicindent} \textbf{Input} #1\\}
+\newcommand{\algout}[1]{\hspace*{\algorithmicindent} \textbf{Output} #1\\}
