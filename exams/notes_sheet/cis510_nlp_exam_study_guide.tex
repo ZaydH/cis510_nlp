@@ -44,9 +44,9 @@
 \setlength{\abovedisplayshortskip}{0pt}
 \setlength{\belowdisplayshortskip}{0pt}
 
-\begin{center}
-CIS510 NLP Exam Notes Sheet -- Zayd Hammoudeh
-\end{center}
+% \begin{center}
+% CIS510 NLP Exam Notes Sheet -- Zayd Hammoudeh
+% \end{center}
 \begin{multicols}{3}
   \section*{Lecture~\#1: \hl{Introduction}}
 
@@ -55,7 +55,7 @@ CIS510 NLP Exam Notes Sheet -- Zayd Hammoudeh
   \textbf{Challenges of NLP}:
   \begin{itemize}
     \item Language \textit{discrete}. Harder to optimize
-    \item Language \textit{compositional}. Meaning comes from individual words \& how they combine
+    \item Language \textit{compositional}. Meaning from individual words \& how combine
     \item \textit{Flexible}: Multiple ways to talk about same thing
     \item \textit{Ambiguity}: Context needed to understand word/sentence
   \end{itemize}
@@ -95,6 +95,12 @@ CIS510 NLP Exam Notes Sheet -- Zayd Hammoudeh
   \greenbf{Precision} $\frac{\text{TP}}{\text{TP} + \text{FP}}$ \hspace{0.1cm} \greenbf{Recall} $\frac{\text{TP}}{\text{TP} + \text{FN}}$
 
   \greenbf{F1} $\frac{2 \cdot \text{Precision} \cdot \text{Recall}}{\text{Precision} + \text{Recall}}$
+
+  \greenbf{Macroaveraging}: Compute performance for each class then average
+
+  \greenbf{Microaveraging}: Collect decisions for all class, compute confusion, evaluate. \textit{Dominated by score on common classes}
+
+  Microaveraging preferable if classes imbalanced
 
   \section*{Lecture~\#3: \hl{Word Embeddings}}
   \greenbf{Distributional Semantics}: Word's meaning given by words frequently appear close-by
@@ -289,10 +295,50 @@ CIS510 NLP Exam Notes Sheet -- Zayd Hammoudeh
   \section*{Lecture~\#7: \hl{Dependency Parsing}}
 
   \greenbf{Dependency Structure}: Directed graph consisting of set of vertices $V$ and arcs~$A$
+
+  \textit{Approaches}: DP, graph alg, CSP, transition-based parsing
+
   \begin{itemize}
-    \item Except root, exactly one incoming edge
-    \item Not tied to linear order of words making more language syntax independent
+    \item Closer to semantic relations than constituents
+    \item Except root, exactly one incoming edge. Tail is dependent on head word
+    \item Not tied to linear order of words making more language syntax independent. \textit{Free of word order}
+    \item \textbf{DP Complexity}: $O(n^3)$ (Eisner's)
   \end{itemize}
+
+  \subsection*{Greedy Dependency Parsing}
+
+  \greenbf{Guide}: Predicts next transition given current config
+
+  \greenbf{Arc-Standard Algorithm}
+
+  No guarantee finds the best tree.
+
+  \begin{itemize}
+    \item \textbf{Complexity}: $O(n)$
+    \item \textbf{Configuration}: Buffer, stack \& dependency tree
+    \item \textbf{Init Config}: Stack \& tree empty. All words in buffer
+    \item \textbf{Term Config}: Buffer empty. Stack is single word
+    \item \textbf{\#Classes}: 1 + 2 * arc type
+  \end{itemize}
+
+  \textbf{Operations}
+  \begin{itemize}
+    \item \texttt{shift}: Move from buffer to top of stack
+    \item \texttt{left-arc}: Add arc from top of stack to penultimate on stack. Pop penultimate.
+    \item \texttt{right-arc}: Add arc from penultimate of stack to top. Pop top.
+  \end{itemize}
+
+  \redbf{Problem}: Feature calculation slow so slow use DNN.
+
+  Arcs also have a type.
+
+  \subsection*{\blue{Evaluation}}
+
+  \greenbf{Labeled Attachment Score} (LAS): Percentage of correct arcs relative to gold
+
+  \greenbf{Labeled Exact Match} (LEM): Percentage of correct dependency trees
+
+  \greenbf{Unlabeled Attachment Score/Exact Match} (UAS/UEM): Same as above but ignore arc labels
 
   \section*{Lecture~\#8: \hl{Information \& Relation Extraction}}
 
