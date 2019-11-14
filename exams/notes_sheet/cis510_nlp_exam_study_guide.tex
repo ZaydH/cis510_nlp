@@ -1,4 +1,4 @@
-\documentclass[9pt]{extarticle}
+\documentclass[8pt]{extarticle}
 \usepackage{comment} % enables the use of multi-line comments (\ifx \fi)
 % \usepackage{fullpage} % changes the margin
 \usepackage[margin=0.3in]{geometry}
@@ -103,7 +103,18 @@
   Microaveraging prefer class imbalanced
 
   \section*{Lecture~\#3: \hl{Word Embeddings}}
+  \textbf{Thesaurus like WordNet}
+  \begin{itemize}
+    \item Missing new words. Challenging to keep up to date
+    \item Subjective and require human labor
+    \item Impossible to compute word similarity
+  \end{itemize}
+
   \greenbf{Distributional Semantics}: Word's meaning given by words frequently appear close-by
+
+  \greenbf{One-Hot}: Vectors large, sparse, \& orthogonal. \redbf{Localist representation}
+
+  \greenbf{Distributed}/\greenbf{Dense Representation}: Single neuron represent many concepts.
 
   \textit{Context}: Set of words that appear nearby in fixed-size window
 
@@ -115,9 +126,13 @@
   \begin{itemize}
     \item $v_w$: $w$ is center word
     \item $u_w$: $w$ is context word
+    \item Two vectors makes optimization easier. Average $u_w$ \& $v_w$ for final word vectors.
   \end{itemize}
   \begin{equation*}
-    L = \prod_{i=1}^{N} \prod_{\substack{-m \leq j \leq m \\ j \ne 0}} \Pr\sbrack{w_{i+j} \vert w_{i} ; \theta}
+    \text{Likelihood} = \prod_{i=1}^{N} \prod_{\substack{-m \leq j \leq m \\ j \ne 0}} \Pr\sbrack{w_{i+j} \vert w_{i} ; \theta}
+  \end{equation*}
+  \begin{equation*}
+    \text{loss} = J(\theta) = -\frac{1}{N}\sum_{i=1}^{N} \sum_{\substack{-m \leq j \leq m \\ j \ne 0}} \log \Pr\sbrack{w_{i+j} \vert w_{i} ; \theta}
   \end{equation*}
   \begin{equation*}
     \Pr\sbrack{w_{i+j} \vert w_{i} ; \theta} = \frac{\exp\left(u_{w_{i+j}} \cdot v_{w_i} \right)}{\sum_{w \in V} \exp\left(u_{w} \cdot v_{w_i} \right)}
@@ -131,9 +146,16 @@
 
   \greenbf{Method~\#1}: Dimensionality red.\ (SVD)
 
+  \begin{itemize}
+    \item Fast to compute vs.\ of scale with corpus size
+    \item Efficient usage of statistics vs.\ inefficient usage
+    \item Primarily used to capture word similarity vs.\ improved performance on other tasks
+    \item Disproportionate influence given to large counts vs.\ capture complex patterns beyond word similarity
+  \end{itemize}
+
   \greenbf{Method~\#2}: GloVe
   \begin{itemize}
-    \item Ratio of co-occurrences can encode relationships between words
+    \item \redbf{Crucial Insight}: Ratio of co-occurrences can encode relationships between words
   \end{itemize}
   \begin{equation*}
     J = \sum_{i,j=1}^{\abs{V}} f(X_{ij})(w_{i}\transpose\tilde{w}_j + b_i + \tilde{b}_j - \log X_{ij})^{2}
@@ -163,9 +185,9 @@
 
   \subsection*{Activation Functions}
 
-  $\sigma(a) = \frac{1}{1+exp(-a)}$
+  $\sigma(a) = \frac{1}{1+\exp(-a)}$
 
-  $\text{SoftPlus}(a) = \log(1 + e{a})$
+  $\text{SoftPlus}(a) = \log(1 + e^{a})$
 
   $\text{ELU}(a) = \begin{cases}
                       a & a \geq 0 \\
@@ -174,7 +196,14 @@
 
   \greenbf{Chain Rule}: $(f \circ g)' = (f' \circ g)g'$
 
+  \begin{equation*}
+    \theta^{\text{new}} \gets \theta^{\text{old}} - \alpha \nabla_{\theta}J(\theta)
+  \end{equation*}
+
   \section*{Lecture~\#5: \hl{Sequential Labeling}}
+
+  \textbf{Simplest Tagger}: Tag word based on its \textit{individual} most common POS
+
   \subsection*{\blue{Hidden Markov Model}}
 
   \begin{align*}
@@ -197,14 +226,11 @@
 
   \greenbf{Greedy Decoding}: \\${y_t = \argmax_{y'} \Pr[x_t \vert y'] \Pr[y' \vert y_{t-1}]}$
 
-  \greenbf{Viterbi}
+  \greenbf{\hl{Viterbi}}
   \begin{itemize}
     \item \textit{Complexity}: $O(\abs{S}^{2} n)$
-    \item \textit{Initialization}: $v_0(s) = \begin{cases}
-                                               1 & s = \text{start} \\
-                                               0 & \text{Otherwise}
-                                             \end{cases}$
-    \item \textit{Termination}: $t = n+1$
+    \item \textbf{Rows}: States, \textbf{Columns}: ${0,\ldots,n+1}$
+    \item Can solve HMM \& CRF
   \end{itemize}
 
   \begin{equation*}
@@ -221,9 +247,7 @@
   \end{equation*}
 
   Both MEMM \& CRF model $\Pr(y\vert x)$
-  \greenbf{Local Norm}: Normalize at each state (MEMM). \redbf{Label bias}
-
-  \greenbf{Global Normalization}: Normalizes over entire input. Leads to CRF\@.
+  \greenbf{Local Norm}: Normalize at each state (MEMM). \redbf{Label bias} \greenbf{Global Normalization}: Normalizes over entire input. Leads to CRF\@.
 
   \subsection*{\blue{Conditional Random Field}}
   \textbf{Complexity}: $O(n\abs{Y}^{2})$ where $Y$ set label vectors
@@ -334,9 +358,9 @@
 
   \subsection*{Greedy Dependency Parsing}
 
-  \greenbf{Guide}: Predict transition given cur config
+  \greenbf{Guide}: Predict transition given current config
 
-  \greenbf{Arc-Standard Algorithm}
+  \greenbf{\hl{Arc-Standard Algorithm}}
 
   \textbf{Transition-based parsing}
 
@@ -347,7 +371,7 @@
     \item \textbf{Configuration}: Buffer, stack \& dependency tree
     \item \textbf{Init Config}: Stack \& tree empty. All words in buffer
     \item \textbf{Term Config}: Buffer empty. Stack is single word
-    \item \textbf{\#Classes}: 1 + 2 * arc type
+    \item \textbf{\#Classes}: 1 + 2 * \# arc type
   \end{itemize}
 
   \textbf{Operations}
@@ -370,7 +394,7 @@
 
   \greenbf{Unlabeled Attachment Score/Exact Match} (UAS/UEM): Same as above but ignore arc labels
 
-  \textbf{Word-Level}: Microaverage. \textbf{Sentence-Level}: Macro average
+  \textbf{Word-Level}: Microaverage. \textbf{Sentence-Level}: Macroaverage
 
   \section*{Lecture~\#8: \hl{IE \& RE}}
 
@@ -384,6 +408,9 @@
   \greenbf{Relation Extraction}: Task extract semantic relationships from text
   \begin{itemize}
     \item \redbf{Relation}: Predication about pair
+    \item \redbf{Position Embedding}: Distance between pair of entities is its own embedding
+    \item \redbf{DNN Input}: Shortest dependency path between two entities
+    \item \redbf{GCN}: Run over dependency tree.
   \end{itemize}
 
   \greenbf{Co-Reference Resolution}: Find all expressions that refer to same entity in text
@@ -403,7 +430,9 @@
     \item Subject control to duplicate subject for dependent phrase
   \end{itemize}
 
-  \greenbf{Tree Kernel}: Meas similarity btwn two tree
+  \greenbf{String Kernel}: Two strings more similar if share more substrings.
+
+  \greenbf{Tree Kernel}: Meas similarity btwn two tree. Based on number common subtrees.
 
   \greenbf{Confidence}
   \begin{itemize}
@@ -414,7 +443,7 @@
 
   \subsection*{\blue{Evaluation}}
 
-  \greenbf{NER}: Tuple ${\langle i_k, j_k, l_k \rangle}$ for start, end, \& type of entity
+  \greenbf{NER}: Tuple ${\langle i_k, j_k, l_k \rangle}$ for start, end, \& type
 
   \subsection*{\blue{Semi-Supervised Learning}}
 
@@ -430,48 +459,49 @@
     \item Alternate training separate classifiers on feature subsets
   \end{itemize}
 
+  \subsection*{\blue{Active Learning}}
+  System selects additional ‘informative’ examples for user to label
+
 \end{multicols}
 
 
-\begin{figure}[]
+\begin{figure}
   \centering
-  \begin{minipage}{.47\textwidth}
+  \begin{minipage}{.5\textwidth}
     \begin{algorithm}[H]
+      \small
       \caption{CYK algorithm}
       \begin{algorithmic}[1]
         \For{$j \gets 1 \text{ \textbf{to} } \textproc{Length}(words)$}
-          \ForEach{$\set{A \vert A \rightarrow words[j] \in grammar}$}
-            \State $table[j-1,j] \gets table[j-1,j] \cup A$
+          \ForEach{$\set{A \vert A \rightarrow words[j] \in gram}$}
+            \State $tab[j-1,j] \gets tab[j-1,j] \cup A$
           \EndFor
           \For{$i \gets j-2 \text{ down to } 0$}
             \For{$k \gets i+1 \text{ to } j - 1$}
-              \ForEach{$\set{A \vert A \rightarrow BC \in grammar \wedge B \in table[i,k] \wedge C \in table[k,j]}$}
-                \State $table[i,j] \gets table[i,j] \cup A$
+              \ForEach{$\set{A \vert A \rightarrow BC \in gram \wedge B \in tab[i,k] \wedge C \in tab[k,j]}$}
+                \State $tab[i,j] \gets tab[i,j] \cup A$
               \EndFor
             \EndFor
           \EndFor
         \EndFor
       \end{algorithmic}
     \end{algorithm}
-%
-%     for $j \gets 1 \text{ to } Length(Sentence)$ \\
-%     \hspace*{0.2cm}for $i \gets j-2 \text{ down to } 0$ \\
-%     \hspace*{0.4cm}for $k \gets i+1 \text{ to } j - 1$ \\
-    % \hspace*{0.6cm}for $\set{A \vert A \rightarrow BC \in G \wedge B \in table[i,k] \wedge C \in table[k,j]}$
-%     \hspace*{0.8cm}$table[i,j] \gets table[i,j] \cup A$
   \end{minipage}%
-  \begin{minipage}{.47\textwidth}
+  \begin{minipage}{.5\textwidth}
     \begin{algorithm}[H]
+      \small
       \caption{Probabilistic CYK algorithm}
       \begin{algorithmic}[1]
         \For{$j \gets 1 \text{ \textbf{to} } \textproc{Length}(words)$}
-          \ForEach{$\set{A \vert A \rightarrow words[j] \in grammar}$}
-          \State $table[j-1,j, A] \gets \Pr(A \rightarrow words[j])$
+          \ForEach{$\set{A \vert A \rightarrow words[j] \in gram}$}
+          \State $tab[j-1,j, A] \gets \Pr(A \rightarrow words[j])$
           \EndFor
           \For{$i \gets j-2 \text{ \textbf{down to} } 0$}
           \For{$k \gets i+1 \text{ \textbf{to} } j - 1$}
-              \ForEach{$\set{A \vert A \rightarrow BC \in grammar \wedge table[i,k, B] > 0 \wedge table[k,j,C] > 0}$}
-                \State $table[i,j] \gets table[i,j] \cup A$
+              \ForEach{$\set{A \vert A \rightarrow BC \in gram \wedge tab[i,k, B] > 0 \wedge tab[k,j,C] > 0}$}
+                \If{$tab[i,j,A] < \Pr(A \rightarrow BC) \times tab[i,k,B] \times tab[k,j,C]$}
+                  \State $tab[i,j,A] \gets \Pr(A \rightarrow BC) \times tab[i,k,B] \times tab[k,j,C]$
+                \EndIf
               \EndFor
             \EndFor
           \EndFor
@@ -486,16 +516,20 @@
   % \caption{}\label{tab:}
   \begin{tabular}{|c|l|c|l|}
     \hline
-    \bluebf{PRP} Personal Pronoun & \multicolumn{3}{l|}{\textit{I}, \textit{me}, \textit{you}, \textit{he}, \textit{him}, \textit{it}, Reflective pronoun end in \texttt{-self} (\textit{himself}) nominal possessive pronoun (\textit{mine}, \textit{yours}, \textit{hers})} \\\hline
+    \textbf{JJ} vs.\ \textbf{VBN} & \multicolumn{3}{l|}{If gradable (can add ``very''), then \texttt{JJ}. If can be followed by a ``by'' phrase, \texttt{VBN}} \\\hline
+    \textbf{JJ} vs.\ \textbf{NP}/\textbf{NPS} & \multicolumn{3}{l|}{Proper names can be adjectives or nouns (\textit{French})} \\\hline
+    \textbf{NN} vs.\ \textbf{VBG} & \multicolumn{3}{l|}{Only adj.\ can modify \texttt{NN} (Good \textit{cooking}). Only gerunds can be modified by adverbs (\textit{Cooking} well).} \\\hline
+    \textbf{IN} vs.\ \textbf{RP} & \multicolumn{3}{l|}{If \green{can} precede or follow noun phrase, \texttt{RP}. If it \green{must} precede noun phrase, \texttt{IN} (move word end of phrase \& is syntactical)} \\\hline
+    \bluebf{PRP} Personal Pronoun & \multicolumn{3}{l|}{\textit{I}, \textit{me}, \textit{you}, \textit{he}, \textit{him}, \textit{it}, Reflective pronoun end in \texttt{\red{-self}} (\textit{himself}) nominal possessive pronoun (\textit{mine}, \textit{yours}, \textit{hers})} \\\hline
     \bluebf{DT} Determiner & \multicolumn{3}{l|}{Articles (\textit{a}, \textit{the}, \textit{every}, \textit{no}), \textit{that}, \textit{these}, \textit{this}, \textit{those} precede noun. \textit{All}, \textit{both} not precede \texttt{DT} or \texttt{PRP\$}}  \\\hline
     \bluebf{PDT} Predeterminer & Precede article or possessive pronoun & \bluebf{VB} Base Form & In imperative, infinites, subjectives \textit{do}\\\hline
     \bluebf{CC} Coord.\ Conjunction & \multicolumn{3}{l|}{\textit{And}, \textit{but}, \textit{not}, \textit{or}, math operators (\textit{plus}, \textit{minus}, \textit{less}, \textit{times}), \textit{For} meaning because} \\\hline
-    \bluebf{RB} Adverb & \multicolumn{3}{l|}{Most words end in \texttt{-ly}, degree words (\textit{quite}, \textit{too}, \textit{very}), negative markers (\textit{not}, \textit{n't}, \textit{never})} \\\hline
+    \bluebf{RB} Adverb & \multicolumn{3}{l|}{Most words end in \texttt{\red{-ly}}, degree words (\textit{quite}, \textit{too}, \textit{very}), negative markers (\textit{not}, \textit{n't}, \textit{never})} \\\hline
     \bluebf{VBP} Present & Non-3rd.\ I \textit{am}, You \textit{are} & \bluebf{VBZ} Third Person & She \textit{is}. He \textit{likes} \\\hline
-    \bluebf{VBG} \green{Present} Participle & Verb functions as noun ending \textit{-ing} & \bluebf{VBN} \red{Past} Participle & ends in \texttt{-en} or \texttt{-ed} \\\hline
-    \bluebf{RBR} Comparative Adv. & Adverb end in \texttt{-er}. \textit{More}, \textit{Less} & \bluebf{RBS} Superlative Adv. & Adverb end in \texttt{-est}. \textit{Most}, \textit{Least} \\\hline
-    \bluebf{RP} Particle & \textit{over}, \textit{down}, \textit{out}, \textit{on} & \bluebf{JJ} Adjective & General adj., ordinal number (\textit{fourth}) \\\hline
-    \bluebf{JJR} Comparative Adj. & Adjective end in \texttt{-er}. \textit{More}, \textit{less} & \bluebf{JJS} Superlative Adj. & Adjective end in \texttt{-est}. \textit{Most}, \textit{least} \\\hline
+    \bluebf{VBG} \green{Present} Participle & Verb functions as noun ending \texttt{\red{-ing}} & \bluebf{VBN} \red{Past} Participle & ends in \texttt{\red{-en}} or \texttt{\red{-ed}} \\\hline
+    \bluebf{RBR} Comparative Adv. & Adverb end in \texttt{\red{-er}}. \textit{More}, \textit{Less} & \bluebf{RBS} Superlative Adv. & Adverb end in \texttt{\red{-est}}. \textit{Most}, \textit{Least} \\\hline
+    \bluebf{RP} Particle & \textit{over}, \textit{down}, \textit{out}, \textit{on}, \textit{up}, \textit{off} & \bluebf{JJ} Adjective & General adj., ordinal number (\textit{fourth}) \\\hline
+    \bluebf{JJR} Comparative Adj. & Adjective end in \texttt{\red{-er}}. \textit{More}, \textit{less} & \bluebf{JJS} Superlative Adj. & Adjective end in \texttt{\red{-est}}. \textit{Most}, \textit{least} \\\hline
     \bluebf{PRP\$} Possess.\ Pronoun & \textit{my}, \textit{their}, \textit{its}, \textit{his}, \textit{her} & \bluebf{IN} Preposition & All preposition except ``to''. \textit{On}, \textit{because}, \textit{from} \\\hline
   \end{tabular}
 % \end{table}
