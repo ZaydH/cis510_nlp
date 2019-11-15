@@ -12,7 +12,6 @@ import sklearn.datasets
 # noinspection PyProtectedMember
 from sklearn.utils import Bunch
 
-from torch.utils.data import Subset
 import torchtext
 from torchtext.data import Field, LabelField
 import torchtext.datasets
@@ -29,7 +28,7 @@ CACHE_DIR = None
 
 DATA_COL = "data"
 LABEL_COL = "target"
-LABEL_NAMES = "target_names"
+LABEL_NAMES_COL = "target_names"
 
 MAX_SEQ_LEN = 500
 
@@ -54,14 +53,14 @@ def _download_20newsgroups(subset: str, data_dir: Path, pos_cls: Set[int], neg_c
     dataset = sklearn.datasets.fetch_20newsgroups(data_home=data_dir, shuffle=False,
                                                   remove=DATASET_REMOVE, subset=subset)
 
-    _filter_by_classes(dataset, pos_classes=pos_cls, neg_classes=neg_cls)
+    _filter_by_classes(dataset, pos_cls=pos_cls, neg_classes=neg_cls)
     # dataset[DATA_COL] = [_tokenize(x) for x in dataset[DATA_COL]]
     return dataset
 
 
-def _filter_by_classes(bunch: Bunch, pos_classes: Set[int], neg_classes: Set[int]):
+def _filter_by_classes(bunch: Bunch, pos_cls: Set[int], neg_classes: Set[int]):
     r""" Removes any dataset items not in the specified class label lists """
-    all_classes = pos_classes | neg_classes
+    all_classes = pos_cls | neg_classes
     # Filter according to positive and negative class set
     keep_idx = [val in all_classes for val in bunch[LABEL_COL]]
     assert any(keep_idx), "No elements to keep list"
@@ -94,30 +93,26 @@ def _filter_bunch_by_idx(bunch: Bunch, keep_idx):
     return bunch
 
 
-def _remove_indices_from_dataset(ds: Union[Subset, Dataset], idx_to_remove: np.ndarray) -> Subset:
-    r"""
-    Remove the specified indices from dataset \p Dataset
-    :param ds: Dataset to file
-    :param idx_to_remove: Indices to remove from the dataset
-    :return: Filtered dataset
-    """
-    remain_idx = set(range(len(ds))) - set(idx_to_remove)
-    remain_idx = np.asarray(remain_idx, dtype=np.int32).sort()
-    return Subset(ds, remain_idx)
+def _configure_binary_labels(bunch: Bunch, pos_cls: Set[int]):
+    r""" Takes the 20 Newsgroup labels and binarizes them """
+    def _is_pos(lbl: int) -> int:
+        return POS_LABEL if lbl in pos_cls else NEG_LABEL
+
+    bunch[LABEL_COL] = np.array(map(_is_pos, bunch[LABEL_COL]))
 
 
-def _select_positive_bunch(size_p: int, bunch: Bunch, pos_classes: Set[int],
+def _select_positive_bunch(size_p: int, bunch: Bunch, pos_cls: Set[int],
                            remove_p_from_u: bool) -> Tuple[Bunch, Bunch]:
     r"""
 
     :param size_p: Number of (positive elements) to select from Bunch
     :param bunch: Training (unlabeled) \p Bunch
-    :param pos_classes: List of positive classes in t
+    :param pos_cls: List of positive classes in t
     :param remove_p_from_u: If \p True, elements in the positive (labeled) dataset are removed
                             from the unlabeled set.
     :return:
     """
-    pos_idx = np.asarray([idx for idx, lbl in enumerate(bunch[LABEL_COL]) if lbl in pos_classes],
+    pos_idx = np.asarray([idx for idx, lbl in enumerate(bunch[LABEL_COL]) if lbl in pos_cls],
                          dtype=np.int32)
 
     assert len(pos_idx) >= size_p, "P set larger than the available data"
@@ -126,7 +121,7 @@ def _select_positive_bunch(size_p: int, bunch: Bunch, pos_classes: Set[int],
     for idx in pos_idx[:size_p]: keep_idx[idx] = False
 
     p_bunch = _filter_bunch_by_idx(bunch, keep_idx)
-    p_bunch[LABEL_NAMES] = [bunch[LABEL_NAMES][idx] for idx in sorted(list(pos_classes))]
+    p_bunch[LABEL_NAMES_COL] = [bunch[LABEL_NAMES_COL][idx] for idx in sorted(list(pos_cls))]
     if remove_p_from_u:
         bunch = _filter_bunch_by_idx(bunch, ~keep_idx)
     return p_bunch, bunch
@@ -140,23 +135,22 @@ def _bunch_to_ds(bunch: Bunch, text: Field, label: LabelField) -> Dataset:
 
 
 def _print_stats(text: Field, label: LabelField):
+    r""" Log information about the dataset as a sanity check """
     logging.info(f"Length of Text Vocabulary: {str(len(text.vocab))}")
     logging.info(f"Vector size of Text Vocabulary: {text.vocab.vectors.shape[1]}")
     logging.info("Label Length: " + str(len(label.vocab)))
 
 
-def load_20newsgroups(args: Namespace, data_dir: Union[Path, str], pos_cls: Set[int],
-                      neg_cls: Set[int]):
+def load_20newsgroups(args: Namespace, data_dir: Union[Path, str]):
     r"""
+    Automatically downloads the 20 newsgroups dataset.
 
     :param args: Parsed command line arguments
     :param data_dir: Directory from which to get the training data
-    :param pos_cls: Set of labels for the POSITIVE classes
-    :param neg_cls: Set of labels for the NEGATIVE classes
-    :return: Train and test datasets
+    :return:
     """
-    assert pos_cls and neg_cls, "Class list empty"
-    assert not (pos_cls & neg_cls), "Positive and negative classes not disjoint"
+    assert args.pos and args.neg, "Class list empty"
+    assert not (args.pos & args.neg), "Positive and negative classes not disjoint"
 
     data_dir = Path(data_dir)
 
@@ -164,7 +158,7 @@ def load_20newsgroups(args: Namespace, data_dir: Union[Path, str], pos_cls: Set[
     CACHE_DIR = data_dir / ".vector_cache"
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
-    complete_train = _download_20newsgroups("train", data_dir, pos_cls, neg_cls)
+    complete_train = _download_20newsgroups("train", data_dir, args.pos, args.neg)
 
     tokenizer = nltk.tokenize.word_tokenize
     # noinspection PyPep8Naming
@@ -175,34 +169,22 @@ def load_20newsgroups(args: Namespace, data_dir: Union[Path, str], pos_cls: Set[
     complete_ds = _bunch_to_ds(complete_train, TEXT, LABEL)
     TEXT.build_vocab(complete_ds,
                      vectors=torchtext.vocab.GloVe(name="6B", dim=args.embed_dim, cache=CACHE_DIR))
-    LABEL.build_vocab(complete_ds)
 
-    p_bunch, u_bunch = _select_positive_bunch(args.size_p, complete_train, pos_cls,
+    p_bunch, u_bunch = _select_positive_bunch(args.size_p, complete_train, args.pos,
                                               remove_p_from_u=False)
 
-    # # sequential: Not sequential labeling
-    # test_bunch = _download_20newsgroups("test", data_dir, pos_cls, neg_cls)
-    #
+    test_bunch = _download_20newsgroups("test", data_dir, args.pos, args.neg)
+
+    # Binarize the labels
+    for bunch in (p_bunch, u_bunch, test_bunch):
+        _configure_binary_labels(bunch, pos_cls=args.pos)
+
+    LABEL.build_vocab(complete_ds)  # ToDo: Fix label build vocabulary
     _print_stats(TEXT, LABEL)
     return TEXT, LABEL, p_bunch, u_bunch
 
 
-# def _fix_final_labels(ds: Union[Dataset, Subset], pos_classes: Set[int]) -> Dataset:
-#     items = []
-#     for data, lbl in ds:
-#         lbl = POS_LABEL if lbl in pos_classes else NEG_LABEL
-#         items =
-#     return torchtext.datasets.TextClassificationDataset(vocab, filt_ds, all_labels))
-#
-#
-# def _get_field():
-#     import torchtext.data
-#     f = torchtext.data.field
-#
-
 def _main():
-    pos_classes = set(range(0, 10))
-    neg_classes = set(range(10, 20))
 
     class Object:
         pass
@@ -210,11 +192,12 @@ def _main():
     args = Object()
     args.size_p = 1000
     args.embed_dim = 300
+    args.pos, args.neg = set(range(0, 10)),  set(range(10, 20))
 
     pk_file = Path("ds_debug.pk")
     if not pk_file.exists():
         # noinspection PyTypeChecker,PyUnusedLocal
-        newsgroups = load_20newsgroups(args, "data", pos_classes, neg_classes)
+        newsgroups = load_20newsgroups(args, "data")
         # with open(str(pk_file), "wb+") as f_out:
         #     pk.dump((train_ds, test_ds), f_out)
     else:
