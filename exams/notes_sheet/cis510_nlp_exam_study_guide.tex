@@ -9,17 +9,20 @@
 \usepackage{subcaption}
 
 \usepackage{enumitem}
-\setitemize{itemsep=0pt,topsep=0pt}
+\setitemize{itemsep=-2pt,topsep=0pt}
 
 \usepackage{soul}  % Used for \hl highlight command
 
 \usepackage{titlesec}  % Used to adjust title heading
 % Format:  \titlespacing{command}{left spacing}{before spacing}{after spacing}[right]
-\titlespacing{\section}{0pt}{6pt plus 4pt minus 0pt}{4pt plus 2pt minus 0pt}
+\titlespacing{\section}{0pt}{2pt}{2pt}
 \titlespacing{\subsection}{0pt}{2pt}{2pt}
 \titlespacing{\subsubsection}{0pt}{2pt}{2pt}
 
 \setlength{\parindent}{0pt}
+% Remove space after table
+\setlength{\floatsep}{0cm}
+\setlength{\textfloatsep}{0cm}
 
 \newcommand{\horizontalbreak}{
   {
@@ -67,14 +70,18 @@
     \item \textit{Polysemous}: Sing.\ word mult.\ meaning
   \end{itemize}
 
+  Words $\rightarrow$ Morphology $\rightarrow$ Syntax $\rightarrow$ Semantics $\rightarrow$ Discourse (how interpret in context/what doc struc?)
+
   \section*{Lecture~\#2: \hl{Text Classification}}
-  \textit{Example Tasks}: Topic, sentiment, language, authorship (forensics), filtering (spam)
+  \textit{Example Tasks}: Topic, knowledge organization, sentiment, language, authorship (forensics), filtering (spam)
 
   \greenbf{Cosine Similarity} $\frac{u \cdot v}{\norm{u}_{2} \norm{v}_{2}}$
 
+  \textbf{Benefits of ML}: Easily adapt to changing conditions. Labeling training examples cheaper than writing classification rules.
+
   \subsection*{\blue{Naive Bayes}}
 
-  Based on \textit{bag of words} and \textit{naive assumption of independence of word probabilities}. Fast w.\ low storage requirements. Robust to irrelevant features. Extendable to more feats.
+  Based on \textit{bag of words} and \textit{naive assumption of independence of word probabilities}. Fast w.\ low storage requirements. Robust to irrelevant features. Extendable to more feats than just words.
 
   \begin{equation*}\label{eq:L02:NaiveBayes}
     \argmax_c \Pr\sbrack{c \vert X} = \argmax_{c} \frac{\Pr[X \vert c] \Pr[c]}{\Pr[X]}
@@ -84,11 +91,14 @@
 
   \greenbf{Bernoulli}: \\ $\Pr[w_ i \vert c] = \frac{\text{\# docs labeled } c \text{ containing } w_i \text{ in } D}{\text{\#docs labeled } c \text{ in } D}$
 
-  \greenbf{Multinomial}: \\ $\Pr[w_i \vert c] = \frac{\text{\# inst.\ } w_i \text{ in doc labeled } c \text{ in } D}{\text{Tot.\ len docs labeled } c \text{ in } D}$
+  \greenbf{Multinomial}: Better long docs \\ $\Pr[w_i \vert c] = \frac{\text{\# inst.\ } w_i \text{ in doc labeled } c \text{ in } D}{\text{Tot.\ len docs labeled } c \text{ in } D}$
 
-  \greenbf{Add-1 Smoothing}: Add $\alpha$ to numerator and $\alpha\abs{V}$ to denominator of all words
+  \greenbf{Add\-/1 Smoothing}: Add $\alpha$ to numerator and $\alpha\abs{V}$ to denominator of all words
 
-  \greenbf{IDF}: $idf_i = \log \left(N/n_i\right)$ \\ $N$ size of collection \& $n_i$ \#docs contain $w_i$
+  \greenbf{IDF}: $idf_i = \log \left(N/n_i\right)$ \\ $N$ size of collection \& $n_i$ \#docs contain $w_i$. Weights ``unusual'' words higher.
+
+  \redbf{Problem}: Word can be positive or negative based on context. Bag of words loses context dependence
+  \textbf{Solution}: Negated vocabulary. ``never failed'' $\rightarrow$ ``NOT\_failed''
 
   \subsection*{\blue{Metrics}}
 
@@ -148,7 +158,7 @@
 
   \begin{itemize}
     \item Fast to compute vs.\ of scale with corpus size
-    \item Efficient usage of statistics vs.\ inefficient usage
+    \item Efficient usage statistics vs.\ inefficient
     \item Primarily used to capture word similarity vs.\ improved performance on other tasks
     \item Disproportionate influence given to large counts vs.\ capture complex patterns beyond word similarity
   \end{itemize}
@@ -240,7 +250,7 @@
   \subsection*{\blue{Max.\ Entropy Markov Model}}
   \begin{align*}
     \Pr[y\vert x] &= \prod_{i=1}^{n} \Pr(y_t \vert y_{t-1},x) \\
-    \Pr[y_{t} \vert t_{t-i}, x] &= \frac{\exp\left(\sum_{i=1}^{K}w_{i}^{y_t}f_{i}(y_{t-1},x) \right)}{Z(y_{t-1},x)}
+    \Pr[y_{t} \vert y_{t-i}, x] &= \frac{\exp\left(\sum_{i=1}^{K}w_{i}^{y_t}f_{i}(y_{t-1},x) \right)}{Z(y_{t-1},x)}
   \end{align*}
   \begin{equation*}
     L(\theta) = -\sum_{x,y\in D} \log \Pr(y \vert x)
@@ -271,7 +281,7 @@
 
   \section*{Lecture~\#6: \hl{Constituent Parsing}}
 
-  \greenbf{Constituency}: Group of words that behave as single unit
+  \greenbf{Constituency}: Group words behave single unit
 
   \greenbf{Substitution Test}: If a constituent is replaced by another constituent of same type, does sentence remain \textit{grammatical}
 
@@ -285,11 +295,11 @@
 
   \textbf{Language}: All strings derivable from $S$
 
-  \textbf{Preterminals}: Set symbols can be rewritten as terminals
+  \textbf{Preterminals}: Rewrite as terminals if possible
 
   \textbf{Syntax}: Move from labeling discrete items to structure between items
 
-  \greenbf{Attachment Ambiguity}: A particular constituent can be attached to the parse tree at more than one place
+  \greenbf{Attachment Ambiguity}: Constituent can attach to parse tree at more than one place
   \begin{itemize}
     \item ``I saw the man with a telescope''
   \end{itemize}
@@ -303,12 +313,12 @@
 
   \greenbf{Chomsky Normal Form} (CNF): All rules have form ${A \rightarrow \beta}$ where $\beta$~either single terminal in~$\Sigma$ or two non-terminals in~$N$
   \begin{itemize}
-    \item Fix mix terminals/non-terminals
+    \item Fix mixed terminals/non-terminals
     \item Fix more than 2 non-terminals
     \item Fix single non-terminal
   \end{itemize}
 
-  \subsection*{\blue{CYK Parsing}}
+  \subsection*{\blue{\hl{CYK Parsing}}}
 
   \begin{itemize}
     \item \red{Left-to-right, bottom-up}
@@ -346,7 +356,7 @@
 
   \textit{Approaches}: DP, graph alg, CSP, transition-based parsing
 
-  Most dependency parsing algs only handle projective trees.
+  Most depend parsing algs only handle projective tree
 
   Closer to semantic relations than constituents
 
@@ -366,15 +376,17 @@
 
   No guarantee finds the best tree.
 
-  \begin{itemize}
-    \item \textbf{Complexity}: $O(n)$ Projective, $O(n^2)$
-    \item \textbf{Configuration}: Buffer, stack \& dependency tree
-    \item \textbf{Init Config}: Stack \& tree empty. All words in buffer
-    \item \textbf{Term Config}: Buffer empty. Stack is single word
-    \item \textbf{\#Classes}: 1 + 2 * \# arc type
-  \end{itemize}
+  \textbf{Complexity}: $O(n)$ Projective, $O(n^2)$
 
-  \textbf{Operations}
+  \textbf{Configuration}: Buffer, stack \& dependency tree
+
+  \textbf{Init Config}: Stack \& tree empty Words in buf
+
+  \textbf{Term Config}: Buffer empty. Stack is single word
+
+  \textbf{\#Classes}: 1 + 2 * \# arc type
+
+  \redbf{Operations}
   \begin{itemize}
     \item \texttt{shift}: Move from buffer to top of stack
     \item \texttt{left-arc}: Add arc from top of stack to penultimate on stack. Pop penultimate.
@@ -394,11 +406,11 @@
 
   \greenbf{Unlabeled Attachment Score/Exact Match} (UAS/UEM): Same as above but ignore arc labels
 
-  \textbf{Word-Level}: Microaverage. \textbf{Sentence-Level}: Macroaverage
+  \textbf{Word-Level}: Microaverage (More common) \textbf{Sentence-Level}: Macroaverage
 
   \section*{Lecture~\#8: \hl{IE \& RE}}
 
-  \greenbf{Information Extraction}: Automatic extraction of structured information from unstructured or semi-structure docs
+  \greenbf{Information Extraction}: Automatic extraction of structured information from unstructured or semi-structured docs
   \begin{itemize}
     \item Returns \textit{facts} from documents
   \end{itemize}
@@ -411,6 +423,7 @@
     \item \redbf{Position Embedding}: Distance between pair of entities is its own embedding
     \item \redbf{DNN Input}: Shortest dependency path between two entities
     \item \redbf{GCN}: Run over dependency tree.
+    \item \textbf{Features}: Head word of entity1, head word entity2, word before entity1, word after entity1, type entity1
   \end{itemize}
 
   \greenbf{Co-Reference Resolution}: Find all expressions that refer to same entity in text
@@ -454,18 +467,15 @@
   \redbf{Problem}: Errors in early greedy confidence choices rapidly magnified
 
   \subsection*{\blue{Co-Training}}
-  \begin{itemize}
-    \item Two \textit{views} of data (subset features)
-    \item Alternate training separate classifiers on feature subsets
-  \end{itemize}
+  Two \textit{views} of data (subset features). Alternate training separate classifiers on feature subsets
 
   \subsection*{\blue{Active Learning}}
-  System selects additional ‘informative’ examples for user to label
+  Select `informative' examples for user label. \textit{Simulated active learning}. Slow since need to retrain after each point. May not generalized to non-well match datasets. \textit{Representativeness}
 
 \end{multicols}
 
 
-\begin{figure}
+\begin{figure}[t]
   \centering
   \begin{minipage}{.5\textwidth}
     \begin{algorithm}[H]
@@ -510,10 +520,17 @@
     \end{algorithm}
   \end{minipage}
 \end{figure}
-
-% \begin{table}[b]
-%   \centering
-  % \caption{}\label{tab:}
+\begin{table}[t]
+  \centering
+  \begin{tabular}{|c|l|c|l|c|l|}
+    \hline
+    \bluebf{nsubj} & Subject of verb & \bluebf{obj} & Direct object of verb & \bluebf{iobj} & Indirect object of verb \\\hline
+    \bluebf{obl} & Oblique modifier of verb & \bluebf{ccomp} & Clausal complement & \bluebf{advcl} & Adverbial clause modifier \\\hline
+    \bluebf{acl} & Clausal modifier of noun & \bluebf{conj} & Conjunct in coordination & & \red{Verb usually head of arc} \\\hline
+  \end{tabular}
+\end{table}
+\begin{table}[b]
+  \centering
   \begin{tabular}{|c|l|c|l|}
     \hline
     \textbf{JJ} vs.\ \textbf{VBN} & \multicolumn{3}{l|}{If gradable (can add ``very''), then \texttt{JJ}. If can be followed by a ``by'' phrase, \texttt{VBN}} \\\hline
@@ -532,6 +549,5 @@
     \bluebf{JJR} Comparative Adj. & Adjective end in \texttt{\red{-er}}. \textit{More}, \textit{less} & \bluebf{JJS} Superlative Adj. & Adjective end in \texttt{\red{-est}}. \textit{Most}, \textit{least} \\\hline
     \bluebf{PRP\$} Possess.\ Pronoun & \textit{my}, \textit{their}, \textit{its}, \textit{his}, \textit{her} & \bluebf{IN} Preposition & All preposition except ``to''. \textit{On}, \textit{because}, \textit{from} \\\hline
   \end{tabular}
-% \end{table}
-
+\end{table}
 \end{document}
