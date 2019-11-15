@@ -3,7 +3,7 @@ import copy
 import itertools
 import logging
 from pathlib import Path
-import pickle as pk
+# import pickle as pk
 from typing import Set, Tuple, Union
 
 import nltk.tokenize
@@ -12,19 +12,24 @@ import sklearn.datasets
 # noinspection PyProtectedMember
 from sklearn.utils import Bunch
 
-import torch
 from torch.utils.data import Subset
 import torchtext
+from torchtext.data import Field, LabelField
 import torchtext.datasets
 from torchtext.data.dataset import Dataset
 import torchtext.vocab
 
 # Valid Choices - Any subset of: ('headers', 'footers', 'quotes')
+from logger_utils import setup_logger
+
 DATASET_REMOVE = ('headers', 'footers', 'quotes')
 VALID_DATA_SUBSETS = ("train", "test", "all")
 
+CACHE_DIR = None
+
 DATA_COL = "data"
 LABEL_COL = "target"
+LABEL_NAMES = "target_names"
 
 MAX_SEQ_LEN = 500
 
@@ -79,11 +84,13 @@ def _filter_bunch_by_idx(bunch: Bunch, keep_idx):
     :return: Filtered \p Bunch object
     """
     bunch = copy.deepcopy(bunch)
-    for key in bunch.keys():
-        if not isinstance(bunch[key], (list, np.ndarray)): continue
-        assert len(keep_idx) == len(bunch[key]), "Filter size mismatch"
+    for key, val in bunch.items():
+        if not isinstance(val, (list, np.ndarray)): continue
+        if len(keep_idx) == len(val): continue
 
-        bunch[key] = itertools.compress(bunch[key], keep_idx)
+        obj_type = type(val)
+
+        bunch[key] = obj_type(itertools.compress(val, keep_idx))
     return bunch
 
 
@@ -115,20 +122,27 @@ def _select_positive_bunch(size_p: int, bunch: Bunch, pos_classes: Set[int],
 
     assert len(pos_idx) >= size_p, "P set larger than the available data"
     np.random.shuffle(pos_idx)
-    keep_idx = np.ones(bunch[LABEL_COL], dtype=np.bool)
+    keep_idx = np.ones_like(bunch[LABEL_COL], dtype=np.bool)
     for idx in pos_idx[:size_p]: keep_idx[idx] = False
 
     p_bunch = _filter_bunch_by_idx(bunch, keep_idx)
+    p_bunch[LABEL_NAMES] = [bunch[LABEL_NAMES][idx] for idx in sorted(list(pos_classes))]
     if remove_p_from_u:
         bunch = _filter_bunch_by_idx(bunch, ~keep_idx)
     return p_bunch, bunch
 
 
-def _convert_to_classification_dataset(bunch: Bunch, vocab=None):
+def _bunch_to_ds(bunch: Bunch, text: Field, label: LabelField) -> Dataset:
     r""" Converts the \p bunch to a classification dataset """
-    label_and_data = list(zip(bunch[LABEL_COL], bunch[DATA_COL]))
-    return torchtext.datasets.TextClassificationDataset(vocab=vocab, data=label_and_data,
-                                                        labels={NEG_LABEL, UNLABELED, POS_LABEL})
+    fields = [('text', text), ('label', label)]
+    examples = [torchtext.data.Example.fromlist([bunch[DATA_COL], bunch[LABEL_COL]], fields)]
+    return Dataset(examples, fields)
+
+
+def _print_stats(text: Field, label: LabelField):
+    logging.info(f"Length of Text Vocabulary: {str(len(text.vocab))}")
+    logging.info(f"Vector size of Text Vocabulary: {text.vocab.vectors.shape[1]}")
+    logging.info("Label Length: " + str(len(label.vocab)))
 
 
 def load_20newsgroups(args: Namespace, data_dir: Union[Path, str], pos_cls: Set[int],
@@ -145,26 +159,23 @@ def load_20newsgroups(args: Namespace, data_dir: Union[Path, str], pos_cls: Set[
     assert not (pos_cls & neg_cls), "Positive and negative classes not disjoint"
 
     data_dir = Path(data_dir)
-    cache_dir = data_dir / ".vector_cache"
-    cache_dir.mkdir(parents=True, exist_ok=True)
+
+    global CACHE_DIR
+    CACHE_DIR = data_dir / ".vector_cache"
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
     complete_train = _download_20newsgroups("train", data_dir, pos_cls, neg_cls)
 
     tokenizer = nltk.tokenize.word_tokenize
     # noinspection PyPep8Naming
-    TEXT = torchtext.data.Field(sequential=True, tokenize=tokenizer,
-                                lower=True, include_lengths=True, fix_length=MAX_SEQ_LEN)
+    TEXT = Field(sequential=True, tokenize=tokenizer, lower=True, include_lengths=True,
+                 fix_length=MAX_SEQ_LEN)
     # noinspection PyPep8Naming
-    LABEL = torchtext.data.LabelField(sequential=False)
-
-    # torchtext.datasets.IMDB.splits()
-    fields = [('text', TEXT), ('label', LABEL)]
-
-    examples = []
-    examples.append(torchtext.data.Example.fromlist([complete_train[DATA_COL], complete_train[LABEL_COL]], fields))
-    complete_ds = Dataset(examples, fields)
+    LABEL = LabelField(sequential=False)
+    complete_ds = _bunch_to_ds(complete_train, TEXT, LABEL)
     TEXT.build_vocab(complete_ds,
-                     vectors=torchtext.vocab.GloVe(name="6B", dim=300, cache=cache_dir))
+                     vectors=torchtext.vocab.GloVe(name="6B", dim=args.embed_dim, cache=CACHE_DIR))
+    LABEL.build_vocab(complete_ds)
 
     p_bunch, u_bunch = _select_positive_bunch(args.size_p, complete_train, pos_cls,
                                               remove_p_from_u=False)
@@ -172,6 +183,7 @@ def load_20newsgroups(args: Namespace, data_dir: Union[Path, str], pos_cls: Set[
     # # sequential: Not sequential labeling
     # test_bunch = _download_20newsgroups("test", data_dir, pos_cls, neg_cls)
     #
+    _print_stats(TEXT, LABEL)
     return TEXT, LABEL, p_bunch, u_bunch
 
 
@@ -192,7 +204,12 @@ def _main():
     pos_classes = set(range(0, 10))
     neg_classes = set(range(10, 20))
 
-    args = {"size_p": 1000}
+    class Object:
+        pass
+
+    args = Object()
+    args.size_p = 1000
+    args.embed_dim = 300
 
     pk_file = Path("ds_debug.pk")
     if not pk_file.exists():
@@ -201,11 +218,13 @@ def _main():
         # with open(str(pk_file), "wb+") as f_out:
         #     pk.dump((train_ds, test_ds), f_out)
     else:
-        with open(str(pk_file), "rb") as f_in:
-            train_ds, test_ds = pk.load(f_in)
+        pass
+        # with open(str(pk_file), "rb") as f_in:
+        #     train_ds, test_ds = pk.load(f_in)
 
     print("Completed")
 
 
 if __name__ == "__main__":
+    setup_logger()
     _main()
