@@ -1,7 +1,9 @@
+import copy
 import itertools
+import logging
 from pathlib import Path
 import pickle as pk
-from typing import List, Optional, Set, Tuple, Union
+from typing import Set, Tuple, Union
 
 import nltk.tokenize
 import numpy as np
@@ -9,23 +11,27 @@ import sklearn.datasets
 # noinspection PyProtectedMember
 from sklearn.utils import Bunch
 
+import torch
+from torch.utils.data import Subset, Dataset
 import torchtext
 import torchtext.datasets
+import torchtext.vocab
 
 # Valid Choices - Any subset of: ('headers', 'footers', 'quotes')
-from torch.utils.data import Subset, Dataset
-
 DATASET_REMOVE = ('headers', 'footers', 'quotes')
 VALID_DATA_SUBSETS = ("train", "test", "all")
 
 DATA_COL = "data"
 LABEL_COL = "target"
 
+MAX_SEQ_LEN = 500
+
 POS_LABEL = 1
-NEG_LABEL = 0
+UNLABELED = 0
+NEG_LABEL = -1
 
 
-def _get_20newsgroups(subset: str, data_dir: Path):
+def _download_20newsgroups(subset: str, data_dir: Path, pos_cls: Set[int], neg_cls: Set[int]):
     r"""
     Gets the specified \p subset of the 20 Newsgroups dataset.  If necessary, the dataset is
     downloaded to directory \p data_dir.  It also tokenizes the import dataset
@@ -41,31 +47,13 @@ def _get_20newsgroups(subset: str, data_dir: Path):
     dataset = sklearn.datasets.fetch_20newsgroups(data_home=data_dir, shuffle=False,
                                                   remove=DATASET_REMOVE, subset=subset)
 
-    def _tokenize(sentence: str) -> List[str]:
-        return nltk.tokenize.word_tokenize(sentence.lower())
-
-    dataset[DATA_COL] = [_tokenize(x) for x in dataset[DATA_COL]]
+    _filter_by_classes(dataset, pos_classes=pos_cls, neg_classes=neg_cls)
+    # dataset[DATA_COL] = [_tokenize(x) for x in dataset[DATA_COL]]
     return dataset
 
 
-def _build_vocab(train: Bunch, test: Optional[Bunch]):
-    r"""
-    Gets all words in the vocabulary
-
-    :param train: Training dataset
-    :param test: Test dataset.  If no test set, use \p None
-    :return: Set of words in the vocabulary.
-    """
-    words = set()
-    for bunch in (train, test):
-        if bunch is None: continue
-        words |= {w for x in bunch[DATA_COL] for w in x}
-    return words
-
-
-def _filter_by_classes(bunch: Bunch, pos_classes: Set[int],
-                       neg_classes: Set[int]) -> List[Tuple[int, List[str]]]:
-    r""" Removes any items not in the specified class label list """
+def _filter_by_classes(bunch: Bunch, pos_classes: Set[int], neg_classes: Set[int]):
+    r""" Removes any dataset items not in the specified class label lists """
     all_classes = pos_classes | neg_classes
     # Filter according to positive and negative class set
     keep_idx = [val in all_classes for val in bunch[LABEL_COL]]
@@ -74,33 +62,25 @@ def _filter_by_classes(bunch: Bunch, pos_classes: Set[int],
     def _filt_col(col_name: str):
         return list(itertools.compress(bunch[col_name], keep_idx))
 
-    data_filt, lbl_filt = _filt_col(DATA_COL), _filt_col(LABEL_COL)
-    assert len(data_filt) == len(lbl_filt), "Data/label array length mismatch"
+    for key in bunch.keys():
+        if isinstance(bunch[key], (list, np.ndarray)): continue
+        bunch[key] = _filt_col(key)
 
-    return list(zip(lbl_filt, data_filt))
 
-
-def load_20newsgroups(data_dir: Union[Path, str], pos_classes: Set[int], neg_classes: Set[int]):
+def _filter_bunch_by_idx(bunch: Bunch, filt_idx):
     r"""
 
-    :param data_dir: Directory from which to get the training data
-    :param pos_classes: Set of labels for the POSITIVE classes
-    :param neg_classes: Set of labels for the NEGATIVE classes
-    :return: Train and test datasets
+    :param bunch: Dataset \p Bunch object to filder
+    :param filt_idx:
+    :return:
     """
-    assert pos_classes and neg_classes, "Class list empty"
+    bunch = copy.deepcopy(bunch)
+    for key in bunch.keys():
+        if not isinstance(bunch[key], (list, np.ndarray)): continue
+        assert len(filt_idx) == len(bunch[key]), "Filter size mismatch"
 
-    data_dir = Path(data_dir)
-
-    train, test = _get_20newsgroups("train", data_dir), _get_20newsgroups("test", data_dir)
-    vocab = _build_vocab(train=train, test=test)
-
-    all_labels = pos_classes | neg_classes
-    ds = []
-    for bunch in (train, test):
-        filt_ds = _filter_by_classes(bunch, pos_classes, neg_classes)
-        ds.append(torchtext.datasets.TextClassificationDataset(vocab, filt_ds, all_labels))
-    return ds[0], ds[1]
+        bunch[key] = itertools.compress(bunch[key], filt_idx)
+    return bunch
 
 
 def _remove_indices_from_dataset(ds: Union[Subset, Dataset], idx_to_remove: np.ndarray) -> Subset:
@@ -115,52 +95,96 @@ def _remove_indices_from_dataset(ds: Union[Subset, Dataset], idx_to_remove: np.n
     return Subset(ds, remain_idx)
 
 
-def _select_positive_set(size_p: int, train_ds, pos_classes: Set[int],
+def _select_positive_set(size_p: int, bunch, pos_classes: Set[int],
                          remove_p_from_u: bool) -> Tuple[Subset, Dataset]:
     r"""
 
     :param size_p:
-    :param train_ds: Training (unlabeled) \p Dataset
+    :param bunch: Training (unlabeled) \p Bunch
     :param pos_classes: List of positive classes in t
     :param remove_p_from_u: If \p True, elements in the positive (labeled) dataset are removed
                             from the unlabeled set.
     :return:
     """
-    pos_idx = np.asarray([idx for idx, (lbl, _) in enumerate(train_ds) if lbl in pos_classes],
+    pos_idx = np.asarray([idx for idx, lbl in enumerate(bunch[LABEL_COL]) if lbl in pos_classes],
                          dtype=np.int32)
 
     assert len(pos_idx) >= size_p, "P set larger than the available data"
     np.random.shuffle(pos_idx)
     pos_idx = pos_idx[:size_p].sort()
 
-    p_ds = Subset(train_ds, pos_idx)
+    p_ds = Subset(bunch, pos_idx)
     if remove_p_from_u:
-        train_ds = _remove_indices_from_dataset(ds=train_ds, idx_to_remove=pos_idx)
-    return p_ds, train_ds
+        bunch = _remove_indices_from_dataset(ds=bunch, idx_to_remove=pos_idx)
+    return p_ds, bunch
 
 
-def _fix_final_labels(ds: Union[Dataset, Subset], pos_classes: Set[int]) -> Dataset:
-    items = []
-    for data, lbl in ds:
-        lbl = POS_LABEL if lbl in pos_classes else NEG_LABEL
-        items =
-    return torchtext.datasets.TextClassificationDataset(vocab, filt_ds, all_labels))
+def _convert_to_classification_dataset(vocab, bunch: Bunch):
+    r""" Converts the \p bunch to a classification dataset """
+    label_and_data = list(zip(bunch[LABEL_COL], bunch[DATA_COL]))
+    return torchtext.datasets.TextClassificationDataset(vocab=vocab, data=label_and_data,
+                                                        labels=set(bunch[LABEL_COL]))
 
 
-def _get_field():
-    import torchtext.data
-    f = torchtext.data.field
+def load_20newsgroups(data_dir: Union[Path, str], pos_cls: Set[int], neg_cls: Set[int]):
+    r"""
 
+    :param data_dir: Directory from which to get the training data
+    :param pos_cls: Set of labels for the POSITIVE classes
+    :param neg_cls: Set of labels for the NEGATIVE classes
+    :return: Train and test datasets
+    """
+    assert pos_cls and neg_cls, "Class list empty"
+    assert not (pos_cls & neg_cls), "Positive and negative classes not disjoint"
+
+    data_dir = Path(data_dir)
+
+    train_bunch = _download_20newsgroups("train", data_dir, pos_cls, neg_cls)
+
+    TEXT = torchtext.data.Field(sequential=True, tokenize=tokenizer,
+                                lower=True, include_lengths=True, fix_length=MAX_SEQ_LEN)
+    TEXT.build_vocab(train_ds, vectors=torchtext.vocab.GloVe(name="6B", dim=300))
+
+    tokenizer = nltk.tokenize.word_tokenize
+    # sequential: Not sequential labeling
+    LABEL = torchtext.data.LabelField(sequential=False, tensor_type=torch.IntTensor)
+    test_bunch = _download_20newsgroups("test", data_dir, pos_cls, neg_cls)
+
+
+    logging.debug(f"Vocabulary Size: {len(TEXT.vocab.vectors)}")
+    logging.debug(f"Embedding Dimension: {TEXT.vocab.vectors.size()}")
+
+    all_labels = pos_cls | neg_cls
+    ds = []
+    for bunch in (train, test):
+        filt_ds = _filter_by_classes(bunch, pos_cls, neg_cls)
+        ds.append(torchtext.datasets.TextClassificationDataset(vocab, filt_ds, all_labels))
+    return ds[0], ds[1]
+
+
+# def _fix_final_labels(ds: Union[Dataset, Subset], pos_classes: Set[int]) -> Dataset:
+#     items = []
+#     for data, lbl in ds:
+#         lbl = POS_LABEL if lbl in pos_classes else NEG_LABEL
+#         items =
+#     return torchtext.datasets.TextClassificationDataset(vocab, filt_ds, all_labels))
+#
+#
+# def _get_field():
+#     import torchtext.data
+#     f = torchtext.data.field
+#
 
 def _main():
     pos_classes = set(range(0, 10))
     neg_classes = set(range(10, 20))
 
+
     pk_file = Path("ds_debug.pk")
     if not pk_file.exists():
         train_ds, test_ds = load_20newsgroups(".", pos_classes, neg_classes)
-        with open(str(pk_file), "wb+") as f_out:
-            pk.dump((train_ds, test_ds), f_out)
+        # with open(str(pk_file), "wb+") as f_out:
+        #     pk.dump((train_ds, test_ds), f_out)
     else:
         with open(str(pk_file), "rb") as f_in:
             train_ds, test_ds = pk.load(f_in)
