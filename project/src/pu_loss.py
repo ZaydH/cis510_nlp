@@ -11,7 +11,7 @@ from tensor_utils import TensorUtils
 
 class LossType(Enum):
     r""" Loss type to train the learner """
-    PN = "PU"
+    PN = "PN"
     NNPU = "nnPU"
     PUBN = "PUbN"
 
