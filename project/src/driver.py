@@ -6,7 +6,8 @@ from pu_loss import LossType
 
 def parse_args() -> Namespace:
     args = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    args.add_argument("size_p", "Number of elements in the positive set", type=int)
+    args.add_argument("size_p", "Number of elements in the POSITIVE (labeled) set", type=int)
+    args.add_argument("size_n", "Number of elements in the biased NEGATIVE (labeled) set", type=int)
     args.add_argument("loss", choices=[e.name for e in LossType])
     args.add_argument("--bs", help="Batch size", type=int)
     args.add_argument("--tau", help="Hyperparameter used to determine eta", type=float)

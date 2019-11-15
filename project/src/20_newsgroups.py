@@ -4,7 +4,7 @@ import itertools
 import logging
 from pathlib import Path
 # import pickle as pk
-from typing import Set, Tuple, Union
+from typing import Optional, Set, Tuple, Union
 
 import nltk.tokenize
 import numpy as np
@@ -85,11 +85,10 @@ def _filter_bunch_by_idx(bunch: Bunch, keep_idx):
     bunch = copy.deepcopy(bunch)
     for key, val in bunch.items():
         if not isinstance(val, (list, np.ndarray)): continue
-        if len(keep_idx) == len(val): continue
+        if len(keep_idx) != len(val): continue
 
-        obj_type = type(val)
-
-        bunch[key] = obj_type(itertools.compress(val, keep_idx))
+        bunch[key] = list(itertools.compress(val, keep_idx))
+        if isinstance(val, list): bunch[key] = np.asarray(bunch[key])
     return bunch
 
 
@@ -98,7 +97,7 @@ def _configure_binary_labels(bunch: Bunch, pos_cls: Set[int]):
     def _is_pos(lbl: int) -> int:
         return POS_LABEL if lbl in pos_cls else NEG_LABEL
 
-    bunch[LABEL_COL] = np.array(map(_is_pos, bunch[LABEL_COL]))
+    bunch[LABEL_COL] = np.asarray(list(map(_is_pos, bunch[LABEL_COL])), dtype=np.int)
 
 
 def _select_positive_bunch(size_p: int, bunch: Bunch, pos_cls: Set[int],
@@ -117,8 +116,8 @@ def _select_positive_bunch(size_p: int, bunch: Bunch, pos_cls: Set[int],
 
     assert len(pos_idx) >= size_p, "P set larger than the available data"
     np.random.shuffle(pos_idx)
-    keep_idx = np.ones_like(bunch[LABEL_COL], dtype=np.bool)
-    for idx in pos_idx[:size_p]: keep_idx[idx] = False
+    keep_idx = np.zeros_like(bunch[LABEL_COL], dtype=np.bool)
+    for idx in pos_idx[:size_p]: keep_idx[idx] = True
 
     p_bunch = _filter_bunch_by_idx(bunch, keep_idx)
     p_bunch[LABEL_NAMES_COL] = [bunch[LABEL_NAMES_COL][idx] for idx in sorted(list(pos_cls))]
@@ -139,6 +138,23 @@ def _print_stats(text: Field, label: LabelField):
     logging.info(f"Length of Text Vocabulary: {str(len(text.vocab))}")
     logging.info(f"Vector size of Text Vocabulary: {text.vocab.vectors.shape[1]}")
     logging.info("Label Length: " + str(len(label.vocab)))
+
+
+def _build_train_set(p_bunch: Bunch, u_bunch: Bunch, n_bunch: Optional[Bunch],
+                     text: Field, label: LabelField) -> Dataset:
+    r"""
+    Convert the positive, negative, and unlabeled \p Bunch objects into a Dataset
+    """
+    data, labels, names = [], [], []
+    for bunch, lbl in ((p_bunch, POS_LABEL), (u_bunch, UNLABELED), (n_bunch, NEG_LABEL)):
+        if bunch is None: continue
+        data.append(bunch[DATA_COL])
+        labels.append(np.full_like(bunch[LABEL_COL], lbl))
+
+    t_bunch = copy.deepcopy(u_bunch)
+    t_bunch[DATA_COL] = np.concatenate(data, axis=0)
+    t_bunch[LABEL_COL] = np.concatenate(labels, axis=0)
+    return _bunch_to_ds(t_bunch, text, label)
 
 
 def load_20newsgroups(args: Namespace, data_dir: Union[Path, str]):
@@ -169,6 +185,7 @@ def load_20newsgroups(args: Namespace, data_dir: Union[Path, str]):
     complete_ds = _bunch_to_ds(complete_train, TEXT, LABEL)
     TEXT.build_vocab(complete_ds,
                      vectors=torchtext.vocab.GloVe(name="6B", dim=args.embed_dim, cache=CACHE_DIR))
+    LABEL.build_vocab(complete_ds)  # ToDo: Fix label build vocabulary
 
     p_bunch, u_bunch = _select_positive_bunch(args.size_p, complete_train, args.pos,
                                               remove_p_from_u=False)
@@ -179,24 +196,23 @@ def load_20newsgroups(args: Namespace, data_dir: Union[Path, str]):
     for bunch in (p_bunch, u_bunch, test_bunch):
         _configure_binary_labels(bunch, pos_cls=args.pos)
 
-    LABEL.build_vocab(complete_ds)  # ToDo: Fix label build vocabulary
     _print_stats(TEXT, LABEL)
+
+    train_ds = _build_train_set(p_bunch, u_bunch, None, TEXT, LABEL)
     return TEXT, LABEL, p_bunch, u_bunch
 
 
 def _main():
 
-    class Object:
-        pass
-
-    args = Object()
+    args = Namespace()
     args.size_p = 1000
+    args.size_n = 0
     args.embed_dim = 300
     args.pos, args.neg = set(range(0, 10)),  set(range(10, 20))
 
     pk_file = Path("ds_debug.pk")
     if not pk_file.exists():
-        # noinspection PyTypeChecker,PyUnusedLocal
+        # noinspection PyUnusedLocal
         newsgroups = load_20newsgroups(args, "data")
         # with open(str(pk_file), "wb+") as f_out:
         #     pk.dump((train_ds, test_ds), f_out)
