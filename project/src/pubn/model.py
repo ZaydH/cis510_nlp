@@ -10,10 +10,10 @@ from fastai.basic_data import DataBunch
 import torch
 from torch import Tensor
 import torch.nn as nn
-from torchtext.data import Iterator
+from torchtext.data import Iterator, Dataset
 
-from . import BASE_DIR
 from ._base_classifier import BaseClassifier, ClassifierConfig
+from ._utils import BASE_DIR, NEG_LABEL, U_LABEL, construct_iterator
 from .logger import TrainingLogger, create_stdout_handler
 from .loss import LossType, PULoss
 
@@ -35,7 +35,8 @@ class NlpBiasedLearner(nn.Module):
         self._prefix = self.l_type.name.lower()
         self._train_start = self._best_loss = self._logger = None
 
-    def fit(self, train: Iterator):
+    def fit(self, train: Dataset):
+        r""" Fits the learner"""
         # Fields that apply regardless of loss method
         self._train_start = time.time()
         self._best_loss = np.inf
@@ -47,12 +48,21 @@ class NlpBiasedLearner(nn.Module):
                                       logger_name=self.Config.LOGGER_NAME,
                                       tb_grp_name=self.l_type.name)
 
+        # Filter the dataset based on the training configuration
         if self.l_type == LossType.NNPU:
-            self._fit_nnpu(train)
-        elif self.l_type == LossType.PUBN:
-            self._fit_pubn(train)
+            train = exclude_label_in_dataset(train, NEG_LABEL)
         elif self.l_type == LossType.PN:
-            self._fit_supervised(train)
+            train = exclude_label_in_dataset(train, U_LABEL)
+        # noinspection PyUnresolvedReferences
+        itr = construct_iterator(train, bs=self._model.Config.BATCH_SIZE, shuffle=True)
+
+        if self.l_type == LossType.NNPU:
+            self._fit_nnpu(itr)
+        elif self.l_type == LossType.PUBN:
+            self._fit_pubn(itr)
+        elif self.l_type == LossType.PN:
+            train = exclude_label_in_dataset(train, U_LABEL)
+            self._fit_supervised(itr)
         else:
             raise ValueError("Unknown loss type")
 
@@ -193,3 +203,9 @@ def load_module(module: nn.Module, filepath: Path):
 
     module.eval()
     return module
+
+
+def exclude_label_in_dataset(ds: Dataset, label_to_exclude: int) -> Dataset:
+    r""" Creates a new \p Dataset that will exclude the label of \p label_to_exclude """
+    return Dataset(examples=ds.examples, fields=ds.fields,
+                   filter_pred=lambda x: x != label_to_exclude)

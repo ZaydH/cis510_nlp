@@ -3,6 +3,7 @@ import re
 import socket
 
 import torch
+from torchtext.data import Dataset, Iterator
 
 
 def _check_is_talapas() -> bool:
@@ -31,3 +32,8 @@ if IS_CUDA:
 POS_LABEL = 1
 U_LABEL = 0
 NEG_LABEL = -1
+
+
+def construct_iterator(ds: Dataset, bs: int, shuffle: bool = True) -> Iterator:
+    r""" Construct \p Iterator which emulates a \p DataLoader """
+    return Iterator(dataset=ds, batch_size=bs, shuffle=shuffle, device=TORCH_DEVICE)

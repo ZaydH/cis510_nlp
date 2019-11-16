@@ -6,7 +6,7 @@ import torch
 from torch import Tensor
 import torch.nn as nn
 
-from .config import POS_LABEL
+from ._utils import POS_LABEL
 from .tensor_utils import TensorUtils
 
 

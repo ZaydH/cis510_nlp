@@ -3,7 +3,7 @@ import logging
 from torch import Tensor
 import torch.nn as nn
 
-from .config import TORCH_DEVICE
+from ._utils import TORCH_DEVICE
 
 
 class ClassifierConfig:
@@ -11,6 +11,7 @@ class ClassifierConfig:
     LOG_LEVEL = logging.DEBUG
 
     NUM_EPOCH = 100
+    BATCH_SIZE = 500
 
     BIDIRECTIONAL = True
     EMBED_DIM = 300

@@ -1,9 +1,7 @@
 import argparse
 from argparse import Namespace
 
-from torchnet.dataset.dataset import Dataset
-
-from load_newsgroups import load_20newsgroups, construct_iterator
+from load_newsgroups import load_20newsgroups
 from logger_utils import setup_logger
 from pubn import calculate_prior
 from pubn.model import NlpBiasedLearner
@@ -45,12 +43,11 @@ def parse_args() -> Namespace:
 
 def _main(args: Namespace):
     # noinspection PyPep8Naming
-    TEXT, LABEL, train_ds, test_ds, u_ds = load_20newsgroups(args)
+    newsgroups = load_20newsgroups(args)
 
-    learner = NlpBiasedLearner(args, TEXT.vocab.vectors, prior=calculate_prior(test_ds))
-
-    itr = construct_iterator(train_ds, bs=args.bs, shuffle=True)
-    learner.fit(itr)
+    learner = NlpBiasedLearner(args, newsgroups.text.vocab.vectors,
+                               prior=calculate_prior(newsgroups.test))
+    learner.fit(newsgroups.train)
 
 
 if __name__ == "__main__":

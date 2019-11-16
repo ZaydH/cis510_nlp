@@ -1,5 +1,6 @@
 from argparse import Namespace
 import copy
+from dataclasses import dataclass
 import itertools
 import logging
 from pathlib import Path
@@ -13,14 +14,14 @@ import sklearn.datasets
 from sklearn.utils import Bunch
 
 import torchtext
-from torchtext.data import Example, Field, Iterator, LabelField
+from torchtext.data import Example, Field, LabelField
 import torchtext.datasets
 from torchtext.data.dataset import Dataset
 import torchtext.vocab
 
 # Valid Choices - Any subset of: ('headers', 'footers', 'quotes')
 from logger_utils import setup_logger
-from pubn import BASE_DIR, NEG_LABEL, POS_LABEL, U_LABEL, TORCH_DEVICE
+from pubn import BASE_DIR, NEG_LABEL, POS_LABEL, U_LABEL
 from pubn.loss import LossType
 
 DATASET_REMOVE = ('headers', 'footers', 'quotes')
@@ -31,6 +32,65 @@ LABEL_COL = "target"
 LABEL_NAMES_COL = "target_names"
 
 MAX_SEQ_LEN = 500
+
+
+@dataclass(init=True)
+class NewsgroupsData:
+    r""" Encapsulates the 20 newsgroups dataset """
+    text: Field
+    label: LabelField
+    train: Dataset = None
+    test: Dataset = None
+    unlabel: Dataset = None
+
+    @staticmethod
+    def _pickle_filename(args: Namespace) -> Path:
+        r""" File name for pickle file """
+        serialize_dir = BASE_DIR / "tensors"
+        serialize_dir.mkdir(parents=True, exist_ok=True)
+
+        def _classes_to_str(cls_set: Set[int]) -> str:
+            return ",".join([str(x) for x in sorted(cls_set)])
+
+        fields = ["data", f"n-p={args.size_p}", f"n-n={args.size_n}",
+                  f"pos={_classes_to_str(args.pos)}", f"neg={_classes_to_str(args.neg)}"]
+
+        fields[-1] += ".pk"
+        return serialize_dir / "_".join(fields)
+
+    @classmethod
+    def serial_exists(cls, args: Namespace) -> bool:
+        r""" Return \p True if a serialized dataset exists for the configuration in \p args """
+        serial_path = cls._pickle_filename(args)
+        return serial_path.exists()
+
+    def dump(self, args: Namespace):
+        r""" Serialize the newsgroup data to disk """
+        path = self._pickle_filename(args)
+
+        msg = f"Writing serialized file {str(path)}"
+        flds = (self.text, self.label, self.train.examples, self.test.examples,
+                self.unlabel.examples)
+        logging.debug(f"Starting: {msg}")
+        with open(str(path), "wb+") as f_out:
+            pk.dump(flds, f_out)
+        logging.debug(f"COMPLETED: {msg}")
+
+    def build_fields(self):
+        r""" Construct the dataset fields """
+        return [("text", self.text), ("label", self.label)]
+
+    @classmethod
+    def load(cls, args: Namespace):
+        r""" Load the serialized newsgroups dataset """
+        path = cls._pickle_filename(args)
+
+        with open(str(path), "rb") as f_in:
+            flds = pk.load(f_in)
+        newsgroup = cls(text=flds[0], label=flds[1])
+        for attr_name, idx in (("train", 2), ("test", 3), ("unlabel", 4)):
+            newsgroup.__setattr__(attr_name, Dataset(flds[idx], newsgroup.build_fields()))
+        return newsgroup
 
 
 def _download_20newsgroups(subset: str, data_dir: Path, pos_cls: Set[int], neg_cls: Set[int]):
@@ -167,27 +227,12 @@ def _build_train_set(p_bunch: Bunch, u_bunch: Bunch, n_bunch: Optional[Bunch],
     return _bunch_to_ds(t_bunch, text, label)
 
 
-def construct_iterator(ds: Dataset, bs: int, shuffle: bool = True) -> Iterator:
-    r""" Construct \p Iterator which emulates a \p DataLoader """
-    return Iterator(dataset=ds, batch_size=bs, shuffle=shuffle, device=TORCH_DEVICE)
+def _create_serialized_20newsgroups(args):
+    r"""
+    Creates a serialized 20 newsgroups dataset
 
-
-def _pickle_filename(args: Namespace) -> Path:
-    r""" File name for pickle file """
-    serialize_dir = BASE_DIR / "tensors"
-    serialize_dir.mkdir(parents=True, exist_ok=True)
-
-    def _classes_to_str(cls_set: Set[int]) -> str:
-        return ",".join([str(x) for x in sorted(cls_set)])
-
-    fields = ["data", f"n-p={args.size_p}", f"n-n={args.size_n}",
-              f"pos={_classes_to_str(args.pos)}", f"neg={_classes_to_str(args.neg)}"]
-
-    fields[-1] += ".pk"
-    return serialize_dir / "_".join(fields)
-
-
-def _create_serialized_20newsgroups(serialize_path: Path, args):
+    :param args: Test setup information
+    """
     data_dir = BASE_DIR / ".data"
     cache_dir = data_dir / ".vector_cache"
     cache_dir.mkdir(parents=True, exist_ok=True)
@@ -214,12 +259,16 @@ def _create_serialized_20newsgroups(serialize_path: Path, args):
     for bunch in (p_bunch, u_bunch, test_bunch):
         _configure_binary_labels(bunch, pos_cls=args.pos)
 
-    # Serialize 20 news groups
-    msg = f"Writing serialized file {str(serialize_path)}"
-    logging.debug(f"Starting: {msg}")
-    with open(str(serialize_path), "wb+") as f_out:
-        pk.dump((TEXT, LABEL, p_bunch, u_bunch, n_bunch, test_bunch), f_out)
-    logging.debug(f"COMPLETED: {msg}")
+    ng_data = NewsgroupsData(text=TEXT, label=LABEL)
+    ng_data.train = _build_train_set(p_bunch,
+                                     u_bunch if args.loss != LossType.PN else None,
+                                     n_bunch if args.loss != LossType.NNPU else None,
+                                     TEXT, LABEL)
+    ng_data.unlabel = _bunch_to_ds(u_bunch, TEXT, LABEL)
+    ng_data.test = _bunch_to_ds(test_bunch, TEXT, LABEL)
+
+    LABEL.build_vocab(ng_data.train, ng_data.test)
+    ng_data.dump(args)
 
 
 def load_20newsgroups(args: Namespace):
@@ -231,31 +280,13 @@ def load_20newsgroups(args: Namespace):
     assert not (args.pos & args.neg), "Positive and negative classes not disjoint"
 
     # Load the serialized file if it exists
-    serialize_path = _pickle_filename(args)
-    if not serialize_path.exists():
-        _create_serialized_20newsgroups(serialize_path, args)
+    if not NewsgroupsData.serial_exists(args):
+        _create_serialized_20newsgroups(args)
     # _create_serialized_20newsgroups(serialize_path, args)
 
-    with open(str(serialize_path), "rb") as f_in:
-        msg = f"Loading serialized file: {str(serialize_path)}"
-        logging.debug(f"Starting: {msg}")
-        data = pk.load(f_in)
-        # noinspection PyPep8Naming
-        TEXT, LABEL, p_bunch, u_bunch, n_bunch, test_bunch = data
-        logging.debug(f"COMPLETED: {msg}")
-
-    train_ds = _build_train_set(p_bunch,
-                                u_bunch if args.loss != LossType.PN else None,
-                                n_bunch if args.loss != LossType.NNPU else None,
-                                TEXT, LABEL)
-    # u_ds = _bunch_to_ds(u_bunch, TEXT, LABEL)
-    test_ds = _bunch_to_ds(test_bunch, TEXT, LABEL)
-    u_ds = None  # ToDo Restore unlabel/test DS builder
-
-    LABEL.build_vocab(train_ds, test_ds)
-    # LABEL.build_vocab(train_ds)  # ToDo Restore LABEL Vocab builder
-    _print_stats(TEXT, LABEL)
-    return TEXT, LABEL, train_ds, test_ds, u_ds
+    serial = NewsgroupsData.load(args)
+    _print_stats(serial.text, serial.label)
+    return serial
 
 
 def _main():

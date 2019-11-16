@@ -1,6 +1,6 @@
 from ._base_classifier import ClassifierConfig
 
-from .config import BASE_DIR, IS_CUDA, NEG_LABEL, POS_LABEL, TORCH_DEVICE, U_LABEL
+from ._utils import BASE_DIR, IS_CUDA, NEG_LABEL, POS_LABEL, U_LABEL, construct_iterator
 
 
 def calculate_prior(ds) -> float:
