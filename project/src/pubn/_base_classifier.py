@@ -1,7 +1,7 @@
 from torch import Tensor
 import torch.nn as nn
 
-from pubn import TORCH_DEVICE
+from .config import TORCH_DEVICE
 
 
 class ClassifierConfig:

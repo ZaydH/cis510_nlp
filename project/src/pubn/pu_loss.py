@@ -6,14 +6,8 @@ import torch
 from torch import Tensor
 import torch.nn as nn
 
-from tensor_utils import TensorUtils
-
-
-class LossType(Enum):
-    r""" Loss type to train the learner """
-    PN = "PN"
-    NNPU = "nnPU"
-    PUBN = "PUbN"
+from .config import POS_LABEL
+from .tensor_utils import TensorUtils
 
 
 def _default_loss(x: Tensor) -> Tensor:
@@ -26,9 +20,6 @@ PU_SIGMOID_LOSS = _default_loss
 
 class PULoss:
     """wrapper of loss function for PU learning"""
-
-    P_LABEL = 1
-    # U_LABEL = -1
 
     LossInfo = collections.namedtuple("LossInfo", ["loss_var", "grad_var"])
 
@@ -79,7 +70,7 @@ class PULoss:
         self._verify_loss_inputs(dec_scores, label)
 
         # Mask used to filter the dec_scores tensor and in loss calculations
-        p_mask = label == self.P_LABEL
+        p_mask = label == POS_LABEL
         u_mask = ~p_mask
         has_p, has_u = p_mask.any(), u_mask.any()
 
@@ -121,12 +112,12 @@ class PULoss:
         self._verify_loss_inputs(dec_scores, labels)
 
         # Mask used to filter the dec_scores tensor and in loss calculations
-        p_mask = labels == self.P_LABEL
-        p_err = (dec_scores[p_mask].sign() != self.P_LABEL).float().mean()
+        p_mask = labels == POS_LABEL
+        p_err = (dec_scores[p_mask].sign() != POS_LABEL).float().mean()
 
         u_mask = ~p_mask
         # By checking against P_LABEL, inherent negation so do not use != operator
-        u_err = (dec_scores[u_mask].sign() == self.P_LABEL).float().mean()
+        u_err = (dec_scores[u_mask].sign() == POS_LABEL).float().mean()
 
         return 2 * self.prior * p_err + u_err - self.prior
 
@@ -191,3 +182,10 @@ class PUbN:
         if not is_unlabeled: neg_sigma = neg_sigma / sigma_x
 
         return (loss * neg_sigma).mean()
+
+
+class LossType(Enum):
+    r""" Loss type to train the learner """
+    PN = nn.BCELoss
+    NNPU = PULoss
+    PUBN = PUbN

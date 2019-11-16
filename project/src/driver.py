@@ -1,7 +1,9 @@
 import argparse
 from argparse import Namespace
 
-from pu_loss import LossType
+from load_newsgroups import load_20newsgroups
+from pubn.model import NlpBiasedLearner
+from pubn.pu_loss import LossType
 
 
 def parse_args() -> Namespace:
@@ -29,7 +31,8 @@ def parse_args() -> Namespace:
 
 
 def _main(args: Namespace):
-    pass
+    TEXT, LABEL, train_ds, test_ds = load_20newsgroups(args)
+    learner = NlpBiasedLearner(args, TEXT.vocab.vectors)
 
 
 if __name__ == "__main__":

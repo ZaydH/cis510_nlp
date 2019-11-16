@@ -27,3 +27,7 @@ TORCH_DEVICE = torch.device("cuda:0" if IS_CUDA else "cpu")
 if IS_CUDA:
     # noinspection PyUnresolvedReferences
     torch.set_default_dtype(torch.cuda.FloatTensor)
+
+POS_LABEL = 1
+U_LABEL = 0
+NEG_LABEL = -1

@@ -20,7 +20,7 @@ import torchtext.vocab
 
 # Valid Choices - Any subset of: ('headers', 'footers', 'quotes')
 from logger_utils import setup_logger
-from pubn import BASE_DIR, TORCH_DEVICE
+from pubn import BASE_DIR, NEG_LABEL, POS_LABEL, U_LABEL, TORCH_DEVICE
 
 DATASET_REMOVE = ('headers', 'footers', 'quotes')
 VALID_DATA_SUBSETS = ("train", "test", "all")
@@ -32,10 +32,6 @@ LABEL_COL = "target"
 LABEL_NAMES_COL = "target_names"
 
 MAX_SEQ_LEN = 500
-
-POS_LABEL = 1
-UNLABELED = 0
-NEG_LABEL = -1
 
 
 def _download_20newsgroups(subset: str, data_dir: Path, pos_cls: Set[int], neg_cls: Set[int]):
@@ -54,15 +50,13 @@ def _download_20newsgroups(subset: str, data_dir: Path, pos_cls: Set[int], neg_c
     dataset = sklearn.datasets.fetch_20newsgroups(data_home=data_dir, shuffle=False,
                                                   remove=DATASET_REMOVE, subset=subset)
 
-    _filter_by_classes(dataset, pos_cls=pos_cls, neg_classes=neg_cls)
+    _filter_by_classes(dataset, cls_to_keep=pos_cls | neg_cls)
     return dataset
 
 
-def _filter_by_classes(bunch: Bunch, pos_cls: Set[int], neg_classes: Set[int]):
+def _filter_by_classes(bunch: Bunch, cls_to_keep: Set[int]):
     r""" Removes any dataset items not in the specified class label lists """
-    all_classes = pos_cls | neg_classes
-    # Filter according to positive and negative class set
-    keep_idx = [val in all_classes for val in bunch[LABEL_COL]]
+    keep_idx = [val in cls_to_keep for val in bunch[LABEL_COL]]
     assert any(keep_idx), "No elements to keep list"
 
     def _filt_col(col_name: str):
@@ -146,7 +140,7 @@ def _build_train_set(p_bunch: Bunch, u_bunch: Bunch, n_bunch: Optional[Bunch],
     Convert the positive, negative, and unlabeled \p Bunch objects into a Dataset
     """
     data, labels, names = [], [], []
-    for bunch, lbl in ((p_bunch, POS_LABEL), (u_bunch, UNLABELED), (n_bunch, NEG_LABEL)):
+    for bunch, lbl in ((p_bunch, POS_LABEL), (u_bunch, U_LABEL), (n_bunch, NEG_LABEL)):
         if bunch is None: continue
         data.extend(bunch[DATA_COL])
         labels.append(np.full_like(bunch[LABEL_COL], lbl))
@@ -206,7 +200,7 @@ def load_20newsgroups(args: Namespace, data_dir: Optional[Union[Path, str]] = No
 
     LABEL.build_vocab(train_ds, test_ds)
     _print_stats(TEXT, LABEL)
-    return TEXT, LABEL, train_ds, test_ds,
+    return TEXT, LABEL, train_ds, test_ds
 
 
 def _main():
