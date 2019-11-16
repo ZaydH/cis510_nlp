@@ -36,7 +36,6 @@ from tensorboardX import SummaryWriter
 from pubn import BASE_DIR
 from pubn.custom_types import ListOrInt, OptDict, OptInt, OptStr, PathOrStr, TorchOrNp
 
-LOG_DIR = BASE_DIR / "logs"
 FORMAT_STR = '%(asctime)s -- %(levelname)s -- %(message)s'
 
 
@@ -57,8 +56,9 @@ def setup_logger(log_level: int = logging.DEBUG, job_id: Optional[ListOrInt] = N
         job_str = "_j=%s_" % "-".join("%05d" % x for x in job_id)
     filename = "log%s_%s.log" % (job_str, time_str)
 
-    LOG_DIR.mkdir(parents=True, exist_ok=True)
-    filename = LOG_DIR / filename
+    log_dir = BASE_DIR / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    filename = log_dir / filename
 
     logging.basicConfig(filename=filename, level=log_level, format=FORMAT_STR, datefmt=date_format)
 

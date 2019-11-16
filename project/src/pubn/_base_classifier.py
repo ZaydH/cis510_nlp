@@ -1,26 +1,25 @@
-from argparse import Namespace
-
-from fastai.basic_data import DataBunch
 from torch import Tensor
 import torch.nn as nn
-import torch.optim
 
-from pubn import IS_CUDA, TORCH_DEVICE
+from pubn import TORCH_DEVICE
 
 
-class RnnClassifier(nn.Module):
-    class Config:
-        BIDIRECTIONAL = True
-        EMBED_DIM = 300
+class ClassifierConfig:
+    BIDIRECTIONAL = True
+    EMBED_DIM = 300
 
-        RNN_HIDDEN_DIM = 300
-        RNN_DEPTH = 1
+    RNN_HIDDEN_DIM = 300
+    RNN_DEPTH = 1
 
-        FF_HIDDEN_DEPTH = 1
-        FF_HIDDEN_DIM = 256
-        FF_ACTIVATION = nn.ReLU
+    FF_HIDDEN_DEPTH = 1
+    FF_HIDDEN_DIM = 256
+    FF_ACTIVATION = nn.ReLU
 
-        BASE_RNN = nn.LSTM
+    BASE_RNN = nn.LSTM
+
+
+class BaseClassifier(nn.Module):
+    Config = ClassifierConfig
 
     def __init__(self, embed: nn.Embedding):
         super().__init__()
@@ -53,43 +52,3 @@ class RnnClassifier(nn.Module):
         ff_in = seq_out[-1]
         y_hat = self._ff.forward(ff_in)
         return y_hat
-
-
-class NlpBiasedLearner(nn.Module):
-    def __init__(self, embedding: nn.Embedding, args: Namespace):
-        self._model = RnnClassifier(embedding)
-        self.l_type = args.
-
-    def fit(self):
-        pass
-
-    def _fit_supervised(self):
-        pass
-
-    def _train_sigma(self, p_db: DataBunch, bn_db: DataBunch, u_db: DataBunch):
-        raise NotImplementedError
-
-class _SigmaLearner(nn.Module):
-    class Config:
-        NUM_EPOCH = 100
-        LR = 1E-3
-        WD = 0
-
-    def __init__(self):
-        self._net = dfdf
-
-        if IS_CUDA: self.cuda(TORCH_DEVICE)
-
-    def fit(self, p_db: DataBunch, bn_db: DataBunch, u_db: DataBunch):
-        merged_db = merge_dbs_for_latent(p_db=p_db, bn_db=bn_db, u_db=u_db, neg_label=PUbN.BN_LABEL)
-
-
-        opt = torch.optim.AdamW(self.parameters(), lr=self.Config.LR, weight_decay=self.Config.WD)
-        for ep in range(1, self.Config.NUM_EPOCH + 1):
-
-            for x, y in merged_db.train_dl:
-                dec_scores = self._net.forward(x)
-
-
-    def forward(self, x: Tensor) -> Tensor:
-        return self._net.forward(x)

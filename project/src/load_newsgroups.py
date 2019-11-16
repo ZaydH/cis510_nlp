@@ -13,14 +13,14 @@ import sklearn.datasets
 from sklearn.utils import Bunch
 
 import torchtext
-from torchtext.data import Field, LabelField
+from torchtext.data import Field, Iterator, LabelField
 import torchtext.datasets
 from torchtext.data.dataset import Dataset
 import torchtext.vocab
 
 # Valid Choices - Any subset of: ('headers', 'footers', 'quotes')
 from logger_utils import setup_logger
-from pubn import TORCH_DEVICE
+from pubn import BASE_DIR, TORCH_DEVICE
 
 DATASET_REMOVE = ('headers', 'footers', 'quotes')
 VALID_DATA_SUBSETS = ("train", "test", "all")
@@ -55,7 +55,6 @@ def _download_20newsgroups(subset: str, data_dir: Path, pos_cls: Set[int], neg_c
                                                   remove=DATASET_REMOVE, subset=subset)
 
     _filter_by_classes(dataset, pos_cls=pos_cls, neg_classes=neg_cls)
-    # dataset[DATA_COL] = [_tokenize(x) for x in dataset[DATA_COL]]
     return dataset
 
 
@@ -158,12 +157,12 @@ def _build_train_set(p_bunch: Bunch, u_bunch: Bunch, n_bunch: Optional[Bunch],
     return _bunch_to_ds(t_bunch, text, label)
 
 
-def construct_iterator(ds: Dataset, bs: int, shuffle: bool = True):
-    return torchtext.data.Iterator(dataset=ds, batch_size=bs, shuffle=shuffle,
-                                   device=TORCH_DEVICE)
+def construct_iterator(ds: Dataset, bs: int, shuffle: bool = True) -> Iterator:
+    r""" Construct \p Iterator which emulates a \p DataLoader """
+    return Iterator(dataset=ds, batch_size=bs, shuffle=shuffle, device=TORCH_DEVICE)
 
 
-def load_20newsgroups(args: Namespace, data_dir: Union[Path, str]):
+def load_20newsgroups(args: Namespace, data_dir: Optional[Union[Path, str]] = None):
     r"""
     Automatically downloads the 20 newsgroups dataset.
 
@@ -174,6 +173,7 @@ def load_20newsgroups(args: Namespace, data_dir: Union[Path, str]):
     assert args.pos and args.neg, "Class list empty"
     assert not (args.pos & args.neg), "Positive and negative classes not disjoint"
 
+    if data_dir is None: data_dir = BASE_DIR / ".data"
     data_dir = Path(data_dir)
 
     global CACHE_DIR
@@ -220,7 +220,7 @@ def _main():
     pk_file = Path("ds_debug.pk")
     if not pk_file.exists():
         # noinspection PyUnusedLocal
-        newsgroups = load_20newsgroups(args, "data")
+        newsgroups = load_20newsgroups(args)
         # with open(str(pk_file), "wb+") as f_out:
         #     pk.dump((train_ds, test_ds), f_out)
     else:
