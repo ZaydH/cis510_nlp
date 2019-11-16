@@ -1,6 +1,7 @@
 import argparse
 from argparse import Namespace
 
+from generate_results import calculate_results
 from load_newsgroups import load_20newsgroups
 from logger_utils import setup_logger
 from pubn import calculate_prior
@@ -46,9 +47,13 @@ def parse_args() -> Namespace:
 def _main(args: Namespace):
     newsgroups = load_20newsgroups(args)  # ToDo fix 20 newsgroups to filter empty examples
 
-    learner = NlpBiasedLearner(args, newsgroups.text.vocab.vectors,
-                               prior=calculate_prior(newsgroups.test))
-    learner.fit(newsgroups.train, newsgroups.label)
+    classifier = NlpBiasedLearner(args, newsgroups.text.vocab.vectors,
+                                  prior=calculate_prior(newsgroups.test))
+    # noinspection PyUnresolvedReferences
+    classifier.fit(newsgroups.train, newsgroups.label)
+
+    calculate_results(args, classifier, newsgroups.label, unlabel_ds=newsgroups.unlabel,
+                      test_ds=newsgroups.test)
 
 
 if __name__ == "__main__":

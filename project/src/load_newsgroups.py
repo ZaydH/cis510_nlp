@@ -111,12 +111,12 @@ def _download_20newsgroups(subset: str, data_dir: Path, pos_cls: Set[int], neg_c
     assert subset in VALID_DATA_SUBSETS, "Invalid data subset"
 
     data_dir.mkdir(parents=True, exist_ok=True)
-    dataset = sklearn.datasets.fetch_20newsgroups(data_home=data_dir, shuffle=False,
+    bunch = sklearn.datasets.fetch_20newsgroups(data_home=data_dir, shuffle=False,
                                                   remove=DATASET_REMOVE, subset=subset)
-    _filter_bunch_by_classes(dataset, cls_to_keep=pos_cls | neg_cls)
+    _filter_bunch_by_classes(bunch, cls_to_keep=pos_cls | neg_cls)
 
     logging.debug(f"COMPLETED: {msg}")
-    return dataset
+    return bunch
 
 
 def _filter_bunch_by_classes(bunch: Bunch, cls_to_keep: Set[int]):
@@ -124,12 +124,10 @@ def _filter_bunch_by_classes(bunch: Bunch, cls_to_keep: Set[int]):
     keep_idx = [val in cls_to_keep for val in bunch[LABEL_COL]]
     assert any(keep_idx), "No elements to keep list"
 
-    def _filt_col(col_name: str):
-        return list(itertools.compress(bunch[col_name], keep_idx))
-
-    for key in bunch.keys():
-        if isinstance(bunch[key], (list, np.ndarray)): continue
-        bunch[key] = _filt_col(key)
+    for key, val in bunch.items():
+        if not isinstance(val, (list, np.ndarray)): continue
+        if len(val) != len(keep_idx): continue
+        bunch[key] = list(itertools.compress(val, keep_idx))
 
 
 # def filter_dataset_by_cls(ds: Dataset, label_to_remove: Union[Set[int], int]) -> Subset:

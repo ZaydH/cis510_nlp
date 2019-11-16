@@ -15,7 +15,7 @@ import torch.optim as optim
 from torchtext.data import Iterator, Dataset, LabelField
 
 from ._base_classifier import BaseClassifier, ClassifierConfig
-from ._utils import BASE_DIR, NEG_LABEL, POS_LABEL, U_LABEL, construct_iterator
+from ._utils import BASE_DIR, NEG_LABEL, POS_LABEL, TORCH_DEVICE, U_LABEL, construct_iterator
 from .logger import TrainingLogger, create_stdout_handler
 from .loss import LossType, PULoss
 
@@ -29,6 +29,8 @@ class NlpBiasedLearner(nn.Module):
     def __init__(self, args: Namespace, embedding_weights: Tensor, prior: float):
         super().__init__()
         self._setup_logger()
+
+        self._log.debug(f"NLP Learner: Prior: {prior:.3f}")
 
         self._model = BaseClassifier(embedding_weights)
         self.prior = prior
@@ -204,7 +206,6 @@ def load_module(module: nn.Module, filepath: Path):
     :return: Loaded model
     """
     # Map location allows for mapping model trained on any device to be loaded
-    # noinspection PyUnresolvedReferences
     module.load_state_dict(torch.load(str(filepath), map_location=TORCH_DEVICE))
     # module.load_state_dict(torch.load(str(filepath)))
 
