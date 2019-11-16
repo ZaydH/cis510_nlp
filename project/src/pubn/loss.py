@@ -58,7 +58,7 @@ class PULoss:
         assert dec_scores.dtype == torch.float, "dec_scores tensor must be float"
         assert labels.dtype == torch.int, "labels must be integers"
 
-    def _calculate_loss_and_grad_vars(self, dec_scores: Tensor, label: Tensor) -> 'LossInfo':
+    def calc_loss(self, dec_scores: Tensor, label: Tensor) -> 'LossInfo':
         r"""
         nnPU uses separate approaches for determining the loss and variable used for calculating
         the gradient.
@@ -90,15 +90,15 @@ class PULoss:
             gradient_var = -self.gamma * neg_risk
         return self.LossInfo(loss_var=loss, grad_var=gradient_var)
 
-    def calc_grad(self, dec_scores: Tensor, labels: Tensor) -> Tensor:
-        r""" Calculates the variable for use as gradient """
-        loss_info = self._calculate_loss_and_grad_vars(dec_scores, labels)
-        return loss_info.grad_var
-
-    def calc_loss(self, dec_scores: Tensor, labels: Tensor) -> Tensor:
-        r""" Calculates the variable for use as gradient """
-        loss_info = self._calculate_loss_and_grad_vars(dec_scores, labels)
-        return loss_info.loss_var
+    # def calc_grad(self, dec_scores: Tensor, labels: Tensor) -> Tensor:
+    #     r""" Calculates the variable for use as gradient """
+    #     loss_info = self._calculate_loss_and_grad_vars(dec_scores, labels)
+    #     return loss_info.grad_var
+    #
+    # def calc_loss(self, dec_scores: Tensor, labels: Tensor) -> Tensor:
+    #     r""" Calculates the variable for use as gradient """
+    #     loss_info = self._calculate_loss_and_grad_vars(dec_scores, labels)
+    #     return loss_info.loss_var
 
     def zero_one_loss(self, dec_scores: Tensor, labels: Tensor) -> Tensor:
         r"""

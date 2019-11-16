@@ -10,6 +10,8 @@ class ClassifierConfig:
     LOGGER_NAME = 'nlp_learner'
     LOG_LEVEL = logging.DEBUG
 
+    NUM_EPOCH = 100
+
     BIDIRECTIONAL = True
     EMBED_DIM = 300
 
@@ -48,12 +50,13 @@ class BaseClassifier(nn.Module):
 
         self.to(TORCH_DEVICE)
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor, seq_len: Tensor) -> Tensor:
+        assert x.shape[1] == seq_len.size(), "Number of elements mismatch"
         x_embed = self._embed(x)
 
         # **output** of shape `(seq_len, batch, num_directions * hidden_size)`: tensor
         seq_out, _ = self._rnn.forward(x_embed, hx=None)  # Always use a fresh hidden
 
-        ff_in = seq_out[-1]
+        ff_in = seq_out[seq_len]
         y_hat = self._ff.forward(ff_in)
         return y_hat

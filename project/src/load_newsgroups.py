@@ -22,6 +22,7 @@ import torchtext.vocab
 # Valid Choices - Any subset of: ('headers', 'footers', 'quotes')
 from logger_utils import setup_logger
 from pubn import BASE_DIR, NEG_LABEL, POS_LABEL, U_LABEL, TORCH_DEVICE
+from pubn.loss import LossType
 
 DATASET_REMOVE = ('headers', 'footers', 'quotes')
 VALID_DATA_SUBSETS = ("train", "test", "all")
@@ -70,17 +71,17 @@ def _filter_bunch_by_classes(bunch: Bunch, cls_to_keep: Set[int]):
         bunch[key] = _filt_col(key)
 
 
-def filter_dataset_by_cls(ds: Dataset, label_to_remove: Union[Set[int], int]) -> Subset:
-    r""" Select a subset of the \p Dataset at the exclusion """
-    if isinstance(label_to_remove, int): label_to_remove = {label_to_remove}
-
-    indices = []
-    for idx, x in enumerate(ds):
-        if x.label in label_to_remove:
-            indices.append(idx)
-
-    # indices = torch.tensor(indices, dtype=torch.int64)
-    return Subset(ds, indices)
+# def filter_dataset_by_cls(ds: Dataset, label_to_remove: Union[Set[int], int]) -> Subset:
+#     r""" Select a subset of the \p Dataset at the exclusion """
+#     if isinstance(label_to_remove, int): label_to_remove = {label_to_remove}
+#
+#     indices = []
+#     for idx, x in enumerate(ds):
+#         if x.label in label_to_remove:
+#             indices.append(idx)
+#
+#     # indices = torch.tensor(indices, dtype=torch.int64)
+#     return Subset(ds, indices)
 
 
 def _filter_bunch_by_idx(bunch: Bunch, keep_idx):
@@ -244,10 +245,13 @@ def load_20newsgroups(args: Namespace):
         TEXT, LABEL, p_bunch, u_bunch, n_bunch, test_bunch = data
         logging.debug(f"COMPLETED: {msg}")
 
-    train_ds = _build_train_set(p_bunch, u_bunch, n_bunch, TEXT, LABEL)
+    train_ds = _build_train_set(p_bunch,
+                                u_bunch if args.loss != LossType.PN else None,
+                                n_bunch if args.loss != LossType.NNPU else None,
+                                TEXT, LABEL)
     # u_ds = _bunch_to_ds(u_bunch, TEXT, LABEL)
     # test_ds = _bunch_to_ds(test_bunch, TEXT, LABEL)
-    u_ds = test_ds = None # ToDo Restore unlabel/test DS builder
+    u_ds = test_ds = None  # ToDo Restore unlabel/test DS builder
 
     # LABEL.build_vocab(train_ds, test_ds)  # ToDo Restore LABEL Vocab builder
     LABEL.build_vocab(train_ds)
