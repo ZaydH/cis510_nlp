@@ -104,11 +104,12 @@ class PULoss:
 
         # Mask used to filter the dec_scores tensor and in loss calculations
         p_mask = labels == self.pos_label
-        p_err = (dec_scores[p_mask].sign() != self.pos_label).float().mean()
+        one_val = 1  # Sign value for examples to be positively labeled
+        p_err = (dec_scores[p_mask].sign() != one_val).float().mean()
 
         u_mask = ~p_mask
         # By checking against P_LABEL, inherent negation so do not use != operator
-        u_err = (dec_scores[u_mask].sign() == self.pos_label).float().mean()
+        u_err = (dec_scores[u_mask].sign() == one_val).float().mean()
 
         return 2 * self.prior * p_err + u_err - self.prior
 
