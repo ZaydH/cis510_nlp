@@ -1,3 +1,5 @@
+import logging
+
 from torch import Tensor
 import torch.nn as nn
 
@@ -5,6 +7,9 @@ from .config import TORCH_DEVICE
 
 
 class ClassifierConfig:
+    LOGGER_NAME = 'nlp_learner'
+    LOG_LEVEL = logging.DEBUG
+
     BIDIRECTIONAL = True
     EMBED_DIM = 300
 

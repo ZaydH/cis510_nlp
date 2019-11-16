@@ -3,7 +3,7 @@ import copy
 import itertools
 import logging
 from pathlib import Path
-# import pickle as pk
+import pickle as pk
 from typing import Optional, Set, Tuple, Union
 
 import nltk.tokenize
@@ -13,7 +13,8 @@ import sklearn.datasets
 from sklearn.utils import Bunch
 
 import torchtext
-from torchtext.data import Field, Iterator, LabelField
+from torch.utils.data import Subset
+from torchtext.data import Example, Field, Iterator, LabelField
 import torchtext.datasets
 from torchtext.data.dataset import Dataset
 import torchtext.vocab
@@ -24,8 +25,6 @@ from pubn import BASE_DIR, NEG_LABEL, POS_LABEL, U_LABEL, TORCH_DEVICE
 
 DATASET_REMOVE = ('headers', 'footers', 'quotes')
 VALID_DATA_SUBSETS = ("train", "test", "all")
-
-CACHE_DIR = None
 
 DATA_COL = "data"
 LABEL_COL = "target"
@@ -50,11 +49,11 @@ def _download_20newsgroups(subset: str, data_dir: Path, pos_cls: Set[int], neg_c
     dataset = sklearn.datasets.fetch_20newsgroups(data_home=data_dir, shuffle=False,
                                                   remove=DATASET_REMOVE, subset=subset)
 
-    _filter_by_classes(dataset, cls_to_keep=pos_cls | neg_cls)
+    _filter_bunch_by_classes(dataset, cls_to_keep=pos_cls | neg_cls)
     return dataset
 
 
-def _filter_by_classes(bunch: Bunch, cls_to_keep: Set[int]):
+def _filter_bunch_by_classes(bunch: Bunch, cls_to_keep: Set[int]):
     r""" Removes any dataset items not in the specified class label lists """
     keep_idx = [val in cls_to_keep for val in bunch[LABEL_COL]]
     assert any(keep_idx), "No elements to keep list"
@@ -65,6 +64,19 @@ def _filter_by_classes(bunch: Bunch, cls_to_keep: Set[int]):
     for key in bunch.keys():
         if isinstance(bunch[key], (list, np.ndarray)): continue
         bunch[key] = _filt_col(key)
+
+
+def filter_dataset_by_cls(ds: Dataset, label_to_remove: Union[Set[int], int]) -> Subset:
+    r""" Select a subset of the \p Dataset at the exclusion """
+    if isinstance(label_to_remove, int): label_to_remove = {label_to_remove}
+
+    indices = []
+    for idx, x in enumerate(ds):
+        if x.label in label_to_remove:
+            indices.append(idx)
+
+    # indices = torch.tensor(indices, dtype=torch.int64)
+    return Subset(ds, indices)
 
 
 def _filter_bunch_by_idx(bunch: Bunch, keep_idx):
@@ -123,7 +135,7 @@ def _select_positive_bunch(size_p: int, bunch: Bunch, pos_cls: Set[int],
 def _bunch_to_ds(bunch: Bunch, text: Field, label: LabelField) -> Dataset:
     r""" Converts the \p bunch to a classification dataset """
     fields = [('text', text), ('label', label)]
-    examples = [torchtext.data.Example.fromlist([bunch[DATA_COL], bunch[LABEL_COL]], fields)]
+    examples = [Example.fromlist(x, fields) for x in zip(bunch[DATA_COL], bunch[LABEL_COL])]
     return Dataset(examples, fields)
 
 
@@ -156,23 +168,25 @@ def construct_iterator(ds: Dataset, bs: int, shuffle: bool = True) -> Iterator:
     return Iterator(dataset=ds, batch_size=bs, shuffle=shuffle, device=TORCH_DEVICE)
 
 
-def load_20newsgroups(args: Namespace, data_dir: Optional[Union[Path, str]] = None):
-    r"""
-    Automatically downloads the 20 newsgroups dataset.
+def _pickle_filename(args: Namespace) -> Path:
+    r""" File name for pickle file """
+    serialize_dir = BASE_DIR / "tensors"
+    serialize_dir.mkdir(parents=True, exist_ok=True)
 
-    :param args: Parsed command line arguments
-    :param data_dir: Directory from which to get the training data
-    :return:
-    """
-    assert args.pos and args.neg, "Class list empty"
-    assert not (args.pos & args.neg), "Positive and negative classes not disjoint"
+    def _classes_to_str(cls_set: Set[int]) -> str:
+        return ",".join([str(x) for x in sorted(cls_set)])
 
-    if data_dir is None: data_dir = BASE_DIR / ".data"
-    data_dir = Path(data_dir)
+    fields = ["data", f"n-p={args.size_p}", f"n-n={args.size_n}",
+              f"pos={_classes_to_str(args.pos)}", f"neg={_classes_to_str(args.neg)}"]
 
-    global CACHE_DIR
-    CACHE_DIR = data_dir / ".vector_cache"
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    fields[-1] += ".pk"
+    return serialize_dir / "_".join(fields)
+
+
+def _create_serialized_20newsgroups(serialize_path: Path, args):
+    data_dir = BASE_DIR / ".data"
+    cache_dir = data_dir / ".vector_cache"
+    cache_dir.mkdir(parents=True, exist_ok=True)
 
     complete_train = _download_20newsgroups("train", data_dir, args.pos, args.neg)
 
@@ -184,7 +198,7 @@ def load_20newsgroups(args: Namespace, data_dir: Optional[Union[Path, str]] = No
     LABEL = LabelField(sequential=False)
     complete_ds = _bunch_to_ds(complete_train, TEXT, LABEL)
     TEXT.build_vocab(complete_ds,
-                     vectors=torchtext.vocab.GloVe(name="6B", dim=args.embed_dim, cache=CACHE_DIR))
+                     vectors=torchtext.vocab.GloVe(name="6B", dim=args.embed_dim, cache=cache_dir))
 
     p_bunch, u_bunch = _select_positive_bunch(args.size_p, complete_train, args.pos,
                                               remove_p_from_u=False)
@@ -200,27 +214,40 @@ def load_20newsgroups(args: Namespace, data_dir: Optional[Union[Path, str]] = No
 
     LABEL.build_vocab(train_ds, test_ds)
     _print_stats(TEXT, LABEL)
-    return TEXT, LABEL, train_ds, test_ds
+
+    # Serialize 20 news groups
+    with open(str(serialize_path), "wb") as f_out:
+        pk.dump((TEXT, LABEL, train_ds, test_ds), f_out)
+
+
+def load_20newsgroups(args: Namespace):
+    r"""
+    Automatically downloads the 20 newsgroups dataset.
+    :param args: Parsed command line arguments
+    """
+    assert args.pos and args.neg, "Class list empty"
+    assert not (args.pos & args.neg), "Positive and negative classes not disjoint"
+
+    # Load the serialized file if it exists
+    serialize_path = _pickle_filename(args)
+    if not serialize_path.exists():
+        _create_serialized_20newsgroups(serialize_path, args)
+
+    with open(str(serialize_path), "rb") as f_in:
+        data = pk.load(f_in)
+    _print_stats(data[0], data[1])
+    return data
 
 
 def _main():
-
     args = Namespace()
     args.size_p = 1000
     args.size_n = 0
     args.embed_dim = 300
     args.pos, args.neg = set(range(0, 10)),  set(range(10, 20))
 
-    pk_file = Path("ds_debug.pk")
-    if not pk_file.exists():
-        # noinspection PyUnusedLocal
-        newsgroups = load_20newsgroups(args)
-        # with open(str(pk_file), "wb+") as f_out:
-        #     pk.dump((train_ds, test_ds), f_out)
-    else:
-        pass
-        # with open(str(pk_file), "rb") as f_in:
-        #     train_ds, test_ds = pk.load(f_in)
+    # noinspection PyUnusedLocal
+    newsgroups = load_20newsgroups(args)
 
     print("Completed")
 
