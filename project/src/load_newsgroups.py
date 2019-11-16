@@ -20,6 +20,7 @@ import torchtext.vocab
 
 # Valid Choices - Any subset of: ('headers', 'footers', 'quotes')
 from logger_utils import setup_logger
+from pubn import TORCH_DEVICE
 
 DATASET_REMOVE = ('headers', 'footers', 'quotes')
 VALID_DATA_SUBSETS = ("train", "test", "all")
@@ -155,6 +156,11 @@ def _build_train_set(p_bunch: Bunch, u_bunch: Bunch, n_bunch: Optional[Bunch],
     t_bunch[DATA_COL] = data
     t_bunch[LABEL_COL] = np.concatenate(labels, axis=0)
     return _bunch_to_ds(t_bunch, text, label)
+
+
+def construct_iterator(ds: Dataset, bs: int, shuffle: bool = True):
+    return torchtext.data.Iterator(dataset=ds, batch_size=bs, shuffle=shuffle,
+                                   device=TORCH_DEVICE)
 
 
 def load_20newsgroups(args: Namespace, data_dir: Union[Path, str]):

@@ -1,1 +1,1 @@
-from .config import BASE_DIR
+from .config import BASE_DIR, IS_CUDA, TORCH_DEVICE

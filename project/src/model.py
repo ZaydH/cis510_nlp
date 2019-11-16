@@ -5,11 +5,7 @@ from torch import Tensor
 import torch.nn as nn
 import torch.optim
 
-from newsgroups import merge_dbs_for_latent
-from pu_loss import PULoss, PUbN
-
-IS_CUDA = torch.cuda.is_available()
-TORCH_DEVICE = torch.device("cuda:0" if IS_CUDA else "cpu")
+from pubn import IS_CUDA, TORCH_DEVICE
 
 
 class RnnClassifier(nn.Module):
