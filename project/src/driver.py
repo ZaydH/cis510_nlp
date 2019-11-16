@@ -4,6 +4,8 @@ from argparse import Namespace
 from torchnet.dataset.dataset import Dataset
 
 from load_newsgroups import load_20newsgroups, construct_iterator
+from logger_utils import setup_logger
+from pubn import calculate_prior
 from pubn.model import NlpBiasedLearner
 from pubn.loss import LossType
 
@@ -41,18 +43,16 @@ def parse_args() -> Namespace:
     return args
 
 
-def _train_learner(args: Namespace, learner: NlpBiasedLearner, train_ds: Dataset):
-    itr = construct_iterator(train_ds, bs=args.bs, shuffle=True)
-    learner.fit(itr)
-
-
 def _main(args: Namespace):
     # noinspection PyPep8Naming
     TEXT, LABEL, train_ds, test_ds, u_ds = load_20newsgroups(args)
 
-    learner = NlpBiasedLearner(args, TEXT.vocab.vectors)
-    _train_learner(args, learner, train_ds)
+    learner = NlpBiasedLearner(args, TEXT.vocab.vectors, prior=calculate_prior(test_ds))
+
+    itr = construct_iterator(train_ds, bs=args.bs, shuffle=True)
+    learner.fit(itr)
 
 
 if __name__ == "__main__":
+    setup_logger()
     _main(parse_args())

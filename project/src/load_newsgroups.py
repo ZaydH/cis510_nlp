@@ -4,7 +4,7 @@ import itertools
 import logging
 from pathlib import Path
 import pickle as pk
-from typing import Optional, Set, Tuple, Union
+from typing import Optional, Set, Tuple
 
 import nltk.tokenize
 import numpy as np
@@ -13,7 +13,6 @@ import sklearn.datasets
 from sklearn.utils import Bunch
 
 import torchtext
-from torch.utils.data import Subset
 from torchtext.data import Example, Field, Iterator, LabelField
 import torchtext.datasets
 from torchtext.data.dataset import Dataset
@@ -250,11 +249,11 @@ def load_20newsgroups(args: Namespace):
                                 n_bunch if args.loss != LossType.NNPU else None,
                                 TEXT, LABEL)
     # u_ds = _bunch_to_ds(u_bunch, TEXT, LABEL)
-    # test_ds = _bunch_to_ds(test_bunch, TEXT, LABEL)
-    u_ds = test_ds = None  # ToDo Restore unlabel/test DS builder
+    test_ds = _bunch_to_ds(test_bunch, TEXT, LABEL)
+    u_ds = None  # ToDo Restore unlabel/test DS builder
 
-    # LABEL.build_vocab(train_ds, test_ds)  # ToDo Restore LABEL Vocab builder
-    LABEL.build_vocab(train_ds)
+    LABEL.build_vocab(train_ds, test_ds)
+    # LABEL.build_vocab(train_ds)  # ToDo Restore LABEL Vocab builder
     _print_stats(TEXT, LABEL)
     return TEXT, LABEL, train_ds, test_ds, u_ds
 

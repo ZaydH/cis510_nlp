@@ -39,6 +39,9 @@ class NlpBiasedLearner(nn.Module):
         # Fields that apply regardless of loss method
         self._train_start = time.time()
         self._best_loss = np.inf
+
+        tb_dir = BASE_DIR / "tb"
+        TrainingLogger.create_tensorboard(tb_dir)
         self._logger = TrainingLogger(["Train Loss", "Valid Loss", "Best?", "Time"],
                                       [20, 20, 7, 10],
                                       logger_name=self.Config.LOGGER_NAME,
@@ -59,7 +62,7 @@ class NlpBiasedLearner(nn.Module):
 
         # noinspection PyUnresolvedReferences
         for ep in range(1, self._model.Config.NUM_EPOCH + 1):
-            train_loss, num_batch = torch.zeros(), 0
+            train_loss, num_batch = torch.zeros(()), 0
             for batch in train:
                 # noinspection PyUnresolvedReferences
                 dec_scores = self._model.forward(*batch.text)
@@ -101,7 +104,7 @@ class NlpBiasedLearner(nn.Module):
         r""" Calculate the validation loss for \p itr """
         self.eval()
 
-        tot_loss, n_batch = torch.zeros(), 0
+        tot_loss, n_batch = torch.zeros(()), 0
         with torch.no_grad():
             for batch in itr:
                 n_batch += 1
