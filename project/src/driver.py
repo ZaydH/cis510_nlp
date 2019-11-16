@@ -48,7 +48,7 @@ def _main(args: Namespace):
 
     learner = NlpBiasedLearner(args, newsgroups.text.vocab.vectors,
                                prior=calculate_prior(newsgroups.test))
-    learner.fit(newsgroups.train)
+    learner.fit(newsgroups.train, newsgroups.label)
 
 
 if __name__ == "__main__":

@@ -6,7 +6,6 @@ import torch
 from torch import Tensor
 import torch.nn as nn
 
-from ._utils import POS_LABEL
 from .tensor_utils import TensorUtils
 
 
@@ -23,11 +22,13 @@ class PULoss:
 
     LossInfo = collections.namedtuple("LossInfo", ["loss_var", "grad_var"])
 
-    def __init__(self, prior: float, loss: Callable = _default_loss,
+    def __init__(self, prior: float, pos_label: int, loss: Callable = _default_loss,
                  gamma: float = 1, beta: float = 0, use_nnpu: bool = True):
         if not 0 < prior < 1:
             raise NotImplementedError("The class prior should be in (0, 1)")
         self.prior = prior
+        self.pos_label = pos_label
+
         self.gamma = gamma
         self.beta = beta
         self.loss_func = loss
@@ -70,7 +71,7 @@ class PULoss:
         self._verify_loss_inputs(dec_scores, label)
 
         # Mask used to filter the dec_scores tensor and in loss calculations
-        p_mask = label == POS_LABEL
+        p_mask = label == self.pos_label
         u_mask = ~p_mask
         has_p, has_u = p_mask.any(), u_mask.any()
 
@@ -102,12 +103,12 @@ class PULoss:
         self._verify_loss_inputs(dec_scores, labels)
 
         # Mask used to filter the dec_scores tensor and in loss calculations
-        p_mask = labels == POS_LABEL
-        p_err = (dec_scores[p_mask].sign() != POS_LABEL).float().mean()
+        p_mask = labels == self.pos_label
+        p_err = (dec_scores[p_mask].sign() != self.pos_label).float().mean()
 
         u_mask = ~p_mask
         # By checking against P_LABEL, inherent negation so do not use != operator
-        u_err = (dec_scores[u_mask].sign() == POS_LABEL).float().mean()
+        u_err = (dec_scores[u_mask].sign() == self.pos_label).float().mean()
 
         return 2 * self.prior * p_err + u_err - self.prior
 

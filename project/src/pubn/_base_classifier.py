@@ -14,6 +14,9 @@ class ClassifierConfig:
     NUM_EPOCH = 100
     BATCH_SIZE = 500
 
+    LEARNING_RATE = 1E-3
+    WEIGHT_DECAY = 5E-3
+
     BIDIRECTIONAL = True
     EMBED_DIM = 300
 

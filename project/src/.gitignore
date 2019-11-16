@@ -1,4 +1,5 @@
 # Directories for the learner
 .data/
 logs/
+models/
 tb/

@@ -11,10 +11,11 @@ from fastai.basic_data import DataBunch
 import torch
 from torch import Tensor
 import torch.nn as nn
-from torchtext.data import Iterator, Dataset
+import torch.optim as optim
+from torchtext.data import Iterator, Dataset, LabelField
 
 from ._base_classifier import BaseClassifier, ClassifierConfig
-from ._utils import BASE_DIR, NEG_LABEL, U_LABEL, construct_iterator
+from ._utils import BASE_DIR, NEG_LABEL, POS_LABEL, U_LABEL, construct_iterator
 from .logger import TrainingLogger, create_stdout_handler
 from .loss import LossType, PULoss
 
@@ -36,7 +37,7 @@ class NlpBiasedLearner(nn.Module):
         self._prefix = self.l_type.name.lower()
         self._train_start = self._best_loss = self._logger = None
 
-    def fit(self, train: Dataset):
+    def fit(self, train: Dataset, labels: LabelField):
         r""" Fits the learner"""
         # Fields that apply regardless of loss method
         self._train_start = time.time()
@@ -58,7 +59,7 @@ class NlpBiasedLearner(nn.Module):
         itr = construct_iterator(train, bs=self._model.Config.BATCH_SIZE, shuffle=True)
 
         if self.l_type == LossType.NNPU:
-            self._fit_nnpu(itr)
+            self._fit_nnpu(itr, labels)
         elif self.l_type == LossType.PUBN:
             self._fit_pubn(itr)
         elif self.l_type == LossType.PN:
@@ -66,21 +67,27 @@ class NlpBiasedLearner(nn.Module):
         else:
             raise ValueError("Unknown loss type")
 
-    def _fit_nnpu(self, train: Iterator):
+    def _fit_nnpu(self, train: Iterator, labels: LabelField):
         r""" Use the nnPU loss """
-        pu_loss = PULoss(prior=self.prior)
+        pu_loss = PULoss(prior=self.prior, pos_label=labels.vocab.stoi[POS_LABEL])
 
+        # noinspection PyUnresolvedReferences
+        opt = optim.Adam(self.parameters(), lr=self._model.Config.LEARNING_RATE,
+                         weight_decay=self._model.Config.WEIGHT_DECAY)
         # noinspection PyUnresolvedReferences
         for ep in range(1, self._model.Config.NUM_EPOCH + 1):
             train_loss, num_batch = torch.zeros(()), 0
             for batch in train:
+                opt.zero_grad()
                 # noinspection PyUnresolvedReferences
                 dec_scores = self._model.forward(*batch.text)
 
                 loss = pu_loss.calc_loss(dec_scores=dec_scores, label=batch.label)
-                loss.grad_var.backward()
                 train_loss += loss.loss_var.detach()
                 num_batch += 1
+
+                loss.grad_var.backward()
+                opt.step()
 
             train_loss /= num_batch
             valid_loss = self._calc_valid_loss(train, partial(pu_loss.zero_one_loss))
@@ -144,7 +151,7 @@ class NlpBiasedLearner(nn.Module):
 
         fields = [prefix, self.l_type.name.lower()]
         fields[-1] += ".pth"
-        return serialize_dir
+        return serialize_dir / "_".join(fields)
 
     @classmethod
     def _setup_logger(cls) -> None:
