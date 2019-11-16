@@ -88,7 +88,7 @@ def _filter_bunch_by_idx(bunch: Bunch, keep_idx):
         if len(keep_idx) != len(val): continue
 
         bunch[key] = list(itertools.compress(val, keep_idx))
-        if isinstance(val, list): bunch[key] = np.asarray(bunch[key])
+        if isinstance(val, np.ndarray): bunch[key] = np.asarray(bunch[key])
     return bunch
 
 
@@ -97,7 +97,7 @@ def _configure_binary_labels(bunch: Bunch, pos_cls: Set[int]):
     def _is_pos(lbl: int) -> int:
         return POS_LABEL if lbl in pos_cls else NEG_LABEL
 
-    bunch[LABEL_COL] = np.asarray(list(map(_is_pos, bunch[LABEL_COL])), dtype=np.int)
+    bunch[LABEL_COL] = np.asarray(list(map(_is_pos, bunch[LABEL_COL])), dtype=np.int64)
 
 
 def _select_positive_bunch(size_p: int, bunch: Bunch, pos_cls: Set[int],
@@ -148,11 +148,11 @@ def _build_train_set(p_bunch: Bunch, u_bunch: Bunch, n_bunch: Optional[Bunch],
     data, labels, names = [], [], []
     for bunch, lbl in ((p_bunch, POS_LABEL), (u_bunch, UNLABELED), (n_bunch, NEG_LABEL)):
         if bunch is None: continue
-        data.append(bunch[DATA_COL])
+        data.extend(bunch[DATA_COL])
         labels.append(np.full_like(bunch[LABEL_COL], lbl))
 
     t_bunch = copy.deepcopy(u_bunch)
-    t_bunch[DATA_COL] = np.concatenate(data, axis=0)
+    t_bunch[DATA_COL] = data
     t_bunch[LABEL_COL] = np.concatenate(labels, axis=0)
     return _bunch_to_ds(t_bunch, text, label)
 
@@ -185,7 +185,6 @@ def load_20newsgroups(args: Namespace, data_dir: Union[Path, str]):
     complete_ds = _bunch_to_ds(complete_train, TEXT, LABEL)
     TEXT.build_vocab(complete_ds,
                      vectors=torchtext.vocab.GloVe(name="6B", dim=args.embed_dim, cache=CACHE_DIR))
-    LABEL.build_vocab(complete_ds)  # ToDo: Fix label build vocabulary
 
     p_bunch, u_bunch = _select_positive_bunch(args.size_p, complete_train, args.pos,
                                               remove_p_from_u=False)
@@ -196,10 +195,12 @@ def load_20newsgroups(args: Namespace, data_dir: Union[Path, str]):
     for bunch in (p_bunch, u_bunch, test_bunch):
         _configure_binary_labels(bunch, pos_cls=args.pos)
 
-    _print_stats(TEXT, LABEL)
-
     train_ds = _build_train_set(p_bunch, u_bunch, None, TEXT, LABEL)
-    return TEXT, LABEL, p_bunch, u_bunch
+    test_ds = _bunch_to_ds(test_bunch, TEXT, LABEL)
+
+    LABEL.build_vocab(train_ds, test_ds)
+    _print_stats(TEXT, LABEL)
+    return TEXT, LABEL, train_ds, test_ds,
 
 
 def _main():

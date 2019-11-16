@@ -17,7 +17,7 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from .custom_types import ListOrInt, OptInt, TorchOrNp
+from pubn.custom_types import ListOrInt, OptInt, TorchOrNp
 
 SizeType = Union[int, Tuple[int, ...]]
 

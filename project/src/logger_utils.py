@@ -33,20 +33,20 @@ from torch import Tensor
 import torch.nn as nn
 from tensorboardX import SummaryWriter
 
-from custom_types import ListOrInt, OptDict, OptInt, OptStr, PathOrStr, TorchOrNp
+from pubn import BASE_DIR
+from pubn.custom_types import ListOrInt, OptDict, OptInt, OptStr, PathOrStr, TorchOrNp
 
+LOG_DIR = BASE_DIR / "logs"
 FORMAT_STR = '%(asctime)s -- %(levelname)s -- %(message)s'
 
 
-def setup_logger(log_level: int = logging.DEBUG,
-                 log_dir: Optional[PathOrStr] = None, job_id: Optional[ListOrInt] = None) -> None:
+def setup_logger(log_level: int = logging.DEBUG, job_id: Optional[ListOrInt] = None) -> None:
     r"""
     Logger Configurator
 
     Configures the test logger.
 
     :param log_level: Level to log
-    :param log_dir: Directory to write the logs (if any)
     :param job_id: Identification number for the job
     """
     date_format = '%m/%d/%Y %I:%M:%S %p'  # Example Time Format - 12/12/2010 11:46:36 AM
@@ -57,10 +57,8 @@ def setup_logger(log_level: int = logging.DEBUG,
         job_str = "_j=%s_" % "-".join("%05d" % x for x in job_id)
     filename = "log%s_%s.log" % (job_str, time_str)
 
-    if log_dir is not None:
-        if not isinstance(log_dir, Path): log_dir = Path(log_dir)
-        log_dir.mkdir(parents=True, exist_ok=True)
-        filename = log_dir / filename
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    filename = LOG_DIR / filename
 
     logging.basicConfig(filename=filename, level=log_level, format=FORMAT_STR, datefmt=date_format)
 
