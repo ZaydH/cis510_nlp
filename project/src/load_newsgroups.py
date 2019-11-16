@@ -42,14 +42,18 @@ def _download_20newsgroups(subset: str, data_dir: Path, pos_cls: Set[int], neg_c
     :param subset: Valid choices, "train", "test", and "all"
     :return: Dataset
     """
+    msg = f"Download {subset} 20 newsgroups dataset"
+    logging.debug(f"Starting: {msg}")
+
     assert not data_dir.is_file(), "Must be a directory"
     assert subset in VALID_DATA_SUBSETS, "Invalid data subset"
 
     data_dir.mkdir(parents=True, exist_ok=True)
     dataset = sklearn.datasets.fetch_20newsgroups(data_home=data_dir, shuffle=False,
                                                   remove=DATASET_REMOVE, subset=subset)
-
     _filter_bunch_by_classes(dataset, cls_to_keep=pos_cls | neg_cls)
+
+    logging.debug(f"COMPLETED: {msg}")
     return dataset
 
 
@@ -202,6 +206,7 @@ def _create_serialized_20newsgroups(serialize_path: Path, args):
 
     p_bunch, u_bunch = _select_positive_bunch(args.size_p, complete_train, args.pos,
                                               remove_p_from_u=False)
+    n_bunch = None  # ToDo Add code for getting the N bunch
 
     test_bunch = _download_20newsgroups("test", data_dir, args.pos, args.neg)
 
@@ -209,15 +214,12 @@ def _create_serialized_20newsgroups(serialize_path: Path, args):
     for bunch in (p_bunch, u_bunch, test_bunch):
         _configure_binary_labels(bunch, pos_cls=args.pos)
 
-    train_ds = _build_train_set(p_bunch, u_bunch, None, TEXT, LABEL)
-    test_ds = _bunch_to_ds(test_bunch, TEXT, LABEL)
-
-    LABEL.build_vocab(train_ds, test_ds)
-    _print_stats(TEXT, LABEL)
-
     # Serialize 20 news groups
-    with open(str(serialize_path), "wb") as f_out:
-        pk.dump((TEXT, LABEL, train_ds, test_ds), f_out)
+    msg = f"Writing serialized file {str(serialize_path)}"
+    logging.debug(f"Starting: {msg}")
+    with open(str(serialize_path), "wb+") as f_out:
+        pk.dump((TEXT, LABEL, p_bunch, u_bunch, n_bunch, test_bunch), f_out)
+    logging.debug(f"COMPLETED: {msg}")
 
 
 def load_20newsgroups(args: Namespace):
@@ -232,11 +234,25 @@ def load_20newsgroups(args: Namespace):
     serialize_path = _pickle_filename(args)
     if not serialize_path.exists():
         _create_serialized_20newsgroups(serialize_path, args)
+    # _create_serialized_20newsgroups(serialize_path, args)
 
     with open(str(serialize_path), "rb") as f_in:
+        msg = f"Loading serialized file: {str(serialize_path)}"
+        logging.debug(f"Starting: {msg}")
         data = pk.load(f_in)
-    _print_stats(data[0], data[1])
-    return data
+        # noinspection PyPep8Naming
+        TEXT, LABEL, p_bunch, u_bunch, n_bunch, test_bunch = data
+        logging.debug(f"COMPLETED: {msg}")
+
+    train_ds = _build_train_set(p_bunch, u_bunch, n_bunch, TEXT, LABEL)
+    # u_ds = _bunch_to_ds(u_bunch, TEXT, LABEL)
+    # test_ds = _bunch_to_ds(test_bunch, TEXT, LABEL)
+    u_ds = test_ds = None # ToDo Restore unlabel/test DS builder
+
+    # LABEL.build_vocab(train_ds, test_ds)  # ToDo Restore LABEL Vocab builder
+    LABEL.build_vocab(train_ds)
+    _print_stats(TEXT, LABEL)
+    return TEXT, LABEL, train_ds, test_ds, u_ds
 
 
 def _main():

@@ -52,7 +52,8 @@ def _train_learner(args: Namespace, learner: NlpBiasedLearner, train_ds: Dataset
 
 
 def _main(args: Namespace):
-    TEXT, LABEL, train_ds, test_ds = load_20newsgroups(args)
+    # noinspection PyPep8Naming
+    TEXT, LABEL, train_ds, test_ds, u_ds = load_20newsgroups(args)
 
     learner = NlpBiasedLearner(args, TEXT.vocab.vectors)
     _train_learner(args, learner, train_ds)
