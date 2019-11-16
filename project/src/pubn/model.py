@@ -1,5 +1,6 @@
 from argparse import Namespace
 import logging
+from functools import partial
 from pathlib import Path
 import time
 from typing import Callable
@@ -43,7 +44,7 @@ class NlpBiasedLearner(nn.Module):
 
         tb_dir = BASE_DIR / "tb"
         TrainingLogger.create_tensorboard(tb_dir)
-        self._logger = TrainingLogger(["Train Loss", "Valid Loss", "Best?", "Time"],
+        self._logger = TrainingLogger(["Train Loss", "Valid Loss", "Best", "Time"],
                                       [20, 20, 7, 10],
                                       logger_name=self.Config.LOGGER_NAME,
                                       tb_grp_name=self.l_type.name)
@@ -61,7 +62,6 @@ class NlpBiasedLearner(nn.Module):
         elif self.l_type == LossType.PUBN:
             self._fit_pubn(itr)
         elif self.l_type == LossType.PN:
-            train = exclude_label_in_dataset(train, U_LABEL)
             self._fit_supervised(itr)
         else:
             raise ValueError("Unknown loss type")
@@ -83,7 +83,7 @@ class NlpBiasedLearner(nn.Module):
                 num_batch += 1
 
             train_loss /= num_batch
-            valid_loss = self._calc_valid_loss(train, PULoss.zero_one_loss)
+            valid_loss = self._calc_valid_loss(train, partial(pu_loss.zero_one_loss))
             self._log_epoch(ep, train_loss, valid_loss)
         self._restore_best_model()
 
@@ -104,9 +104,9 @@ class NlpBiasedLearner(nn.Module):
         :param train_loss: Training loss value
         :param valid_loss: Validation loss value
         """
-        is_best = valid_loss < self._best_loss
+        is_best = float(valid_loss.item()) < self._best_loss
         if is_best:
-            self._best_loss = valid_loss
+            self._best_loss = float(valid_loss.item())
             save_module(self, self._build_serialize_name(self._prefix))
         self._logger.log(ep, [train_loss, valid_loss, is_best, time.time() - self._train_start])
 

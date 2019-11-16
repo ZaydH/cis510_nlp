@@ -32,7 +32,7 @@ class BaseClassifier(nn.Module):
 
     def __init__(self, embed: Tensor):
         super().__init__()
-        self._embed = nn.Embedding.from_pretrained(embed, freeze=True)  # ToDo decide if unfreeze
+        self._embed = nn.Embedding.from_pretrained(embed, freeze=False)  # ToDo decide if unfreeze
 
         self._rnn = self.Config.BASE_RNN(num_layers=self.Config.RNN_DEPTH,
                                          hidden_size=self.Config.RNN_HIDDEN_DIM,
@@ -61,7 +61,7 @@ class BaseClassifier(nn.Module):
         seq_out, _ = self._rnn.forward(x_embed, hx=None)  # Always use a fresh hidden
 
         # Need to subtract 1 since to correct length for base
-        ff_in = seq_out[seq_len - 1, torch.arange(batch_size)]
+        ff_in = seq_out[seq_len - 1, torch.arange(batch_size)]  # ToDo verify correctness
         assert ff_in.shape[0] == batch_size, "Batch size mismatch"
         y_hat = self._ff.forward(ff_in)
         return y_hat

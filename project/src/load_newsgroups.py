@@ -24,14 +24,16 @@ from logger_utils import setup_logger
 from pubn import BASE_DIR, NEG_LABEL, POS_LABEL, U_LABEL
 from pubn.loss import LossType
 
-DATASET_REMOVE = ('headers', 'footers', 'quotes')
+# DATASET_REMOVE = ('headers', 'footers', 'quotes')  # ToDo settle on dataset elements to remove
+DATASET_REMOVE = ('headers', 'footers')
 VALID_DATA_SUBSETS = ("train", "test", "all")
 
 DATA_COL = "data"
 LABEL_COL = "target"
 LABEL_NAMES_COL = "target_names"
 
-MAX_SEQ_LEN = 500
+# MAX_SEQ_LEN = 500  # ToDo fix max sequence length
+MAX_SEQ_LEN = 50
 
 
 @dataclass(init=True)
@@ -205,6 +207,7 @@ def _bunch_to_ds(bunch: Bunch, text: Field, label: LabelField) -> Dataset:
 
 def _print_stats(text: Field, label: LabelField):
     r""" Log information about the dataset as a sanity check """
+    logging.info(f"Maximum sequence length: {MAX_SEQ_LEN}")
     logging.info(f"Length of Text Vocabulary: {str(len(text.vocab))}")
     logging.info(f"Vector size of Text Vocabulary: {text.vocab.vectors.shape[1]}")
     logging.info("Label Length: " + str(len(label.vocab)))
@@ -246,7 +249,7 @@ def _create_serialized_20newsgroups(args):
     # noinspection PyPep8Naming
     LABEL = LabelField(sequential=False)
     complete_ds = _bunch_to_ds(complete_train, TEXT, LABEL)
-    TEXT.build_vocab(complete_ds,
+    TEXT.build_vocab(complete_ds, min_freq=2,
                      vectors=torchtext.vocab.GloVe(name="6B", dim=args.embed_dim, cache=cache_dir))
 
     p_bunch, u_bunch = _select_positive_bunch(args.size_p, complete_train, args.pos,

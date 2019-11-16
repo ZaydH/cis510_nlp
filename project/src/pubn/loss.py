@@ -90,16 +90,6 @@ class PULoss:
             gradient_var = -self.gamma * neg_risk
         return self.LossInfo(loss_var=loss, grad_var=gradient_var)
 
-    # def calc_grad(self, dec_scores: Tensor, labels: Tensor) -> Tensor:
-    #     r""" Calculates the variable for use as gradient """
-    #     loss_info = self._calculate_loss_and_grad_vars(dec_scores, labels)
-    #     return loss_info.grad_var
-    #
-    # def calc_loss(self, dec_scores: Tensor, labels: Tensor) -> Tensor:
-    #     r""" Calculates the variable for use as gradient """
-    #     loss_info = self._calculate_loss_and_grad_vars(dec_scores, labels)
-    #     return loss_info.loss_var
-
     def zero_one_loss(self, dec_scores: Tensor, labels: Tensor) -> Tensor:
         r"""
         In validation, 0/1 loss is used for validation. This method implements that approach.
