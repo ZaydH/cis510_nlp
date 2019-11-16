@@ -24,11 +24,11 @@ class NlpBiasedLearner(nn.Module):
     _log = None
 
     # def __init__(self, embedding: nn.Embedding, args: Namespace):
-    def __init__(self, args: Namespace, embedding: nn.Embedding, prior: float):
+    def __init__(self, args: Namespace, embedding_weights: Tensor, prior: float):
         super().__init__()
         self._setup_logger()
 
-        self._model = BaseClassifier(embedding)
+        self._model = BaseClassifier(embedding_weights)
         self.prior = prior
         self.l_type = args.loss
 

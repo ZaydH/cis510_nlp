@@ -16,24 +16,26 @@ def parse_args() -> Namespace:
     args.add_argument("--pos", help="List of class IDs for POSITIVE class", nargs='+', type=int)
     args.add_argument("--neg", help="List of class IDs for NEGATIVE class", nargs='+', type=int)
 
-    args.add_argument("--ep", help="Number of training epochs", type=int, default=100)
-    args.add_argument("--bs", help="Batch size", type=int, default=500)
-
-    args.add_argument("--embed_dim", help="Word vector dimension", type=int, default=300)
+    args.add_argument("--ep", help="Number of training epochs", type=int,
+                      default=NlpBiasedLearner.Config.NUM_EPOCH)
+    args.add_argument("--bs", help="Batch size", type=int,
+                      default=NlpBiasedLearner.Config.BATCH_SIZE)
+    args.add_argument("--embed_dim", help="Word vector dimension", type=int,
+                      default=NlpBiasedLearner.Config.EMBED_DIM)
     args.add_argument("--tau", help="Hyperparameter used to determine eta", type=float)
 
     args = args.parse_args()
     # Arguments error checking
     if args.size_p <= 0: raise ValueError("size_p must be positive valued")
     if args.ep <= 0: raise ValueError("Number of training epochs must be positive")
+    NlpBiasedLearner.Config.NUM_EPOCH = args.ep
     if args.bs <= 0: raise ValueError("bs must be positive valued")
+    NlpBiasedLearner.Config.BATCH_SIZE = args.bs
     if args.embed_dim <= 0: raise ValueError("Embedding vector dimension must be positive valued")
+    NlpBiasedLearner.Config.EMBED_DIM = args.embed_dim
 
     # Configure any related fields
     args.loss = LossType[args.loss]
-
-    NlpBiasedLearner.Config.NUM_EPOCH = args.ep
-    NlpBiasedLearner.Config.EMBED_DIM = args.embed_dim
 
     args.pos, args.neg = set(args.pos), set(args.neg)
     assert not (args.pos & args.neg), "Positive and negative classes not disjoint"
@@ -42,8 +44,7 @@ def parse_args() -> Namespace:
 
 
 def _main(args: Namespace):
-    # noinspection PyPep8Naming
-    newsgroups = load_20newsgroups(args)
+    newsgroups = load_20newsgroups(args)  # ToDo fix 20 newsgroups to filter empty examples
 
     learner = NlpBiasedLearner(args, newsgroups.text.vocab.vectors,
                                prior=calculate_prior(newsgroups.test))

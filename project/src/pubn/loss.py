@@ -56,7 +56,7 @@ class PULoss:
         assert dec_scores.shape[0] == labels.shape[0], "Batch size mismatch"
 
         assert dec_scores.dtype == torch.float, "dec_scores tensor must be float"
-        assert labels.dtype == torch.int, "labels must be integers"
+        assert labels.dtype == torch.int64, "labels must be integers"
 
     def calc_loss(self, dec_scores: Tensor, label: Tensor) -> 'LossInfo':
         r"""

@@ -1,5 +1,6 @@
 import logging
 
+import torch
 from torch import Tensor
 import torch.nn as nn
 
@@ -29,9 +30,9 @@ class ClassifierConfig:
 class BaseClassifier(nn.Module):
     Config = ClassifierConfig
 
-    def __init__(self, embed: nn.Embedding):
+    def __init__(self, embed: Tensor):
         super().__init__()
-        self._embed = embed
+        self._embed = nn.Embedding.from_pretrained(embed, freeze=True)  # ToDo decide if unfreeze
 
         self._rnn = self.Config.BASE_RNN(num_layers=self.Config.RNN_DEPTH,
                                          hidden_size=self.Config.RNN_HIDDEN_DIM,
@@ -52,12 +53,15 @@ class BaseClassifier(nn.Module):
         self.to(TORCH_DEVICE)
 
     def forward(self, x: Tensor, seq_len: Tensor) -> Tensor:
-        assert x.shape[1] == seq_len.size(), "Number of elements mismatch"
+        batch_size = x.shape[1]
+        assert batch_size == seq_len.numel(), "Number of elements mismatch"
         x_embed = self._embed(x)
 
         # **output** of shape `(seq_len, batch, num_directions * hidden_size)`: tensor
         seq_out, _ = self._rnn.forward(x_embed, hx=None)  # Always use a fresh hidden
 
-        ff_in = seq_out[seq_len]
+        # Need to subtract 1 since to correct length for base
+        ff_in = seq_out[seq_len - 1, torch.arange(batch_size)]
+        assert ff_in.shape[0] == batch_size, "Batch size mismatch"
         y_hat = self._ff.forward(ff_in)
         return y_hat
