@@ -6,7 +6,7 @@ import itertools
 import logging
 from pathlib import Path
 import pickle as pk
-from typing import Optional, Set, Tuple
+from typing import List, Optional, Set, Tuple
 
 import nltk.tokenize
 import numpy as np
@@ -117,7 +117,14 @@ def _download_20newsgroups(subset: str, data_dir: Path, pos_cls: Set[int], neg_c
     data_dir.mkdir(parents=True, exist_ok=True)
     bunch = sklearn.datasets.fetch_20newsgroups(data_home=data_dir, shuffle=False,
                                                   remove=DATASET_REMOVE, subset=subset)
-    _filter_bunch_by_classes(bunch, cls_to_keep=pos_cls | neg_cls)
+    all_cls = pos_cls | neg_cls
+    keep_idx = [val in all_cls for val in bunch[LABEL_COL]]
+    assert any(keep_idx), "No elements to keep list"
+
+    for key, val in bunch.items():
+        if not isinstance(val, (list, np.ndarray)): continue
+        if len(val) != len(keep_idx): continue
+        bunch[key] = list(itertools.compress(val, keep_idx))
 
     logging.debug(f"COMPLETED: {msg}")
     return bunch
@@ -147,17 +154,6 @@ def _reduce_to_fixed_size(bunch: Bunch, new_size: int):
     _filter_bunch_by_idx(bunch, keep_idx)
 
 
-def _filter_bunch_by_classes(bunch: Bunch, cls_to_keep: Set[int]):
-    r""" Removes any dataset items not in the specified class label lists """
-    keep_idx = [val in cls_to_keep for val in bunch[LABEL_COL]]
-    assert any(keep_idx), "No elements to keep list"
-
-    for key, val in bunch.items():
-        if not isinstance(val, (list, np.ndarray)): continue
-        if len(val) != len(keep_idx): continue
-        bunch[key] = list(itertools.compress(val, keep_idx))
-
-
 def _filter_bunch_by_idx(bunch: Bunch, keep_idx: np.ndarray):
     r"""
     Filters \p Bunch object and removes any unneeded elements
@@ -177,38 +173,108 @@ def _filter_bunch_by_idx(bunch: Bunch, keep_idx: np.ndarray):
     return bunch
 
 
-def _configure_binary_labels(bunch: Bunch, pos_cls: Set[int]):
+def _configure_binary_labels(bunch: Bunch, pos_cls: Set[int], neg_cls: Set[int]):
     r""" Takes the 20 Newsgroup labels and binarizes them """
     def _is_pos(lbl: int) -> int:
-        return POS_LABEL if lbl in pos_cls else NEG_LABEL
+        if lbl in pos_cls: return POS_LABEL
+        if lbl in neg_cls: return NEG_LABEL
+        raise ValueError(f"Unknown label {lbl}")
 
     bunch[LABEL_COL] = np.asarray(list(map(_is_pos, bunch[LABEL_COL])), dtype=np.int64)
 
 
-def _select_positive_bunch(size_p: int, bunch: Bunch, pos_cls: Set[int],
-                           remove_p_from_u: bool) -> Tuple[Bunch, Bunch]:
+def _convert_selected_idx_to_keep_list(sel_idx: np.ndarray, keep_list_size: int) -> np.ndarray:
+    assert keep_list_size > max(sel_idx), "Invalid size for the keep list"
+    keep_idx = np.zeros((keep_list_size,), dtype=np.bool)
+    for idx in sel_idx:
+        keep_idx[idx] = True
+    return keep_idx
+
+
+def _get_idx_of_classes(bunch: Bunch, cls_ids: Set[int]) -> np.ndarray:
+    r""" Returns index of all examples in \p Bunch whose label is in \p cls_ids """
+    return  np.asarray([idx for idx, lbl in enumerate(bunch[LABEL_COL]) if lbl in cls_ids],
+                        dtype=np.int32)
+
+
+def _select_items_from_bunch(bunch: Bunch, selected_cls: Set[int], selected_idx: np.ndarray,
+                             remove_sel_from_bunch: bool) -> Tuple[Bunch, Bunch]:
     r"""
+    Selects a set of items (given by indices in \p selected_idx) and returns it as a new \p Bunch.
+    Optionally filters the input \p bunch to remove the selected items.
 
-    :param size_p: Number of (positive elements) to select from Bunch
-    :param bunch: Training (unlabeled) \p Bunch
-    :param pos_cls: List of positive classes in t
-    :param remove_p_from_u: If \p True, elements in the positive (labeled) dataset are removed
-                            from the unlabeled set.
-    :return:
+    :param bunch: Bunch to select from
+    :param selected_cls: Class ID numbers for the selected items
+    :param selected_idx: Index of the elements in \p bunch to select
+    :param remove_sel_from_bunch: If \p True, removed selected indexes from \p bunch and return it
+    :return: Selected \p Bunch and other \p Bunch optionally filtered
     """
-    pos_idx = np.asarray([idx for idx, lbl in enumerate(bunch[LABEL_COL]) if lbl in pos_cls],
-                         dtype=np.int32)
+    assert len(bunch[LABEL_COL]) > max(selected_idx), "Invalid size for the keep list"
 
-    keep_idx = _select_indexes_uar(pos_idx.size(), size_p)
-    p_bunch = _filter_bunch_by_idx(bunch, keep_idx)
-    p_bunch[LABEL_NAMES_COL] = [bunch[LABEL_NAMES_COL][idx] for idx in sorted(list(pos_cls))]
-    if remove_p_from_u:
-        bunch = _filter_bunch_by_idx(bunch, ~keep_idx)
-    return p_bunch, bunch
+    keep_idx = _convert_selected_idx_to_keep_list(selected_idx, len(bunch[LABEL_COL]))
+
+    sel_bunch = _filter_bunch_by_idx(bunch, keep_idx)
+    sel_bunch[LABEL_NAMES_COL] = [bunch[LABEL_NAMES_COL][idx] for idx in sorted(list(selected_cls))]
+
+    # Sanity check no unexpected classes in selected bunch
+    assert all(x in selected_cls for x in sel_bunch[LABEL_COL]), "Invalid selected class in bunch"
+
+    if remove_sel_from_bunch:
+        return sel_bunch, _filter_bunch_by_idx(bunch, ~keep_idx)
+    return sel_bunch, bunch
 
 
-def _select_negative_bunch(size_n: int, bunch: Bunch, bias: Optional, remove_n_from_u: bool):
-    raise NotImplementedError
+def _select_bunch_uar(size: int, bunch: Bunch, cls_ids: Set[int],
+                      remove_from_bunch: bool) -> Tuple[Bunch, Bunch]:
+    r"""
+    Selects elements with a class label in cls_ids uniformly at random (uar) without replacement
+    from \p bunch.  Optionally removes those elements from \p bunch as well.
+
+    :param size: Number of (positive elements) to select from Bunch
+    :param bunch: Source \p Bunch
+    :param cls_ids: List of classes in the selected \p Bunch
+    :param remove_from_bunch: If \p True, elements in the selected bunch are removed from \p bunch.
+    :return: Tuple of th selected bunch and the other bunch (optionally filtered)
+    """
+    cls_idx = _get_idx_of_classes(bunch, cls_ids)
+    sel_keep_idx = _select_indexes_uar(len(cls_idx), size)
+    sel_idx = np.array(list(itertools.compress(cls_idx, sel_keep_idx)))
+
+    return _select_items_from_bunch(bunch, cls_ids, sel_idx, remove_from_bunch)
+
+
+def _select_negative_bunch(size_n: int, bunch: Bunch, neg_cls: Set[int],
+                           bias: Optional[List[Tuple[NewsgroupsData.Categories, float]]],
+                           remove_from_bunch: bool) -> Tuple[Bunch, Bunch]:
+    r"""
+    Randomly selects a negative bunch of size \p size_n.  If \p bias is \p None, the negative bunch 
+    is selected u.a.r. from all class IDs in \p neg_cls.  Otherwise, probability each group is
+    selected is specified by the \p bias vector.  Optionally removes the selected elements
+    from \p bunch.
+    
+    :param size_n:  Size of new negative set.
+    :param bunch: Bunch from which to select the negative elements.
+    :param neg_cls: ID numbers for the negative set
+    :param bias: 
+    :param remove_from_bunch: 
+    :return: 
+    """
+    # If no bias, select the elements u.a.r.
+    if bias is None:
+        return _select_bunch_uar(size_n, bunch, neg_cls, remove_from_bunch)
+
+    # Multinomial distribution from Pr[x|y=-1,s =+1]
+    grp_sizes = np.random.multinomial(size_n, [prob for _, prob in bias])
+    # Determine selected index
+    sel_idx = []
+    for (cls_lst, _), num_ele in zip(bias, grp_sizes):
+        cls_idx = _get_idx_of_classes(bunch, cls_lst.value)
+        assert len(cls_idx) >= num_ele, "Insufficient elements in list"
+        keep_idx = _select_indexes_uar(len(cls_idx), num_ele)
+        sel_idx.append(np.array(list(itertools.compress(cls_idx, keep_idx))))
+
+    sel_idx = np.concatenate(sel_idx, axis=0)
+    return _select_items_from_bunch(bunch, neg_cls, sel_idx, remove_from_bunch)
 
 
 def _bunch_to_ds(bunch: Bunch, text: Field, label: LabelField) -> Dataset:
@@ -267,16 +333,24 @@ def _create_serialized_20newsgroups(args):
     TEXT.build_vocab(complete_ds, min_freq=2,
                      vectors=torchtext.vocab.GloVe(name="6B", dim=args.embed_dim, cache=cache_dir))
 
-    p_bunch, u_bunch = _select_positive_bunch(args.size_p, complete_train, p_cls,
-                                              remove_p_from_u=False)
-    n_bunch = None  # ToDo Add code for getting the N bunch
+    p_bunch, u_bunch = _select_bunch_uar(args.size_p, complete_train, p_cls,
+                                         remove_from_bunch=False)
+    n_bunch, u_bunch = _select_negative_bunch(args.size_n, u_bunch, n_cls, args.bias,
+                                              remove_from_bunch=False)
     _reduce_to_fixed_size(u_bunch, new_size=args.size_u)
 
     test_bunch = _download_20newsgroups("test", data_dir, p_cls, n_cls)
 
     # Binarize the labels
-    for bunch in (p_bunch, u_bunch, test_bunch):
-        _configure_binary_labels(bunch, pos_cls=p_cls)
+    for bunch in (p_bunch, u_bunch, n_bunch, test_bunch):
+        _configure_binary_labels(bunch, pos_cls=p_cls, neg_cls=n_cls)
+
+    # Sanity check
+    assert np.all(p_bunch[LABEL_COL] == POS_LABEL), "Negative example in positive (labeled) set"
+    assert len(p_bunch[LABEL_COL]) == args.size_p, "Positive set has wrong number of examples"
+    assert np.all(n_bunch[LABEL_COL] == NEG_LABEL), "Positive example in negative (labeled) set"
+    assert len(n_bunch[LABEL_COL]) == args.size_n, "Negative set has wrong number of examples"
+    assert len(u_bunch[LABEL_COL]) == args.size_u, "Unlabeled set has wrong number of examples"
 
     ng_data = NewsgroupsData(text=TEXT, label=LABEL)
     ng_data.train = _build_train_set(p_bunch,
