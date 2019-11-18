@@ -151,7 +151,7 @@ def _reduce_to_fixed_size(bunch: Bunch, new_size: int):
     assert orig_size >= new_size
 
     keep_idx = _select_indexes_uar(orig_size, new_size)
-    _filter_bunch_by_idx(bunch, keep_idx)
+    return _filter_bunch_by_idx(bunch, keep_idx)
 
 
 def _filter_bunch_by_idx(bunch: Bunch, keep_idx: np.ndarray):
@@ -184,6 +184,13 @@ def _configure_binary_labels(bunch: Bunch, pos_cls: Set[int], neg_cls: Set[int])
 
 
 def _convert_selected_idx_to_keep_list(sel_idx: np.ndarray, keep_list_size: int) -> np.ndarray:
+    r"""
+    Converts the list of integers into a binary vector with the specified indices \p True.
+
+    :param sel_idx: Indices of the return vector to be \p True.
+    :param keep_list_size: Size of the Boolean vector to return
+    :return: Boolean vector with integers in \p sel_idx \p True and otherwise \p False
+    """
     assert keep_list_size > max(sel_idx), "Invalid size for the keep list"
     keep_idx = np.zeros((keep_list_size,), dtype=np.bool)
     for idx in sel_idx:
@@ -193,8 +200,8 @@ def _convert_selected_idx_to_keep_list(sel_idx: np.ndarray, keep_list_size: int)
 
 def _get_idx_of_classes(bunch: Bunch, cls_ids: Set[int]) -> np.ndarray:
     r""" Returns index of all examples in \p Bunch whose label is in \p cls_ids """
-    return  np.asarray([idx for idx, lbl in enumerate(bunch[LABEL_COL]) if lbl in cls_ids],
-                        dtype=np.int32)
+    return np.asarray([idx for idx, lbl in enumerate(bunch[LABEL_COL]) if lbl in cls_ids],
+                       dtype=np.int32)
 
 
 def _select_items_from_bunch(bunch: Bunch, selected_cls: Set[int], selected_idx: np.ndarray,
@@ -234,7 +241,7 @@ def _select_bunch_uar(size: int, bunch: Bunch, cls_ids: Set[int],
     :param bunch: Source \p Bunch
     :param cls_ids: List of classes in the selected \p Bunch
     :param remove_from_bunch: If \p True, elements in the selected bunch are removed from \p bunch.
-    :return: Tuple of th selected bunch and the other bunch (optionally filtered)
+    :return: Tuple of the selected bunch and the other bunch (optionally filtered)
     """
     cls_idx = _get_idx_of_classes(bunch, cls_ids)
     sel_keep_idx = _select_indexes_uar(len(cls_idx), size)
@@ -255,9 +262,9 @@ def _select_negative_bunch(size_n: int, bunch: Bunch, neg_cls: Set[int],
     :param size_n:  Size of new negative set.
     :param bunch: Bunch from which to select the negative elements.
     :param neg_cls: ID numbers for the negative set
-    :param bias: 
-    :param remove_from_bunch: 
-    :return: 
+    :param bias: Optional vector for bias
+    :param remove_from_bunch: If \p True, elements in the selected bunch are removed from \p bunch.
+    :return: Tuple of the selected bunch and the other bunch (optionally filtered)
     """
     # If no bias, select the elements u.a.r.
     if bias is None:
@@ -337,7 +344,7 @@ def _create_serialized_20newsgroups(args):
                                          remove_from_bunch=False)
     n_bunch, u_bunch = _select_negative_bunch(args.size_n, u_bunch, n_cls, args.bias,
                                               remove_from_bunch=False)
-    _reduce_to_fixed_size(u_bunch, new_size=args.size_u)
+    u_bunch = _reduce_to_fixed_size(u_bunch, new_size=args.size_u)
 
     test_bunch = _download_20newsgroups("test", data_dir, p_cls, n_cls)
 

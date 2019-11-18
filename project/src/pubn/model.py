@@ -11,6 +11,8 @@ from fastai.basic_data import DataBunch
 import torch
 from torch import Tensor
 import torch.nn as nn
+# noinspection PyPep8Naming
+import torch.nn.functional as F
 import torch.optim as optim
 from torchtext.data import Iterator, Dataset, LabelField
 
@@ -40,9 +42,9 @@ class NlpBiasedLearner(nn.Module):
         self.l_type = args.loss
 
         self._prefix = self.l_type.name.lower()
-        self._train_start = self._best_loss = self._logger = None
+        self._train_start = self._optim = self._best_loss = self._logger = None
 
-    def fit(self, train: Dataset, labels: LabelField):
+    def fit(self, train: Dataset, valid: Dataset, labels: LabelField):
         r""" Fits the learner"""
         # Fields that apply regardless of loss method
         self._train_start = time.time()
@@ -55,67 +57,87 @@ class NlpBiasedLearner(nn.Module):
                                       logger_name=self.Config.LOGGER_NAME,
                                       tb_grp_name=self.l_type.name)
 
+        # noinspection PyUnresolvedReferences
+        self._optim = optim.AdamW(self.parameters(), lr=self._model.Config.LEARNING_RATE,
+                                  weight_decay=self._model.Config.WEIGHT_DECAY)
+
         # Filter the dataset based on the training configuration
         if self.l_type == LossType.NNPU:
             train = exclude_label_in_dataset(train, NEG_LABEL)
         elif self.l_type == LossType.PN:
             train = exclude_label_in_dataset(train, U_LABEL)
         # noinspection PyUnresolvedReferences
-        itr = construct_iterator(train, bs=self._model.Config.BATCH_SIZE, shuffle=True)
+        train_itr = construct_iterator(train, bs=self._model.Config.BATCH_SIZE, shuffle=True)
+        # noinspection PyUnresolvedReferences
+        valid_itr = construct_iterator(valid, bs=self._model.Config.BATCH_SIZE, shuffle=True)
 
-        if self.l_type == LossType.NNPU:
-            self._fit_nnpu(itr, labels)
-        elif self.l_type == LossType.PUBN:
-            self._fit_pubn(itr)
-        elif self.l_type == LossType.PN:
-            self._fit_supervised(itr)
+        if self.l_type == LossType.PUBN:
+            self._fit_pubn(train_itr, valid_itr)
+        elif self.l_type == LossType.NNPU or self.l_type == LossType.PN:
+
+            self._fit_base(train_itr, valid_itr, labels, is_nnpu=self.l_type == LossType.NNPU)
         else:
             raise ValueError("Unknown loss type")
 
-    def _fit_nnpu(self, train: Iterator, labels: LabelField):
-        r""" Use the nnPU loss """
-        pu_loss = PULoss(prior=self.prior, pos_label=labels.vocab.stoi[POS_LABEL])
+    def _fit_base(self, train: Iterator, valid: Iterator, labels: LabelField, is_nnpu: bool):
+        r""" Shared functions for nnPU and supervised learning """
+        num_cls = len(labels.vocab.itos)
+        neg_map, pos_map = labels.vocab.stoi[NEG_LABEL], labels.vocab.stoi[POS_LABEL]
 
-        # noinspection PyUnresolvedReferences
-        opt = optim.Adam(self.parameters(), lr=self._model.Config.LEARNING_RATE,
-                         weight_decay=self._model.Config.WEIGHT_DECAY)
+        def _supervised_loss(in_tensor: Tensor, target: Tensor) -> Tensor:
+            in_tensor = F.sigmoid(in_tensor)
+            map_targ = torch.zeros((target.shape[0], num_cls))
+            # noinspection PyUnresolvedReferences
+            map_targ[neg_map], map_targ[pos_map] = in_tensor.neg().add(1), in_tensor
+            return F.binary_cross_entropy(in_tensor, target)
+
+        if is_nnpu:
+            pu_loss = PULoss(prior=self.prior, pos_label=pos_map)
+            loss_func = partial(pu_loss.calc_loss)
+            valid_loss = partial(pu_loss.zero_one_loss)
+        else:
+            loss_func = valid_loss = _supervised_loss
+
         # noinspection PyUnresolvedReferences
         for ep in range(1, self._model.Config.NUM_EPOCH + 1):
             train_loss, num_batch = torch.zeros(()), 0
             for batch in train:
-                opt.zero_grad()
+                self._optim.zero_grad()
                 # noinspection PyUnresolvedReferences
                 dec_scores = self._model.forward(*batch.text)
 
-                loss = pu_loss.calc_loss(dec_scores=dec_scores, label=batch.label)
-                train_loss += loss.loss_var.detach()
+                loss = loss_func(dec_scores, batch.label)
+                if is_nnpu:
+                    # noinspection PyUnresolvedReferences
+                    loss.grad_var.backward()
+                    # noinspection PyUnresolvedReferences
+                    loss = loss.loss_var
+                train_loss += loss.detach()
                 num_batch += 1
 
-                loss.grad_var.backward()
-                opt.step()
+                self._optim.step()
 
             train_loss /= num_batch
-            valid_loss = self._calc_valid_loss(train, partial(pu_loss.zero_one_loss))
-            self._log_epoch(ep, train_loss, valid_loss)
+            self._log_epoch(ep, train_loss, valid, valid_loss)
         self._restore_best_model()
 
-    def _fit_pubn(self, train: Iterator):
+    def _fit_pubn(self, train: Iterator, valid_itr: Iterator):
         raise NotImplementedError("_fit_pubn not implemented")
 
     def _train_sigma(self, p_db: DataBunch, bn_db: DataBunch, u_db: DataBunch):
         raise NotImplementedError("sigma trainer not implemented")
 
-    def _fit_supervised(self, train: Iterator):
-        pass
-
-    def _log_epoch(self, ep: int, train_loss: Tensor, valid_loss: Tensor):
+    def _log_epoch(self, ep: int, train_loss: Tensor, valid_itr: Iterator, loss_func: Callable):
         r"""
         Log the results of the epoch
 
         :param ep: Epoch number
         :param train_loss: Training loss value
-        :param valid_loss: Validation loss value
+        :param valid_itr: Validation \p Iterator
+        :param loss_func: Function used to calculate the loss
         """
+        valid_loss = self._calc_valid_loss(valid_itr, loss_func)
+
         is_best = float(valid_loss.item()) < self._best_loss
         if is_best:
             self._best_loss = float(valid_loss.item())
@@ -136,7 +158,7 @@ class NlpBiasedLearner(nn.Module):
 
     def forward(self, x: Tensor, x_len: Tensor) -> Tensor:
         # noinspection PyUnresolvedReferences
-        return self._model.forward(x, x_len)
+        return self._model.forward(x, x_len).squeeze()
 
     def _restore_best_model(self):
         r""" Restores the best trained model from disk """
