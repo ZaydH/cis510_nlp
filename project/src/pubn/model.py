@@ -15,7 +15,8 @@ import torch.optim as optim
 from torchtext.data import Iterator, Dataset, LabelField
 
 from ._base_classifier import BaseClassifier, ClassifierConfig
-from ._utils import BASE_DIR, NEG_LABEL, POS_LABEL, TORCH_DEVICE, U_LABEL, construct_iterator
+from ._utils import BASE_DIR, NEG_LABEL, POS_LABEL, TORCH_DEVICE, U_LABEL, construct_iterator, \
+    construct_filename
 from .logger import TrainingLogger, create_stdout_handler
 from .loss import LossType, PULoss
 
@@ -33,6 +34,8 @@ class NlpBiasedLearner(nn.Module):
         self._log.debug(f"NLP Learner: Prior: {prior:.3f}")
 
         self._model = BaseClassifier(embedding_weights)
+
+        self._args = args
         self.prior = prior
         self.l_type = args.loss
 
@@ -150,10 +153,7 @@ class NlpBiasedLearner(nn.Module):
         """
         serialize_dir = BASE_DIR / "models"
         serialize_dir.mkdir(parents=True, exist_ok=True)
-
-        fields = [prefix, self.l_type.name.lower()]
-        fields[-1] += ".pth"
-        return serialize_dir / "_".join(fields)
+        return construct_filename(prefix, self._args, serialize_dir, "pth")
 
     @classmethod
     def _setup_logger(cls) -> None:

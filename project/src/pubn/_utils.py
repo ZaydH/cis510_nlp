@@ -43,7 +43,7 @@ def construct_iterator(ds: Dataset, bs: int, shuffle: bool = True) -> Iterator:
 
 
 def construct_filename(prefix: str, args: Namespace, out_dir: Path, file_ext: str) -> Path:
-    r""" File name for pickle file """
+    r""" Standardize naming scheme for the filename """
 
     def _classes_to_str(cls_set: Set[Enum]) -> str:
         return ",".join([x.name.lower() for x in sorted(cls_set)])

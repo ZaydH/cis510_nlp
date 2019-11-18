@@ -41,7 +41,7 @@ def _error_check_args(args: Namespace):
     for name in pos_flds:
         if args.__getattribute__(name) <= 0: raise ValueError(f"{name} must be positive valued")
 
-    if not (args.pos & args.neg):
+    if set(args.pos) & set(args.neg):
         raise ValueError("Positive and negative classes not disjoint")
 
     if args.bias:
@@ -57,13 +57,18 @@ def _refactor_args(args: Namespace) -> None:
     r""" Reformat any arguments from the raw inputs into more usable forms """
     args.loss = LossType[args.loss.upper()]
 
-    args.pos = {NewsgroupsData.Categories[x.upper()] for x in args.pos}
-    args.neg = {NewsgroupsData.Categories[x.upper()] for x in args.neg}
+    # Convert 20 newsgroups group names to actual objects
+    for ds_name in ("pos", "neg"):
+        val = [NewsgroupsData.Categories[x.upper()] for x in args.__getattribute__(ds_name)]
+        args.__setattr__(ds_name, val)
 
-    # Normalize the total bias to 1
     if args.bias:
-        tot_bias = sum(args.bias)
-        args.bias = [x / tot_bias for x in args.bias]
+        # noinspection PyTypeChecker
+        bias_vec = [x / sum(args.bias) for x in args.bias]  # Normalize the total bias to 1
+        args.bias = [(cls, bias) for cls, bias in zip(args.neg, bias_vec) if bias > 0]
+
+    # Must convert to sets after bias creation to ensure 1-to-1 mapping
+    args.pos, args.neg = set(args.pos), set(args.neg)
 
 
 def _transfer_args_to_config(args: Namespace):

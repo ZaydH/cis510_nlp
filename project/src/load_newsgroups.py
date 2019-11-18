@@ -1,9 +1,9 @@
 from argparse import Namespace
 import copy
 from dataclasses import dataclass
+from enum import Enum
 import itertools
 import logging
-from enum import Enum
 from pathlib import Path
 import pickle as pk
 from typing import Optional, Set, Tuple
@@ -123,6 +123,30 @@ def _download_20newsgroups(subset: str, data_dir: Path, pos_cls: Set[int], neg_c
     return bunch
 
 
+def _select_indexes_uar(orig_size: int, new_size: int) -> np.ndarray:
+    r"""
+    Selects a set of indices uniformly at random (uar) without replacement.
+    :param orig_size: Original size of the array
+    :param new_size: New size of the array
+    :return: Boolean list of size \p original_size where \p True represents index selected
+    """
+    shuffled = np.arange(orig_size)
+    np.random.shuffle(shuffled)
+    keep_idx = np.zeros_like(shuffled, dtype=np.bool)
+    for i in np.arange(new_size):
+        keep_idx[shuffled[i]] = True
+    return keep_idx
+
+
+def _reduce_to_fixed_size(bunch: Bunch, new_size: int):
+    r""" Reduce the bunch to a fixed size """
+    orig_size = len(bunch[LABEL_COL])
+    assert orig_size >= new_size
+
+    keep_idx = _select_indexes_uar(orig_size, new_size)
+    _filter_bunch_by_idx(bunch, keep_idx)
+
+
 def _filter_bunch_by_classes(bunch: Bunch, cls_to_keep: Set[int]):
     r""" Removes any dataset items not in the specified class label lists """
     keep_idx = [val in cls_to_keep for val in bunch[LABEL_COL]]
@@ -134,20 +158,7 @@ def _filter_bunch_by_classes(bunch: Bunch, cls_to_keep: Set[int]):
         bunch[key] = list(itertools.compress(val, keep_idx))
 
 
-# def filter_dataset_by_cls(ds: Dataset, label_to_remove: Union[Set[int], int]) -> Subset:
-#     r""" Select a subset of the \p Dataset at the exclusion """
-#     if isinstance(label_to_remove, int): label_to_remove = {label_to_remove}
-#
-#     indices = []
-#     for idx, x in enumerate(ds):
-#         if x.label in label_to_remove:
-#             indices.append(idx)
-#
-#     # indices = torch.tensor(indices, dtype=torch.int64)
-#     return Subset(ds, indices)
-
-
-def _filter_bunch_by_idx(bunch: Bunch, keep_idx):
+def _filter_bunch_by_idx(bunch: Bunch, keep_idx: np.ndarray):
     r"""
     Filters \p Bunch object and removes any unneeded elements
 
@@ -188,16 +199,16 @@ def _select_positive_bunch(size_p: int, bunch: Bunch, pos_cls: Set[int],
     pos_idx = np.asarray([idx for idx, lbl in enumerate(bunch[LABEL_COL]) if lbl in pos_cls],
                          dtype=np.int32)
 
-    assert len(pos_idx) >= size_p, "P set larger than the available data"
-    np.random.shuffle(pos_idx)
-    keep_idx = np.zeros_like(bunch[LABEL_COL], dtype=np.bool)
-    for idx in pos_idx[:size_p]: keep_idx[idx] = True
-
+    keep_idx = _select_indexes_uar(pos_idx.size(), size_p)
     p_bunch = _filter_bunch_by_idx(bunch, keep_idx)
     p_bunch[LABEL_NAMES_COL] = [bunch[LABEL_NAMES_COL][idx] for idx in sorted(list(pos_cls))]
     if remove_p_from_u:
         bunch = _filter_bunch_by_idx(bunch, ~keep_idx)
     return p_bunch, bunch
+
+
+def _select_negative_bunch(size_n: int, bunch: Bunch, bias: Optional, remove_n_from_u: bool):
+    raise NotImplementedError
 
 
 def _bunch_to_ds(bunch: Bunch, text: Field, label: LabelField) -> Dataset:
@@ -259,6 +270,7 @@ def _create_serialized_20newsgroups(args):
     p_bunch, u_bunch = _select_positive_bunch(args.size_p, complete_train, p_cls,
                                               remove_p_from_u=False)
     n_bunch = None  # ToDo Add code for getting the N bunch
+    _reduce_to_fixed_size(u_bunch, new_size=args.size_u)
 
     test_bunch = _download_20newsgroups("test", data_dir, p_cls, n_cls)
 

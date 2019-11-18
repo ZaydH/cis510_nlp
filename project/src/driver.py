@@ -1,12 +1,11 @@
-import argparse
 from argparse import Namespace
 
 from generate_results import calculate_results
-from load_newsgroups import NewsgroupsData, load_20newsgroups
+from input_args import parse_args
+from load_newsgroups import load_20newsgroups
 from logger_utils import setup_logger
 from pubn import calculate_prior
 from pubn.model import NlpBiasedLearner
-from pubn.loss import LossType
 
 
 def _main(args: Namespace):
