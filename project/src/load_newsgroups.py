@@ -3,6 +3,7 @@ import copy
 from dataclasses import dataclass
 import itertools
 import logging
+from enum import Enum
 from pathlib import Path
 import pickle as pk
 from typing import Optional, Set, Tuple
@@ -45,14 +46,26 @@ class NewsgroupsData:
     test: Dataset = None
     unlabel: Dataset = None
 
+    class Categories(Enum):
+        ALT = {0}
+        COMP = {1, 2, 3, 4, 5}
+        MISC = {6}
+        REC = {7, 8, 9, 10}
+        SCI = {11, 12, 13, 14}
+        SOC = {15}
+        TALK = {16, 17, 18, 19}
+
+        def __lt__(self, other: 'NewsgroupsData.Categories') -> bool:
+            return min(self.value) < min(other.value)
+
     @staticmethod
     def _pickle_filename(args: Namespace) -> Path:
         r""" File name for pickle file """
         serialize_dir = BASE_DIR / "tensors"
         serialize_dir.mkdir(parents=True, exist_ok=True)
 
-        def _classes_to_str(cls_set: Set[int]) -> str:
-            return ",".join([str(x) for x in sorted(cls_set)])
+        def _classes_to_str(cls_set: 'Set[NewsgroupsData.Categories]') -> str:
+            return ",".join([x.name.lower() for x in sorted(cls_set)])
 
         fields = ["data", f"n-p={args.size_p}", f"n-n={args.size_n}",
                   f"pos={_classes_to_str(args.pos)}", f"neg={_classes_to_str(args.neg)}"]
@@ -238,7 +251,9 @@ def _create_serialized_20newsgroups(args):
     cache_dir = data_dir / ".vector_cache"
     cache_dir.mkdir(parents=True, exist_ok=True)
 
-    complete_train = _download_20newsgroups("train", data_dir, args.pos, args.neg)
+    p_cls = {cls_id for cls_grp in args.pos for cls_id in cls_grp.value}
+    n_cls = {cls_id for cls_grp in args.neg for cls_id in cls_grp.value}
+    complete_train = _download_20newsgroups("train", data_dir, p_cls, n_cls)
 
     tokenizer = nltk.tokenize.word_tokenize
     # noinspection PyPep8Naming
@@ -250,15 +265,15 @@ def _create_serialized_20newsgroups(args):
     TEXT.build_vocab(complete_ds, min_freq=2,
                      vectors=torchtext.vocab.GloVe(name="6B", dim=args.embed_dim, cache=cache_dir))
 
-    p_bunch, u_bunch = _select_positive_bunch(args.size_p, complete_train, args.pos,
+    p_bunch, u_bunch = _select_positive_bunch(args.size_p, complete_train, p_cls,
                                               remove_p_from_u=False)
     n_bunch = None  # ToDo Add code for getting the N bunch
 
-    test_bunch = _download_20newsgroups("test", data_dir, args.pos, args.neg)
+    test_bunch = _download_20newsgroups("test", data_dir, p_cls, n_cls)
 
     # Binarize the labels
     for bunch in (p_bunch, u_bunch, test_bunch):
-        _configure_binary_labels(bunch, pos_cls=args.pos)
+        _configure_binary_labels(bunch, pos_cls=p_cls)
 
     ng_data = NewsgroupsData(text=TEXT, label=LABEL)
     ng_data.train = _build_train_set(p_bunch,

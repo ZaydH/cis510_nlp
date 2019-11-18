@@ -2,7 +2,7 @@ import argparse
 from argparse import Namespace
 
 from generate_results import calculate_results
-from load_newsgroups import load_20newsgroups
+from load_newsgroups import NewsgroupsData, load_20newsgroups
 from logger_utils import setup_logger
 from pubn import calculate_prior
 from pubn.model import NlpBiasedLearner
@@ -13,9 +13,12 @@ def parse_args() -> Namespace:
     args = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     args.add_argument("size_p", help="# elements in the POSITIVE (labeled) set", type=int)
     args.add_argument("size_n", help="# elements in the biased NEGATIVE (labeled) set", type=int)
-    args.add_argument("loss", choices=[e.name for e in LossType])
-    args.add_argument("--pos", help="List of class IDs for POSITIVE class", nargs='+', type=int)
-    args.add_argument("--neg", help="List of class IDs for NEGATIVE class", nargs='+', type=int)
+    args.add_argument("size_u", help="# elements in the UNLABELED set", type=int)
+    args.add_argument("loss", help="Loss type to use", choices=[x.name.lower() for x in LossType])
+    args.add_argument("--pos", help="List of class IDs for POSITIVE class", nargs='+', type=str,
+                      choices=[e.name.lower() for e in NewsgroupsData.Categories])
+    args.add_argument("--neg", help="List of class IDs for NEGATIVE class", nargs='+', type=str,
+                      choices=[e.name.lower() for e in NewsgroupsData.Categories])
 
     args.add_argument("--ep", help="Number of training epochs", type=int,
                       default=NlpBiasedLearner.Config.NUM_EPOCH)
@@ -27,18 +30,19 @@ def parse_args() -> Namespace:
 
     args = args.parse_args()
     # Arguments error checking
-    if args.size_p <= 0: raise ValueError("size_p must be positive valued")
-    if args.ep <= 0: raise ValueError("Number of training epochs must be positive")
+    pos_flds = ("size_p", "size_n", "size_n", "bs", "ep", "embed_dim")
+    for name in pos_flds:
+        if args.__getattribute__(name) <= 0: raise ValueError(f"{name} must be positive valued")
+
     NlpBiasedLearner.Config.NUM_EPOCH = args.ep
-    if args.bs <= 0: raise ValueError("bs must be positive valued")
     NlpBiasedLearner.Config.BATCH_SIZE = args.bs
-    if args.embed_dim <= 0: raise ValueError("Embedding vector dimension must be positive valued")
     NlpBiasedLearner.Config.EMBED_DIM = args.embed_dim
 
     # Configure any related fields
-    args.loss = LossType[args.loss]
+    args.loss = LossType[args.loss.upper()]
 
-    args.pos, args.neg = set(args.pos), set(args.neg)
+    args.pos = {NewsgroupsData.Categories[x.upper()] for x in args.pos}
+    args.neg = {NewsgroupsData.Categories[x.upper()] for x in args.neg}
     assert not (args.pos & args.neg), "Positive and negative classes not disjoint"
 
     return args
