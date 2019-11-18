@@ -25,6 +25,7 @@ def parse_args() -> Namespace:
                       default=NlpBiasedLearner.Config.BATCH_SIZE)
     args.add_argument("--embed_dim", help="Word vector dimension", type=int,
                       default=NlpBiasedLearner.Config.EMBED_DIM)
+    args.add_argument("--seq_len", help="Maximum sequence length",  type=int, default=500)
     args.add_argument("--tau", help="Hyperparameter used to determine eta", type=float)
 
     args = args.parse_args()

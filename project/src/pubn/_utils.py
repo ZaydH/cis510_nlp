@@ -50,7 +50,8 @@ def construct_filename(prefix: str, args: Namespace, out_dir: Path, file_ext: st
 
     fields = [prefix] if prefix else []
     fields += [f"n-p={args.size_p}", f"n-n={args.size_n}", f"n-u={args.size_u}",
-               f"pos={_classes_to_str(args.pos)}", f"neg={_classes_to_str(args.neg)}"]
+               f"pos={_classes_to_str(args.pos)}", f"neg={_classes_to_str(args.neg)}",
+               f"seq={args.seq_len}"]
 
     if args.bias:
         # Ensure bias has same order as

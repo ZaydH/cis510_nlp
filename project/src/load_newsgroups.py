@@ -32,9 +32,6 @@ DATA_COL = "data"
 LABEL_COL = "target"
 LABEL_NAMES_COL = "target_names"
 
-# MAX_SEQ_LEN = 500  # ToDo fix max sequence length
-MAX_SEQ_LEN = 50
-
 
 @dataclass(init=True)
 class NewsgroupsData:
@@ -292,7 +289,7 @@ def _bunch_to_ds(bunch: Bunch, text: Field, label: LabelField) -> Dataset:
 
 def _print_stats(text: Field, label: LabelField):
     r""" Log information about the dataset as a sanity check """
-    logging.info(f"Maximum sequence length: {MAX_SEQ_LEN}")
+    logging.info(f"Maximum sequence length: {text.fix_length}")
     logging.info(f"Length of Text Vocabulary: {str(len(text.vocab))}")
     logging.info(f"Vector size of Text Vocabulary: {text.vocab.vectors.shape[1]}")
     logging.info("Label Length: " + str(len(label.vocab)))
@@ -332,7 +329,7 @@ def _create_serialized_20newsgroups(args):
     tokenizer = nltk.tokenize.word_tokenize
     # noinspection PyPep8Naming
     TEXT = Field(sequential=True, tokenize=tokenizer, lower=True, include_lengths=True,
-                 fix_length=MAX_SEQ_LEN)
+                 fix_length=args.seq_len)
     # noinspection PyPep8Naming
     LABEL = LabelField(sequential=False)
     complete_ds = _bunch_to_ds(complete_train, TEXT, LABEL)
@@ -386,21 +383,3 @@ def load_20newsgroups(args: Namespace):
     serial = NewsgroupsData.load(args)
     _print_stats(serial.text, serial.label)
     return serial
-
-
-def _main():
-    args = Namespace()
-    args.size_p = 1000
-    args.size_n = 0
-    args.embed_dim = 300
-    args.pos, args.neg = set(range(0, 10)),  set(range(10, 20))
-
-    # noinspection PyUnusedLocal
-    newsgroups = load_20newsgroups(args)
-
-    print("Completed")
-
-
-if __name__ == "__main__":
-    setup_logger()
-    _main()

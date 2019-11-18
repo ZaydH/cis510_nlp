@@ -6,8 +6,6 @@ import torch
 from torch import Tensor
 import torch.nn as nn
 
-from .tensor_utils import TensorUtils
-
 
 def _default_loss(x: Tensor) -> Tensor:
     r""" Default loss function for the loss functions """
@@ -47,10 +45,15 @@ class PULoss:
         return "nnPU" if self.is_nnpu else "uPU"
 
     @staticmethod
-    def _verify_loss_inputs(dec_scores: Tensor, labels: Tensor) -> None:
+    def _is_torch(tensor: Tensor) -> bool:
+        r""" Return \p True if \p tensor is a \p torch tensor """
+        return isinstance(tensor, Tensor)
+
+    @classmethod
+    def _verify_loss_inputs(cls, dec_scores: Tensor, labels: Tensor) -> None:
         r""" Sanity check the inputs """
-        assert TensorUtils.is_torch(dec_scores), "dec_scores must be torch tensor"
-        assert TensorUtils.is_torch(labels), "labels must be torch tensor"
+        assert cls._is_torch(dec_scores), "dec_scores must be torch tensor"
+        assert cls._is_torch(labels), "labels must be torch tensor"
 
         assert len(dec_scores.shape) == 1, "dec_scores should be a vector"
         assert len(labels.shape) == 1, "labels should be a vector"
