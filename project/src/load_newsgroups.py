@@ -23,7 +23,6 @@ import torchtext.vocab
 # Valid Choices - Any subset of: ('headers', 'footers', 'quotes')
 from logger_utils import setup_logger
 from pubn import BASE_DIR, NEG_LABEL, POS_LABEL, U_LABEL, construct_filename
-from pubn.loss import LossType
 
 # DATASET_REMOVE = ('headers', 'footers', 'quotes')  # ToDo settle on dataset elements to remove
 DATASET_REMOVE = ('headers', 'footers')
@@ -305,7 +304,7 @@ def _build_train_set(p_bunch: Bunch, u_bunch: Bunch, n_bunch: Optional[Bunch],
     Convert the positive, negative, and unlabeled \p Bunch objects into a Dataset
     """
     data, labels, names = [], [], []
-    for bunch, lbl in ((p_bunch, POS_LABEL), (u_bunch, U_LABEL), (n_bunch, NEG_LABEL)):
+    for bunch, lbl in ((n_bunch, NEG_LABEL), (u_bunch, U_LABEL), (p_bunch, POS_LABEL)):
         if bunch is None: continue
         data.extend(bunch[DATA_COL])
         labels.append(np.full_like(bunch[LABEL_COL], lbl))
@@ -360,12 +359,12 @@ def _create_serialized_20newsgroups(args):
     assert len(u_bunch[LABEL_COL]) == args.size_u, "Unlabeled set has wrong number of examples"
 
     ng_data = NewsgroupsData(text=TEXT, label=LABEL)
-    ng_data.train = _build_train_set(p_bunch,
-                                     u_bunch if args.loss != LossType.PN else None,
-                                     n_bunch if args.loss != LossType.NNPU else None,
-                                     TEXT, LABEL)
+    ng_data.train = _build_train_set(p_bunch, u_bunch, n_bunch, TEXT, LABEL)
     ng_data.unlabel = _bunch_to_ds(u_bunch, TEXT, LABEL)
     ng_data.test = _bunch_to_ds(test_bunch, TEXT, LABEL)
+
+    tot_unlabel_size = args.size_p + args.size_n + args.size_u
+    assert len(ng_data.train.examples) == tot_unlabel_size, "Train dataset is wrong size"
 
     LABEL.build_vocab(ng_data.train, ng_data.test)
     ng_data.dump(args)

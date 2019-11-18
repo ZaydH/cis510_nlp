@@ -3,7 +3,7 @@ import logging
 from functools import partial
 from pathlib import Path
 import time
-from typing import Callable
+from typing import Callable, Set, Union
 
 import numpy as np
 
@@ -14,7 +14,7 @@ import torch.nn as nn
 # noinspection PyPep8Naming
 import torch.nn.functional as F
 import torch.optim as optim
-from torchtext.data import Iterator, Dataset, LabelField
+from torchtext.data import Iterator, Dataset, LabelField, Example
 
 from ._base_classifier import BaseClassifier, ClassifierConfig
 from ._utils import BASE_DIR, NEG_LABEL, POS_LABEL, TORCH_DEVICE, U_LABEL, construct_iterator, \
@@ -81,18 +81,16 @@ class NlpBiasedLearner(nn.Module):
 
     def _fit_base(self, train: Iterator, valid: Iterator, labels: LabelField, is_nnpu: bool):
         r""" Shared functions for nnPU and supervised learning """
-        num_cls = len(labels.vocab.itos)
-        neg_map, pos_map = labels.vocab.stoi[NEG_LABEL], labels.vocab.stoi[POS_LABEL]
+        map_pos = labels.vocab.stoi[POS_LABEL]
 
         def _supervised_loss(in_tensor: Tensor, target: Tensor) -> Tensor:
-            in_tensor = F.sigmoid(in_tensor)
-            map_targ = torch.zeros((target.shape[0], num_cls))
-            # noinspection PyUnresolvedReferences
-            map_targ[neg_map], map_targ[pos_map] = in_tensor.neg().add(1), in_tensor
-            return F.binary_cross_entropy(in_tensor, target)
+            y = torch.full(target.shape, -1)
+            y[target == map_pos] = 1
+            yx = in_tensor * y
+            return -F.logsigmoid(yx).mean()
 
         if is_nnpu:
-            pu_loss = PULoss(prior=self.prior, pos_label=pos_map)
+            pu_loss = PULoss(prior=self.prior, pos_label=map_pos)
             loss_func = partial(pu_loss.calc_loss)
             valid_loss = partial(pu_loss.zero_one_loss)
         else:
@@ -104,7 +102,7 @@ class NlpBiasedLearner(nn.Module):
             for batch in train:
                 self._optim.zero_grad()
                 # noinspection PyUnresolvedReferences
-                dec_scores = self._model.forward(*batch.text)
+                dec_scores = self.forward(*batch.text)
 
                 loss = loss_func(dec_scores, batch.label)
                 if is_nnpu:
@@ -116,7 +114,6 @@ class NlpBiasedLearner(nn.Module):
                 num_batch += 1
 
                 self._optim.step()
-
             train_loss /= num_batch
             self._log_epoch(ep, train_loss, valid, valid_loss)
         self._restore_best_model()
@@ -235,7 +232,11 @@ def load_module(module: nn.Module, filepath: Path):
     return module
 
 
-def exclude_label_in_dataset(ds: Dataset, label_to_exclude: int) -> Dataset:
+def exclude_label_in_dataset(ds: Dataset, label_to_exclude: Union[int, Set[int]]) -> Dataset:
     r""" Creates a new \p Dataset that will exclude the label of \p label_to_exclude """
-    return Dataset(examples=ds.examples, fields=ds.fields,
-                   filter_pred=lambda x: x != label_to_exclude)
+    def _filter_label(x: Example):
+        # noinspection PyUnresolvedReferences
+        return x.label not in label_to_exclude
+
+    if isinstance(label_to_exclude, int): label_to_exclude = {label_to_exclude}
+    return Dataset(examples=ds.examples, fields=ds.fields, filter_pred=_filter_label)

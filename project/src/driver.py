@@ -14,7 +14,7 @@ def _main(args: Namespace):
     classifier = NlpBiasedLearner(args, newsgroups.text.vocab.vectors,
                                   prior=calculate_prior(newsgroups.test))
     # noinspection PyUnresolvedReferences
-    classifier.fit(newsgroups.train, newsgroups.label)
+    classifier.fit(newsgroups.train, newsgroups.train, newsgroups.label)  # ToDo Fix valid ds
 
     calculate_results(args, classifier, newsgroups.label, unlabel_ds=newsgroups.unlabel,
                       test_ds=newsgroups.test)
