@@ -1,6 +1,9 @@
+from argparse import Namespace
+from enum import Enum
 from pathlib import Path
 import re
 import socket
+from typing import Set
 
 import torch
 from torchtext.data import Dataset, Iterator
@@ -37,3 +40,25 @@ NEG_LABEL = -1
 def construct_iterator(ds: Dataset, bs: int, shuffle: bool = True) -> Iterator:
     r""" Construct \p Iterator which emulates a \p DataLoader """
     return Iterator(dataset=ds, batch_size=bs, shuffle=shuffle, device=TORCH_DEVICE)
+
+
+def construct_filename(prefix: str, args: Namespace, out_dir: Path, file_ext: str) -> Path:
+    r""" File name for pickle file """
+
+    def _classes_to_str(cls_set: Set[Enum]) -> str:
+        return ",".join([x.name.lower() for x in sorted(cls_set)])
+
+    fields = [prefix] if prefix else []
+    fields += [f"n-p={args.size_p}", f"n-n={args.size_n}", f"n-u={args.size_u}",
+               f"pos={_classes_to_str(args.pos)}", f"neg={_classes_to_str(args.neg)}"]
+
+    if args.bias:
+        # Ensure bias has same order as
+        bias_sorted = [x for _, x in sorted(zip(args.neg, args.bias))]
+        fields.append(f"bias={','.join([f'{x:02}' for x in bias_sorted])}")
+
+    if file_ext[0] != ".": file_ext = "." + file_ext
+    fields[-1] += file_ext
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    return out_dir / "_".join(fields)

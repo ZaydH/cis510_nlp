@@ -22,7 +22,7 @@ import torchtext.vocab
 
 # Valid Choices - Any subset of: ('headers', 'footers', 'quotes')
 from logger_utils import setup_logger
-from pubn import BASE_DIR, NEG_LABEL, POS_LABEL, U_LABEL
+from pubn import BASE_DIR, NEG_LABEL, POS_LABEL, U_LABEL, construct_filename
 from pubn.loss import LossType
 
 # DATASET_REMOVE = ('headers', 'footers', 'quotes')  # ToDo settle on dataset elements to remove
@@ -62,16 +62,7 @@ class NewsgroupsData:
     def _pickle_filename(args: Namespace) -> Path:
         r""" File name for pickle file """
         serialize_dir = BASE_DIR / "tensors"
-        serialize_dir.mkdir(parents=True, exist_ok=True)
-
-        def _classes_to_str(cls_set: 'Set[NewsgroupsData.Categories]') -> str:
-            return ",".join([x.name.lower() for x in sorted(cls_set)])
-
-        fields = ["data", f"n-p={args.size_p}", f"n-n={args.size_n}",
-                  f"pos={_classes_to_str(args.pos)}", f"neg={_classes_to_str(args.neg)}"]
-
-        fields[-1] += ".pk"
-        return serialize_dir / "_".join(fields)
+        return construct_filename("data", args, serialize_dir, "pk")
 
     @classmethod
     def serial_exists(cls, args: Namespace) -> bool:
