@@ -3,7 +3,7 @@ import logging
 from functools import partial
 from pathlib import Path
 import time
-from typing import Callable, Set, Union
+from typing import Callable, Optional, Set, Union
 
 import numpy as np
 
@@ -17,8 +17,8 @@ import torch.optim as optim
 from torchtext.data import Iterator, Dataset, LabelField, Example
 
 from ._base_classifier import BaseClassifier, ClassifierConfig
-from ._utils import BASE_DIR, NEG_LABEL, POS_LABEL, TORCH_DEVICE, U_LABEL, construct_iterator, \
-    construct_filename
+from ._utils import BASE_DIR, IS_CUDA, NEG_LABEL, POS_LABEL, TORCH_DEVICE, U_LABEL, \
+    construct_iterator, construct_filename
 from .logger import TrainingLogger, create_stdout_handler
 from .loss import LossType, PULoss
 
@@ -29,7 +29,8 @@ class NlpBiasedLearner(nn.Module):
     _log = None
 
     # def __init__(self, embedding: nn.Embedding, args: Namespace):
-    def __init__(self, args: Namespace, embedding_weights: Tensor, prior: float):
+    def __init__(self, args: Namespace, embedding_weights: Tensor, prior: float,
+                 rho: Optional[float]):
         super().__init__()
         self._setup_logger()
 
@@ -38,11 +39,21 @@ class NlpBiasedLearner(nn.Module):
         self._model = BaseClassifier(embedding_weights)
 
         self._args = args
-        self.prior = prior
         self.l_type = args.loss
+
+        self.prior = prior
+        self._rho = rho
+        if self.l_type == LossType.PUBN:
+            if self._rho is None: raise ValueError("rho required for PUbN loss")
+            self._sigma = _SigmaLearner  # ToDo Fix Sigma learner constructor
+        else:
+            if self._rho is not None: raise ValueError("rho specified but PUbN loss not used")
+            self._sigma = None
 
         self._prefix = self.l_type.name.lower()
         self._train_start = self._optim = self._best_loss = self._logger = None
+
+        if IS_CUDA: self.cuda(TORCH_DEVICE)
 
     def fit(self, train: Dataset, valid: Dataset, labels: LabelField):
         r""" Fits the learner"""
@@ -181,32 +192,18 @@ class NlpBiasedLearner(nn.Module):
         cls._log = logging.getLogger(cls.Config.LOGGER_NAME)
         cls._log.propagate = False  # Do not propagate log messages to a parent logger
         create_stdout_handler(cls.Config.LOG_LEVEL, logger_name=cls.Config.LOGGER_NAME)
-#
-#
-# class _SigmaLearner(nn.Module):
-#     class Config:
-#         NUM_EPOCH = 100
-#         LR = 1E-3
-#         WD = 0
-#
-#     def __init__(self):
-#         self._net = dfdf
-#
-#         if IS_CUDA: self.cuda(TORCH_DEVICE)
-#
-#     def fit(self, p_db: DataBunch, bn_db: DataBunch, u_db: DataBunch):
-#         merged_db = merge_dbs_for_latent(p_db=p_db, bn_db=bn_db, u_db=u_db, neg_label=PUbN.BN_LABEL)
-#
-#
-#         opt = torch.optim.AdamW(self.parameters(), lr=self.Config.LR, weight_decay=self.Config.WD)
-#         for ep in range(1, self.Config.NUM_EPOCH + 1):
-#
-#             for x, y in merged_db.train_dl:
-#                 dec_scores = self._net.forward(x)
-#
-#
-#     def forward(self, x: Tensor) -> Tensor:
-#         return self._net.forward(x)
+
+
+class _SigmaLearner(nn.Module):
+    def __init__(self, args: Namespace, embedding_weights: Tensor, prior: float):
+        self._model = BaseClassifier(embed=embedding_weights)
+        if IS_CUDA: self.cuda(TORCH_DEVICE)
+
+    def fit(self, train: Dataset, valid: Dataset, labels: LabelField):
+        raise NotImplementedError()
+
+    def forward(self, x: Tensor) -> Tensor:
+        return self._net.forward(x).squeeze()
 
 
 def save_module(module: nn.Module, filepath: Path) -> None:

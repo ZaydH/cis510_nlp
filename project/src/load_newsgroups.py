@@ -21,8 +21,7 @@ from torchtext.data.dataset import Dataset
 import torchtext.vocab
 
 # Valid Choices - Any subset of: ('headers', 'footers', 'quotes')
-from logger_utils import setup_logger
-from pubn import BASE_DIR, NEG_LABEL, POS_LABEL, U_LABEL, construct_filename
+from pubn import BASE_DIR, NEG_LABEL, POS_LABEL, U_LABEL, construct_filename, calculate_prior
 
 # DATASET_REMOVE = ('headers', 'footers', 'quotes')  # ToDo settle on dataset elements to remove
 DATASET_REMOVE = ('headers', 'footers')
@@ -41,6 +40,8 @@ class NewsgroupsData:
     train: Dataset = None
     test: Dataset = None
     unlabel: Dataset = None
+
+    prior: float = None
 
     class Categories(Enum):
         ALT = {0}
@@ -381,5 +382,8 @@ def load_20newsgroups(args: Namespace):
     # _create_serialized_20newsgroups(serialize_path, args)
 
     serial = NewsgroupsData.load(args)
+    serial.prior = calculate_prior(serial.test)
+    assert (1 - serial.prior) >= args.rho, "Input parameter rho invalid given dataset"
+
     _print_stats(serial.text, serial.label)
     return serial

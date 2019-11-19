@@ -35,7 +35,8 @@ class BaseClassifier(nn.Module):
 
     def __init__(self, embed: Tensor):
         super().__init__()
-        self._embed = nn.Embedding.from_pretrained(embed, freeze=False)  # ToDo decide if unfreeze
+        # ToDo decide if unfreeze
+        self._embed = nn.Embedding.from_pretrained(embed.clone(), freeze=False)
 
         self._rnn = self.Config.BASE_RNN(num_layers=self.Config.RNN_DEPTH,
                                          hidden_size=self.Config.RNN_HIDDEN_DIM,

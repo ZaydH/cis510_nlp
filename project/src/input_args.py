@@ -19,6 +19,7 @@ def parse_args() -> Namespace:
            "length as the negative class list.  Values are automatically normalized to sum to 1")
     args.add_argument("--bias", help=msg, nargs='*', type=float)
 
+    args.add_argument("--rho", help="Pr[y=-1, s=+1]", type=float, default=None)
     args.add_argument("--ep", help="Number of training epochs", type=int,
                       default=NlpBiasedLearner.Config.NUM_EPOCH)
     args.add_argument("--bs", help="Batch size", type=int,
@@ -52,6 +53,15 @@ def _error_check_args(args: Namespace):
             raise ValueError("Bias values must be non-negative")
         if sum(args.bias):
             raise ValueError("No positive bias probabilities specified")
+
+    if args.rho is not None:
+        if args.loss != LossType.PUBN.name.lower():
+            raise ValueError(f"rho specified but not valid for loss \"{args.loss}\"")
+        if args.rho <= 0 or args.rho >= 1:
+            raise ValueError(f"rho must be in the range (0,1)")
+    else:
+        if args.loss == LossType.PUbN.name.lower():
+            raise ValueError("rho not specified but PUbN used")
 
 
 def _refactor_args(args: Namespace) -> None:
