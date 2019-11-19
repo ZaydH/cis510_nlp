@@ -24,8 +24,6 @@ from .loss import LossType, PULoss
 
 
 class NlpBiasedLearner(nn.Module):
-    Config = ClassifierConfig
-
     _log = None
 
     # def __init__(self, embedding: nn.Embedding, args: Namespace):
@@ -63,9 +61,10 @@ class NlpBiasedLearner(nn.Module):
 
         tb_dir = BASE_DIR / "tb"
         TrainingLogger.create_tensorboard(tb_dir)
+        # noinspection PyUnresolvedReferences
         self._logger = TrainingLogger(["Train Loss", "Valid Loss", "Best", "Time"],
                                       [20, 20, 7, 10],
-                                      logger_name=self.Config.LOGGER_NAME,
+                                      logger_name=self._model.Config.LOGGER_NAME,
                                       tb_grp_name=self.l_type.name)
 
         # noinspection PyUnresolvedReferences
@@ -197,13 +196,51 @@ class NlpBiasedLearner(nn.Module):
 class _SigmaLearner(nn.Module):
     def __init__(self, args: Namespace, embedding_weights: Tensor, prior: float):
         self._model = BaseClassifier(embed=embedding_weights)
+
+        self.prior, self.rho = prior, args.rho
+
+        self._logger = None
         if IS_CUDA: self.cuda(TORCH_DEVICE)
 
-    def fit(self, train: Dataset, valid: Dataset, labels: LabelField):
-        raise NotImplementedError()
+    def fit(self, train: Iterator, valid: Iterator, labels: LabelField, is_nnpu: bool):
+        r""" Shared functions for nnPU and supervised learning """
+        map_pos, map_neg = labels.vocab.stoi[POS_LABEL], labels.vocab.stoi[NEG_LABEL]
+
+        def _sigma_log_loss(in_tensor: Tensor, target: Tensor) -> Tensor:
+            y = torch.full(target.shape, -1)
+            for map_val in (map_pos, map_neg):
+                y[target == map_val] = 1
+            yx = in_tensor * y
+            return -F.logsigmoid(yx).mean()
+
+        pu_loss = PULoss(prior=self.prior, pos_label={map_pos, map_neg}, loss=_sigma_log_loss)
+        loss_func = partial(pu_loss.calc_loss)
+        valid_loss = partial(pu_loss.zero_one_loss)
+
+        # noinspection PyUnresolvedReferences
+        for ep in range(1, self._model.Config.NUM_EPOCH + 1):
+            train_loss, num_batch = torch.zeros(()), 0
+            for batch in train:
+                self._optim.zero_grad()
+                # noinspection PyUnresolvedReferences
+                dec_scores = self._model.forward(*batch.text)
+
+                loss = loss_func(dec_scores, batch.label)
+                if is_nnpu:
+                    # noinspection PyUnresolvedReferences
+                    loss.grad_var.backward()
+                    # noinspection PyUnresolvedReferences
+                    loss = loss.loss_var
+                train_loss += loss.detach()
+                num_batch += 1
+
+                self._optim.step()
+            train_loss /= num_batch
+            self._log_epoch(ep, train_loss, valid, valid_loss)
+        self._restore_best_model()
 
     def forward(self, x: Tensor) -> Tensor:
-        return self._net.forward(x).squeeze()
+        return F.sigmoid(self._net.forward(x).squeeze())
 
 
 def save_module(module: nn.Module, filepath: Path) -> None:

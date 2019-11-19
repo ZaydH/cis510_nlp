@@ -383,7 +383,8 @@ def load_20newsgroups(args: Namespace):
 
     serial = NewsgroupsData.load(args)
     serial.prior = calculate_prior(serial.test)
-    assert (1 - serial.prior) >= args.rho, "Input parameter rho invalid given dataset"
+    if args.rho is not None:
+        assert (1 - serial.prior) >= args.rho, "Input parameter rho invalid given dataset"
 
     _print_stats(serial.text, serial.label)
     return serial

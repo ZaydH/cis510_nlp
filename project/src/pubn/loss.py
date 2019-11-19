@@ -1,6 +1,6 @@
 import collections
 from enum import Enum
-from typing import Callable
+from typing import Callable, Set, Union
 
 import torch
 from torch import Tensor
@@ -20,11 +20,14 @@ class PULoss:
 
     LossInfo = collections.namedtuple("LossInfo", ["loss_var", "grad_var"])
 
-    def __init__(self, prior: float, pos_label: int, loss: Callable = _default_loss,
-                 gamma: float = 1, beta: float = 0, use_nnpu: bool = True):
+    def __init__(self, prior: float, pos_label: Union[Set[int], int],
+                 loss: Callable = _default_loss, gamma: float = 1, beta: float = 0,
+                 use_nnpu: bool = True):
         if not 0 < prior < 1:
             raise NotImplementedError("The class prior should be in (0, 1)")
         self.prior = prior
+        if isinstance(pos_label, int):
+            pos_label = {pos_label}
         self.pos_label = pos_label
 
         self.gamma = gamma
@@ -74,7 +77,9 @@ class PULoss:
         self._verify_loss_inputs(dec_scores, label)
 
         # Mask used to filter the dec_scores tensor and in loss calculations
-        p_mask = label == self.pos_label
+        p_mask = torch.zeros(label.shape, dtype=torch.bool)
+        for p_lbl in self.pos_label:
+            p_mask |= label == p_lbl
         u_mask = ~p_mask
         has_p, has_u = p_mask.any(), u_mask.any()
 

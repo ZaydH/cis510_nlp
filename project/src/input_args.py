@@ -60,7 +60,7 @@ def _error_check_args(args: Namespace):
         if args.rho <= 0 or args.rho >= 1:
             raise ValueError(f"rho must be in the range (0,1)")
     else:
-        if args.loss == LossType.PUbN.name.lower():
+        if args.loss == LossType.PUBN.name.lower():
             raise ValueError("rho not specified but PUbN used")
 
 
