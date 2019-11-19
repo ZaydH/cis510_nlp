@@ -7,7 +7,6 @@ from typing import Callable, Optional, Set, Union
 
 import numpy as np
 
-from fastai.basic_data import DataBunch
 import torch
 from torch import Tensor
 import torch.nn as nn
@@ -24,9 +23,9 @@ from .loss import LossType, PULoss
 
 
 class NlpBiasedLearner(nn.Module):
+    Config = ClassifierConfig
     _log = None
 
-    # def __init__(self, embedding: nn.Embedding, args: Namespace):
     def __init__(self, args: Namespace, embedding_weights: Tensor, prior: float,
                  rho: Optional[float]):
         super().__init__()
@@ -51,26 +50,26 @@ class NlpBiasedLearner(nn.Module):
         self._prefix = self.l_type.name.lower()
         self._train_start = self._optim = self._best_loss = self._logger = None
 
+        # True labels get mapped to different values by LabelField object.  Stores the mapped values
+        self._map_pos = self._map_neg = None
+
         if IS_CUDA: self.cuda(TORCH_DEVICE)
 
-    def fit(self, train: Dataset, valid: Dataset, labels: LabelField):
-        r""" Fits the learner"""
+    def _configure_fit_vars(self):
+        r""" Set initial values/construct all variables used in a fit method """
         # Fields that apply regardless of loss method
         self._train_start = time.time()
         self._best_loss = np.inf
 
         tb_dir = BASE_DIR / "tb"
         TrainingLogger.create_tensorboard(tb_dir)
-        # noinspection PyUnresolvedReferences
         self._logger = TrainingLogger(["Train Loss", "Valid Loss", "Best", "Time"],
                                       [20, 20, 7, 10],
-                                      logger_name=self._model.Config.LOGGER_NAME,
+                                      logger_name=self.Config.LOGGER_NAME,
                                       tb_grp_name=self.l_type.name)
 
-        # noinspection PyUnresolvedReferences
-        self._optim = optim.AdamW(self.parameters(), lr=self._model.Config.LEARNING_RATE,
-                                  weight_decay=self._model.Config.WEIGHT_DECAY)
-
+    def fit(self, train: Dataset, valid: Dataset, labels: LabelField):
+        r""" Fits the learner"""
         # Filter the dataset based on the training configuration
         if self.l_type == LossType.NNPU:
             train = exclude_label_in_dataset(train, NEG_LABEL)
@@ -81,38 +80,38 @@ class NlpBiasedLearner(nn.Module):
         # noinspection PyUnresolvedReferences
         valid_itr = construct_iterator(valid, bs=self._model.Config.BATCH_SIZE, shuffle=True)
 
+        self._map_pos, self._map_neg = labels.vocab.stoi[POS_LABEL], labels.vocab.stoi[NEG_LABEL]
+
         if self.l_type == LossType.PUBN:
-            self._fit_pubn(train_itr, valid_itr)
-        elif self.l_type == LossType.NNPU or self.l_type == LossType.PN:
+            self._fit_sigma(train_itr, valid_itr)
 
-            self._fit_base(train_itr, valid_itr, labels, is_nnpu=self.l_type == LossType.NNPU)
-        else:
-            raise ValueError("Unknown loss type")
+        self._configure_fit_vars()
+        self._fit_base(train_itr, valid_itr)
 
-    def _fit_base(self, train: Iterator, valid: Iterator, labels: LabelField, is_nnpu: bool):
+    def _fit_base(self, train: Iterator, valid: Iterator):
         r""" Shared functions for nnPU and supervised learning """
-        map_pos = labels.vocab.stoi[POS_LABEL]
-
-        def _supervised_loss(in_tensor: Tensor, target: Tensor) -> Tensor:
-            y = torch.full(target.shape, -1)
-            y[target == map_pos] = 1
-            yx = in_tensor * y
-            return -F.logsigmoid(yx).mean()
+        is_nnpu = self.l_type == LossType.NNPU
+        # noinspection PyUnresolvedReferences
+        self._optim = optim.AdamW(self._model.parameters(), lr=self._model.Config.LEARNING_RATE,
+                                  weight_decay=self._model.Config.WEIGHT_DECAY)
 
         if is_nnpu:
-            pu_loss = PULoss(prior=self.prior, pos_label=map_pos)
+            pu_loss = PULoss(prior=self.prior, pos_label=self._map_pos)
             loss_func = partial(pu_loss.calc_loss)
             valid_loss = partial(pu_loss.zero_one_loss)
         else:
-            loss_func = valid_loss = _supervised_loss
+            assert self.l_type == LossType.PN, "Unknown loss type"
+            loss_func = valid_loss = self._build_logistic_loss(self._map_pos)
 
         # noinspection PyUnresolvedReferences
         for ep in range(1, self._model.Config.NUM_EPOCH + 1):
+            self.train()
+            if self._sigma is not None: self._sigma().eval()  # Sigma frozen after first stage
             train_loss, num_batch = torch.zeros(()), 0
             for batch in train:
                 self._optim.zero_grad()
                 # noinspection PyUnresolvedReferences
-                dec_scores = self.forward(*batch.text)
+                dec_scores = self._model.forward(*batch.text)
 
                 loss = loss_func(dec_scores, batch.label)
                 if is_nnpu:
@@ -128,11 +127,54 @@ class NlpBiasedLearner(nn.Module):
             self._log_epoch(ep, train_loss, valid, valid_loss)
         self._restore_best_model()
 
-    def _fit_pubn(self, train: Iterator, valid_itr: Iterator):
-        raise NotImplementedError("_fit_pubn not implemented")
+    @staticmethod
+    def _build_logistic_loss(pos_classes: Union[Set[int], int]) -> Callable:
+        r"""
+        Constructor method for a logistic loss function
 
-    def _train_sigma(self, p_db: DataBunch, bn_db: DataBunch, u_db: DataBunch):
-        raise NotImplementedError("sigma trainer not implemented")
+        :param pos_classes: Set of (mapped) class labels to treat as "positive"
+        :return: Sigmoid loss function using the positive classes in \p pos_classes
+        """
+        if isinstance(pos_classes, int): pos_classes = {pos_classes}
+
+        def _logistic_loss(in_tensor: Tensor, target: Tensor) -> Tensor:
+            y = torch.full(target.shape, -1)
+            for pos_lbl in pos_classes:
+                y[target == pos_lbl] = 1
+            yx = in_tensor * y
+            return -F.logsigmoid(yx).mean()
+
+        return _logistic_loss
+
+    def _fit_sigma(self, train: Iterator, valid: Iterator):
+        r""" Fit the sigma function Pr[s = + 1 | x] """
+        # noinspection PyUnresolvedReferences
+        self._optim = optim.AdamW(self._sigma.parameters(),
+                                  lr=self._sigma.Config.LEARNING_RATE,
+                                  weight_decay=self._sigma.Config.WEIGHT_DECAY)
+
+        pos_label = {self._map_neg, self._map_pos}
+        pu_loss = PULoss(prior=self.prior + self._rho, pos_label=pos_label,
+                         loss=self._build_logistic_loss(pos_label))
+        valid_loss = partial(pu_loss.zero_one_loss)
+        for ep in range(1, self.Config.NUM_EPOCH + 1):
+            self._sigma.train()
+            train_loss, num_batch = torch.zeros(()), 0
+            for batch in train:
+                self._optim.zero_grad()
+                # noinspection PyUnresolvedReferences
+                dec_scores = self._sigma.forward_fit(*batch.text)
+
+                loss = pu_loss.calc_loss(dec_scores, batch.label)
+                loss.grad_var.backward()
+                train_loss += loss.loss_var.detach()
+                num_batch += 1
+
+                self._optim.step()
+            train_loss /= num_batch
+            self._log_epoch(ep, train_loss, valid, valid_loss)
+        self._restore_best_model()
+        self._sigma.eval()
 
     def _log_epoch(self, ep: int, train_loss: Tensor, valid_itr: Iterator, loss_func: Callable):
         r"""
@@ -194,53 +236,20 @@ class NlpBiasedLearner(nn.Module):
 
 
 class _SigmaLearner(nn.Module):
-    def __init__(self, args: Namespace, embedding_weights: Tensor, prior: float):
+    r""" Encapsulates the sigma learner """
+    Config = ClassifierConfig
+
+    def __init__(self, embedding_weights: Tensor):
+        super().__init__()
         self._model = BaseClassifier(embed=embedding_weights)
-
-        self.prior, self.rho = prior, args.rho
-
-        self._logger = None
         if IS_CUDA: self.cuda(TORCH_DEVICE)
 
-    def fit(self, train: Iterator, valid: Iterator, labels: LabelField, is_nnpu: bool):
-        r""" Shared functions for nnPU and supervised learning """
-        map_pos, map_neg = labels.vocab.stoi[POS_LABEL], labels.vocab.stoi[NEG_LABEL]
+    def forward_fit(self, x: Tensor, x_len: Tensor) -> Tensor:
+        r""" Forward method only used during training """
+        return self._net.forward(x, x_len).squeeze()
 
-        def _sigma_log_loss(in_tensor: Tensor, target: Tensor) -> Tensor:
-            y = torch.full(target.shape, -1)
-            for map_val in (map_pos, map_neg):
-                y[target == map_val] = 1
-            yx = in_tensor * y
-            return -F.logsigmoid(yx).mean()
-
-        pu_loss = PULoss(prior=self.prior, pos_label={map_pos, map_neg}, loss=_sigma_log_loss)
-        loss_func = partial(pu_loss.calc_loss)
-        valid_loss = partial(pu_loss.zero_one_loss)
-
-        # noinspection PyUnresolvedReferences
-        for ep in range(1, self._model.Config.NUM_EPOCH + 1):
-            train_loss, num_batch = torch.zeros(()), 0
-            for batch in train:
-                self._optim.zero_grad()
-                # noinspection PyUnresolvedReferences
-                dec_scores = self._model.forward(*batch.text)
-
-                loss = loss_func(dec_scores, batch.label)
-                if is_nnpu:
-                    # noinspection PyUnresolvedReferences
-                    loss.grad_var.backward()
-                    # noinspection PyUnresolvedReferences
-                    loss = loss.loss_var
-                train_loss += loss.detach()
-                num_batch += 1
-
-                self._optim.step()
-            train_loss /= num_batch
-            self._log_epoch(ep, train_loss, valid, valid_loss)
-        self._restore_best_model()
-
-    def forward(self, x: Tensor) -> Tensor:
-        return F.sigmoid(self._net.forward(x).squeeze())
+    def forward(self, x: Tensor, x_len: Tensor) -> Tensor:
+        return F.sigmoid(self.forward_fit(x, x_len))
 
 
 def save_module(module: nn.Module, filepath: Path) -> None:
