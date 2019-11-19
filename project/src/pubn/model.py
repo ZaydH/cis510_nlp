@@ -75,50 +75,68 @@ class NlpBiasedLearner(nn.Module):
             train = exclude_label_in_dataset(train, NEG_LABEL)
         elif self.l_type == LossType.PN:
             train = exclude_label_in_dataset(train, U_LABEL)
-        # noinspection PyUnresolvedReferences
-        train_itr = construct_iterator(train, bs=self._model.Config.BATCH_SIZE, shuffle=True)
-        # noinspection PyUnresolvedReferences
-        valid_itr = construct_iterator(valid, bs=self._model.Config.BATCH_SIZE, shuffle=True)
 
         self._map_pos, self._map_neg = labels.vocab.stoi[POS_LABEL], labels.vocab.stoi[NEG_LABEL]
 
         if self.l_type == LossType.PUBN:
+            # noinspection PyUnresolvedReferences
+            train_itr = construct_iterator(train, bs=self._sigma.Config.BATCH_SIZE, shuffle=True)
+            # noinspection PyUnresolvedReferences
+            valid_itr = construct_iterator(valid, bs=self._sigma.Config.BATCH_SIZE, shuffle=True)
             self._fit_sigma(train_itr, valid_itr)
 
         self._configure_fit_vars()
+        # noinspection PyUnresolvedReferences
+        train_itr = construct_iterator(train, bs=self.Config.BATCH_SIZE, shuffle=True)
+        # noinspection PyUnresolvedReferences
+        valid_itr = construct_iterator(valid, bs=self.Config.BATCH_SIZE, shuffle=True)
         self._fit_base(train_itr, valid_itr)
 
     def _fit_base(self, train: Iterator, valid: Iterator):
         r""" Shared functions for nnPU and supervised learning """
-        is_nnpu = self.l_type == LossType.NNPU
+        is_nnpu, is_pubn = (self.l_type == LossType.NNPU), (self.l_type == LossType.PUBN)
         # noinspection PyUnresolvedReferences
         self._optim = optim.AdamW(self._model.parameters(), lr=self._model.Config.LEARNING_RATE,
                                   weight_decay=self._model.Config.WEIGHT_DECAY)
 
         if is_nnpu:
-            pu_loss = PULoss(prior=self.prior, pos_label=self._map_pos)
-            loss_func = partial(pu_loss.calc_loss)
+            pu_loss = PULoss(prior=self.prior, pos_label=self._map_pos)  # ToDo fix missing loss
             valid_loss = partial(pu_loss.zero_one_loss)
+        elif is_pubn:
+            raise NotImplementedError
         else:
             assert self.l_type == LossType.PN, "Unknown loss type"
             loss_func = valid_loss = self._build_logistic_loss(self._map_pos)
 
         # noinspection PyUnresolvedReferences
         for ep in range(1, self._model.Config.NUM_EPOCH + 1):
-            self.train()
+            # noinspection PyUnresolvedReferences
+            self._model.train()
             if self._sigma is not None: self._sigma().eval()  # Sigma frozen after first stage
+
             train_loss, num_batch = torch.zeros(()), 0
             for batch in train:
                 self._optim.zero_grad()
                 # noinspection PyUnresolvedReferences
                 dec_scores = self._model.forward(*batch.text)
 
-                loss = loss_func(dec_scores, batch.label)
                 if is_nnpu:
+                    # noinspection PyUnboundLocalVariable
+                    loss = pu_loss.calc_loss(dec_scores, batch.label)
                     # noinspection PyUnresolvedReferences
                     loss.grad_var.backward()
                     # noinspection PyUnresolvedReferences
                     loss = loss.loss_var
+                else:
+                    if is_pubn:
+                        # ToDo loss missing
+                        sigma = self._sigma.forward(*batch.text)
+                        raise NotImplementedError
+                    else:
+                        assert self.l_type == LossType.PN, "Unknown loss type"
+                        # noinspection PyUnboundLocalVariable
+                        loss = loss_func(dec_scores, batch.label)
+                    loss.backward()
                 train_loss += loss.detach()
                 num_batch += 1
 
@@ -249,7 +267,8 @@ class _SigmaLearner(nn.Module):
         return self._net.forward(x, x_len).squeeze()
 
     def forward(self, x: Tensor, x_len: Tensor) -> Tensor:
-        return F.sigmoid(self.forward_fit(x, x_len))
+        with torch.no_grad():
+            return F.sigmoid(self.forward_fit(x, x_len))
 
 
 def save_module(module: nn.Module, filepath: Path) -> None:

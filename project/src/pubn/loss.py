@@ -12,17 +12,13 @@ def _default_loss(x: Tensor) -> Tensor:
     return torch.sigmoid(-x)
 
 
-PU_SIGMOID_LOSS = _default_loss
-
-
 class PULoss:
     """wrapper of loss function for PU learning"""
 
     LossInfo = collections.namedtuple("LossInfo", ["loss_var", "grad_var"])
 
     def __init__(self, prior: float, pos_label: Union[Set[int], int],
-                 loss: Callable = _default_loss, gamma: float = 1, beta: float = 0,
-                 use_nnpu: bool = True):
+                 loss: Callable, gamma: float = 1, beta: float = 0, use_nnpu: bool = True):
         if not 0 < prior < 1:
             raise NotImplementedError("The class prior should be in (0, 1)")
         self.prior = prior
@@ -129,29 +125,24 @@ class PUbN:
     Yu-Guan Hsieh, Gang Niu, and Masashi Sugiyama. Classification from Positive, Unlabeled and
     Biased Negative Data. ICML 2019.
     """
-    POS_LABEL = 1
-    BN_LABEL = -1
-
-    def __init__(self, prior: float, rho: float, eta: float, sigma: nn.Module,
+    def __init__(self, prior: float, rho: float, eta: float, pos_label: int, neg_label: int,
                  loss: Callable = _default_loss):
         self.prior = prior
         self.rho = rho
         self.eta = eta
 
-        self.sigma = sigma
+        self._pos_label, self._neg_label = pos_label, neg_label
+
         self.loss_func = loss
 
-    def calc_loss(self, x: Tensor, dec_scores: Tensor, labels: Tensor) -> Tensor:
+    def calc_loss(self, dec_scores: Tensor, labels: Tensor, sigma_x: Tensor) -> Tensor:
         # Labeled loss terms
-        p_mask, bn_mask = (labels == self.POS_LABEL), (labels == self.BN_LABEL)
+        p_mask, bn_mask = (labels == self._pos_label), (labels == self._neg_label)
         u_mask = p_mask.logical_xor(bn_mask).logical_not()
 
         l_pos = self.prior * self.loss_func(dec_scores[p_mask]) if p_mask.any() else torch.zeros(())
         l_bn = self.rho * self.loss_func(dec_scores[bn_mask]) if bn_mask.any() else torch.zeros(())
 
-        self.sigma.eval()
-        with torch.no_grad():
-            sigma_x = self.sigma(x)
         l_u_n = self._unlabeled_neg_loss(u_mask, sigma_x, dec_scores, is_unlabeled=True) \
                 + self._unlabeled_neg_loss(p_mask, sigma_x, dec_scores, is_unlabeled=False) \
                 + self._unlabeled_neg_loss(bn_mask, sigma_x, dec_scores, is_unlabeled=False)
