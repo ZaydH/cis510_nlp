@@ -71,10 +71,10 @@ class NlpBiasedLearner(nn.Module):
     def fit(self, train: Dataset, valid: Dataset, labels: LabelField):
         r""" Fits the learner"""
         # Filter the dataset based on the training configuration
-        if self.l_type == LossType.NNPU:
-            train = exclude_label_in_dataset(train, NEG_LABEL)
-        elif self.l_type == LossType.PN:
-            train = exclude_label_in_dataset(train, U_LABEL)
+        if self.l_type == LossType.NNPU or self.l_type == LossType.PN:
+            exclude_lbl = NEG_LABEL if self.l_type == LossType.NNPU else U_LABEL
+            train = exclude_label_in_dataset(train, exclude_lbl)
+            valid = exclude_label_in_dataset(train, exclude_lbl)
 
         self._map_pos, self._map_neg = labels.vocab.stoi[POS_LABEL], labels.vocab.stoi[NEG_LABEL]
 
