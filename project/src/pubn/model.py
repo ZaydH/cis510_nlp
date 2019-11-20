@@ -42,7 +42,7 @@ class NlpBiasedLearner(nn.Module):
         self._rho = rho
         if self.l_type == LossType.PUBN:
             if self._rho is None: raise ValueError("rho required for PUbN loss")
-            self._sigma = _SigmaLearner(embedding_weights)
+            self._sigma = SigmaLearner(embedding_weights)
         else:
             if self._rho is not None: raise ValueError("rho specified but PUbN loss not used")
             self._sigma = None
@@ -258,7 +258,7 @@ class NlpBiasedLearner(nn.Module):
         create_stdout_handler(cls.Config.LOG_LEVEL, logger_name=cls.Config.LOGGER_NAME)
 
 
-class _SigmaLearner(nn.Module):
+class SigmaLearner(nn.Module):
     r""" Encapsulates the sigma learner """
     Config = ClassifierConfig
 

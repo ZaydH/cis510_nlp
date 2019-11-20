@@ -1,8 +1,9 @@
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser, Namespace
+import logging
 
 from load_newsgroups import NewsgroupsData
 from pubn.loss import LossType
-from pubn.model import NlpBiasedLearner
+from pubn.model import NlpBiasedLearner, SigmaLearner
 
 
 def parse_args() -> Namespace:
@@ -22,8 +23,8 @@ def parse_args() -> Namespace:
     args.add_argument("--rho", help="Pr[y=-1, s=+1]", type=float, default=None)
     args.add_argument("--ep", help="Number of training epochs", type=int,
                       default=NlpBiasedLearner.Config.NUM_EPOCH)
-    args.add_argument("--bs", help="Batch size", type=int,
-                      default=NlpBiasedLearner.Config.BATCH_SIZE)
+    args.add_argument("--bs", help="Batch size. If not specified, value is 1/100 of dataset size",
+                      type=int, default=None)
     args.add_argument("--embed_dim", help="Word vector dimension", type=int,
                       default=NlpBiasedLearner.Config.EMBED_DIM)
     args.add_argument("--seq_len", help="Maximum sequence length",  type=int, default=500)
@@ -39,7 +40,10 @@ def parse_args() -> Namespace:
 
 def _error_check_args(args: Namespace):
     # Arguments error checking
-    pos_flds = ("size_p", "size_n", "size_n", "bs", "ep", "embed_dim")
+    if args.bs is None:
+        args.bs = (args.size_p + args.size_n + args.size_u) // 100
+
+    pos_flds = ("size_p", "size_n", "size_u", "bs", "ep", "embed_dim")
     for name in pos_flds:
         if args.__getattribute__(name) <= 0: raise ValueError(f"{name} must be positive valued")
 
@@ -83,7 +87,12 @@ def _refactor_args(args: Namespace) -> None:
 
 
 def _transfer_args_to_config(args: Namespace):
-    r""" Transfer the values in args to any configuration"""
-    NlpBiasedLearner.Config.NUM_EPOCH = args.ep
-    NlpBiasedLearner.Config.BATCH_SIZE = args.bs
-    NlpBiasedLearner.Config.EMBED_DIM = args.embed_dim
+    r""" Transfer the values in args to any Biased and Sigma learner configurations """
+    for config in (NlpBiasedLearner.Config, SigmaLearner.Config):
+        config.NUM_EPOCH = args.ep
+        config.BATCH_SIZE = args.bs
+        config.EMBED_DIM = args.embed_dim
+
+    logging.info(f"Number of Training Epochs: {args.ep}")
+    logging.info(f"Batch Size: {args.bs}")
+    logging.info(f"Embedding Dimension: {args.embed_dim}")

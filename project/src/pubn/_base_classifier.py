@@ -11,8 +11,8 @@ class ClassifierConfig:
     LOGGER_NAME = 'nlp_learner'
     LOG_LEVEL = logging.DEBUG
 
-    NUM_EPOCH = 50  # ToDo restore epoch count
-    BATCH_SIZE = 500
+    NUM_EPOCH = 50
+    BATCH_SIZE = None
 
     LEARNING_RATE = 1E-3
     # WEIGHT_DECAY = 5E-3
@@ -25,9 +25,8 @@ class ClassifierConfig:
     RNN_HIDDEN_DIM = 300
     RNN_DEPTH = 1
 
-    # FF_HIDDEN_DEPTH = 1
-    FF_HIDDEN_DEPTH = 0
-    FF_HIDDEN_DIM = 256
+    FF_HIDDEN_DEPTH = 2
+    FF_HIDDEN_DIM = 300
     FF_ACTIVATION = nn.ReLU
 
     BASE_RNN = nn.LSTM
@@ -51,7 +50,7 @@ class BaseClassifier(nn.Module):
         for i in range(1, self.Config.FF_HIDDEN_DEPTH + 1):
             self._ff.add_module("Hidden_{i:02}_Lin", nn.Linear(in_dim, self.Config.FF_HIDDEN_DIM))
             self._ff.add_module("Hidden_{i:02}_Act", self.Config.FF_ACTIVATION())
-            self._ff.add_module("Hidden_{i:02}_BN", nn.BatchNorm1d(self.Config.FF_HIDDEN_DIM))
+            # self._ff.add_module("Hidden_{i:02}_BN", nn.BatchNorm1d(self.Config.FF_HIDDEN_DIM))
             in_dim = self.Config.FF_HIDDEN_DIM
         # Add output layer
         self._ff.add_module("FF_Out", nn.Linear(in_dim, 1))
