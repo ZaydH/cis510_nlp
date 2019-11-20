@@ -19,7 +19,7 @@ from ._base_classifier import BaseClassifier, ClassifierConfig
 from ._utils import BASE_DIR, IS_CUDA, NEG_LABEL, POS_LABEL, TORCH_DEVICE, U_LABEL, \
     construct_iterator, construct_filename
 from .logger import TrainingLogger, create_stdout_handler
-from .loss import LossType, PULoss
+from .loss import LossType, PULoss, PUbN
 
 
 class NlpBiasedLearner(nn.Module):
@@ -100,9 +100,13 @@ class NlpBiasedLearner(nn.Module):
                                   weight_decay=self._model.Config.WEIGHT_DECAY)
 
         if is_nnpu:
-            pu_loss = PULoss(prior=self.prior, pos_label=self._map_pos)  # ToDo fix missing loss
-            valid_loss = partial(pu_loss.zero_one_loss)
+            nnpu = PULoss(prior=self.prior, pos_label=self._map_pos,
+                             loss=self._build_logistic_loss(self._map_pos))
+            valid_loss = partial(nnpu.zero_one_loss)
         elif is_pubn:
+            pubn = PUbN(prior=self.prior, rho=self._rho, eta=self._eta,
+                        pos_label=self._map_pos, neg_label=self._map_neg)  # ToDo fix missing loss
+            # valid_loss  # ToDo Fix missing valid loss
             raise NotImplementedError
         else:
             assert self.l_type == LossType.PN, "Unknown loss type"
@@ -122,7 +126,7 @@ class NlpBiasedLearner(nn.Module):
 
                 if is_nnpu:
                     # noinspection PyUnboundLocalVariable
-                    loss = pu_loss.calc_loss(dec_scores, batch.label)
+                    loss = nnpu.calc_loss(dec_scores, batch.label)
                     # noinspection PyUnresolvedReferences
                     loss.grad_var.backward()
                     # noinspection PyUnresolvedReferences
@@ -130,7 +134,8 @@ class NlpBiasedLearner(nn.Module):
                 else:
                     if is_pubn:
                         # ToDo loss missing
-                        sigma = self._sigma.forward(*batch.text)
+                        sigma_x = self._sigma.forward(*batch.text)
+                        loss = pubn.calc_loss(dec_scores, batch.label, sigma_x)
                         raise NotImplementedError
                     else:
                         assert self.l_type == LossType.PN, "Unknown loss type"

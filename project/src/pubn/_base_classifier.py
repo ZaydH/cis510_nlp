@@ -11,11 +11,14 @@ class ClassifierConfig:
     LOGGER_NAME = 'nlp_learner'
     LOG_LEVEL = logging.DEBUG
 
-    NUM_EPOCH = 100
+    # NUM_EPOCH = 100  # ToDo restore epoch count
+    NUM_EPOCH = 10
     BATCH_SIZE = 500
 
     LEARNING_RATE = 1E-3
-    WEIGHT_DECAY = 5E-3
+    # WEIGHT_DECAY = 5E-3
+    # LEARNING_RATE = 1E-4
+    WEIGHT_DECAY = 0E-3
 
     BIDIRECTIONAL = True
     EMBED_DIM = 300
@@ -23,7 +26,8 @@ class ClassifierConfig:
     RNN_HIDDEN_DIM = 300
     RNN_DEPTH = 1
 
-    FF_HIDDEN_DEPTH = 1
+    # FF_HIDDEN_DEPTH = 1
+    FF_HIDDEN_DEPTH = 0
     FF_HIDDEN_DIM = 256
     FF_ACTIVATION = nn.ReLU
 
