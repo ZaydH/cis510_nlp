@@ -1,5 +1,6 @@
 from argparse import Namespace
 import copy
+from collections import Counter
 from dataclasses import dataclass
 from enum import Enum
 import itertools
@@ -316,6 +317,26 @@ def _build_train_set(p_bunch: Bunch, u_bunch: Bunch, n_bunch: Optional[Bunch],
     return _bunch_to_ds(t_bunch, text, label)
 
 
+def _log_category_frequency(p_cls: Set[NewsgroupsData.Categories], ds_name: str,
+                            bunch: Bunch) -> None:
+    r"""
+    Print the breakdown of classes in the \p Bunch
+
+    :param p_cls: Categories in the positive class
+    :param ds_name: Name of the dataset, e.g., "P", "N", "U", "Test"
+    :param bunch: Bunch to get the class probabilities
+    """
+    counter = Counter(bunch[LABEL_COL])
+    tot = sum(counter.values())
+
+    pos_sum = 0
+    for cat in sorted([c for c in NewsgroupsData.Categories]):
+        cls_sum = sum(counter[cls_id] for cls_id in cat.value)
+        if cat in p_cls: pos_sum += cls_sum
+        logging.debug(f"{ds_name} Class {cat.name}: {100 * cls_sum / tot:.1f}% ({cls_sum}/{tot})")
+    logging.debug(f"{ds_name} Prior: {100 * pos_sum / tot:.1f}%")
+
+
 def _create_serialized_20newsgroups(args):
     r"""
     Creates a serialized 20 newsgroups dataset
@@ -351,6 +372,9 @@ def _create_serialized_20newsgroups(args):
     u_bunch = _reduce_to_fixed_size(u_bunch, new_size=args.size_u)
 
     test_bunch = _download_20newsgroups("test", DATA_DIR, p_cls, n_cls)
+
+    for name, bunch in (("P", p_bunch), ("N", n_bunch), ("U", u_bunch), ("Test", test_bunch)):
+        _log_category_frequency(args.pos, name, bunch)
 
     # Binarize the labels
     for bunch in (p_bunch, u_bunch, n_bunch, test_bunch):
