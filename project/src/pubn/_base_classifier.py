@@ -11,8 +11,7 @@ class ClassifierConfig:
     LOGGER_NAME = 'nlp_learner'
     LOG_LEVEL = logging.DEBUG
 
-    # NUM_EPOCH = 100  # ToDo restore epoch count
-    NUM_EPOCH = 10
+    NUM_EPOCH = 50  # ToDo restore epoch count
     BATCH_SIZE = 500
 
     LEARNING_RATE = 1E-3
