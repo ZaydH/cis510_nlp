@@ -99,18 +99,21 @@ class NlpBiasedLearner(nn.Module):
         self._optim = optim.AdamW(self._model.parameters(), lr=self._model.Config.LEARNING_RATE,
                                   weight_decay=self._model.Config.WEIGHT_DECAY)
 
+        univar_log_loss = self._build_logistic_loss()
+        bivar_log_loss = self._build_logistic_loss(pos_classes=self._map_pos)
         if is_nnpu:
             nnpu = PULoss(prior=self.prior, pos_label=self._map_pos,
-                             loss=self._build_logistic_loss(self._map_pos))
-            valid_loss = partial(nnpu.zero_one_loss)
+                          loss=univar_log_loss)
+            valid_loss = partial(nnpu.calc_loss_only)
         elif is_pubn:
             pubn = PUbN(prior=self.prior, rho=self._rho, eta=self._eta,
-                        pos_label=self._map_pos, neg_label=self._map_neg)  # ToDo fix missing loss
+                        pos_label=self._map_pos, neg_label=self._map_neg,
+                        loss=univar_log_loss)  # ToDo fix missing loss
             # valid_loss  # ToDo Fix missing valid loss
             raise NotImplementedError
         else:
             assert self.l_type == LossType.PN, "Unknown loss type"
-            loss_func = valid_loss = self._build_logistic_loss(self._map_pos)
+            loss_func = valid_loss = bivar_log_loss
 
         # noinspection PyUnresolvedReferences
         for ep in range(1, self._model.Config.NUM_EPOCH + 1):
@@ -151,23 +154,29 @@ class NlpBiasedLearner(nn.Module):
         self._restore_best_model()
 
     @staticmethod
-    def _build_logistic_loss(pos_classes: Union[Set[int], int]) -> Callable:
+    def _build_logistic_loss(pos_classes: Optional[Union[Set[int], int]] = None) -> Callable:
         r"""
         Constructor method for a logistic loss function
 
         :param pos_classes: Set of (mapped) class labels to treat as "positive"
         :return: Sigmoid loss function using the positive classes in \p pos_classes
         """
+        if pos_classes is None:
+            def _logistic_loss_univariate(in_tensor: Tensor) -> Tensor:
+                return -F.logsigmoid(in_tensor).mean()
+
+            return _logistic_loss_univariate
+
         if isinstance(pos_classes, int): pos_classes = {pos_classes}
 
-        def _logistic_loss(in_tensor: Tensor, target: Tensor) -> Tensor:
+        def _logistic_loss_bivariate(in_tensor: Tensor, target: Tensor) -> Tensor:
             y = torch.full(target.shape, -1)
             for pos_lbl in pos_classes:
                 y[target == pos_lbl] = 1
             yx = in_tensor * y
             return -F.logsigmoid(yx).mean()
 
-        return _logistic_loss
+        return _logistic_loss_bivariate
 
     def _fit_sigma(self, train: Iterator, valid: Iterator):
         r""" Fit the sigma function Pr[s = + 1 | x] """

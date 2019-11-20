@@ -101,27 +101,31 @@ class PULoss:
             gradient_var = -self.gamma * neg_risk
         return self.LossInfo(loss_var=loss, grad_var=gradient_var)
 
-    def zero_one_loss(self, dec_scores: Tensor, labels: Tensor) -> Tensor:
-        r"""
-        In validation, 0/1 loss is used for validation. This method implements that approach.
+    def calc_loss_only(self, dec_scores: Tensor, label: Tensor) -> 'LossInfo':
+        r""" Calculates only the loss information """
+        return self.calc_loss(dec_scores=dec_scores, label=label).loss_var
 
-        :param dec_scores: Decision function value
-        :param labels: Labels for each sample in \p.
-        :return: Named tuple with value used for loss and the one used for the gradient
-        """
-        dec_scores, labels = dec_scores.squeeze(), labels.squeeze()
-        self._verify_loss_inputs(dec_scores, labels)
-
-        # Mask used to filter the dec_scores tensor and in loss calculations
-        p_mask = self._find_p_mask(labels)
-        one_val = 1  # Sign value for examples to be positively labeled
-        p_err = (dec_scores[p_mask].sign() != one_val).float().mean()
-
-        u_mask = ~p_mask
-        # By checking against P_LABEL, inherent negation so do not use != operator
-        u_err = (dec_scores[u_mask].sign() == one_val).float().mean()
-
-        return 2 * self.prior * p_err + u_err - self.prior
+    # def zero_one_loss(self, dec_scores: Tensor, labels: Tensor) -> Tensor:
+    #     r"""
+    #     In validation, 0/1 loss is used for validation. This method implements that approach.
+    #
+    #     :param dec_scores: Decision function value
+    #     :param labels: Labels for each sample in \p.
+    #     :return: Named tuple with value used for loss and the one used for the gradient
+    #     """
+    #     dec_scores, labels = dec_scores.squeeze(), labels.squeeze()
+    #     self._verify_loss_inputs(dec_scores, labels)
+    #
+    #     # Mask used to filter the dec_scores tensor and in loss calculations
+    #     p_mask = self._find_p_mask(labels)
+    #     one_val = 1  # Sign value for examples to be positively labeled
+    #     p_err = (dec_scores[p_mask].sign() != one_val).float().mean()
+    #
+    #     u_mask = ~p_mask
+    #     # By checking against P_LABEL, inherent negation so do not use != operator
+    #     u_err = (dec_scores[u_mask].sign() == one_val).float().mean()
+    #
+    #     return 2 * self.prior * p_err + u_err - self.prior
 
     def _find_p_mask(self, labels: Tensor) -> Tensor:
         r"""
