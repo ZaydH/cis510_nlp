@@ -35,6 +35,10 @@ LABEL_NAMES_COL = "target_names"
 
 DATA_DIR = BASE_DIR / ".data"
 
+# Validation set is disjoint from the training set.  If dataet size is n, total set size is
+# n * (1 + VALIDATION_FRAC).
+VALIDATION_FRAC = 0.2
+
 
 @dataclass(init=True)
 class NewsgroupsData:
@@ -42,6 +46,7 @@ class NewsgroupsData:
     text: Field
     label: LabelField
     train: Dataset = None
+    valid: Dataset = None
     test: Dataset = None
     unlabel: Dataset = None
 
@@ -76,8 +81,7 @@ class NewsgroupsData:
         path = self._pickle_filename(args)
 
         msg = f"Writing serialized file {str(path)}"
-        flds = (self.text, self.label, self.train.examples, self.test.examples,
-                self.unlabel.examples)
+        flds = {k: v.examples if isinstance(v, Dataset) else v for k, v in vars(self).items()}
         logging.debug(f"Starting: {msg}")
         with open(str(path), "wb+") as f_out:
             pk.dump(flds, f_out)
@@ -94,9 +98,12 @@ class NewsgroupsData:
 
         with open(str(path), "rb") as f_in:
             flds = pk.load(f_in)
-        newsgroup = cls(text=flds[0], label=flds[1])
-        for attr_name, idx in (("train", 2), ("test", 3), ("unlabel", 4)):
-            newsgroup.__setattr__(attr_name, Dataset(flds[idx], newsgroup.build_fields()))
+        newsgroup = cls(text=flds["text"], label=flds["label"])
+
+        for key in vars(newsgroup).keys():
+            if newsgroup.__getattribute__(key) is not None:
+                continue
+            newsgroup.__setattr__(key, Dataset(flds[key], newsgroup.build_fields()))
         return newsgroup
 
 
@@ -292,12 +299,15 @@ def _bunch_to_ds(bunch: Bunch, text: Field, label: LabelField) -> Dataset:
     return Dataset(examples, fields)
 
 
-def _print_stats(text: Field, label: LabelField):
+def _print_stats(ngd: NewsgroupsData):
     r""" Log information about the dataset as a sanity check """
-    logging.info(f"Maximum sequence length: {text.fix_length}")
-    logging.info(f"Length of Text Vocabulary: {str(len(text.vocab))}")
-    logging.info(f"Vector size of Text Vocabulary: {text.vocab.vectors.shape[1]}")
-    logging.info("Label Length: " + str(len(label.vocab)))
+    logging.info(f"Maximum sequence length: {ngd.text.fix_length}")
+    logging.info(f"Length of Text Vocabulary: {str(len(ngd.text.vocab))}")
+    logging.info(f"Vector size of Text Vocabulary: {ngd.text.vocab.vectors.shape[1]}")
+    logging.info("Label Length: " + str(len(ngd.label.vocab)))
+    for k, v in vars(ngd).items():
+        if not isinstance(v, Dataset): continue
+        logging.info(f"{k}: Dataset Size: {len(v)}")
 
 
 def _build_train_set(p_bunch: Bunch, u_bunch: Bunch, n_bunch: Optional[Bunch],
@@ -365,11 +375,12 @@ def _create_serialized_20newsgroups(args):
     TEXT.build_vocab(complete_ds, min_freq=2,
                      vectors=torchtext.vocab.GloVe(name="6B", dim=args.embed_dim, cache=cache_dir))
 
-    p_bunch, u_bunch = _select_bunch_uar(args.size_p, complete_train, p_cls,
+    size_scalar = 1 + VALIDATION_FRAC
+    p_bunch, u_bunch = _select_bunch_uar(int(args.size_p * size_scalar), complete_train, p_cls,
                                          remove_from_bunch=False)
-    n_bunch, u_bunch = _select_negative_bunch(args.size_n, u_bunch, n_cls, args.bias,
-                                              remove_from_bunch=False)
-    u_bunch = _reduce_to_fixed_size(u_bunch, new_size=args.size_u)
+    n_bunch, u_bunch = _select_negative_bunch(int(args.size_n * size_scalar), u_bunch, n_cls,
+                                              args.bias, remove_from_bunch=False)
+    u_bunch = _reduce_to_fixed_size(u_bunch, new_size=int(args.size_u * size_scalar))
 
     test_bunch = _download_20newsgroups("test", DATA_DIR, p_cls, n_cls)
 
@@ -382,13 +393,19 @@ def _create_serialized_20newsgroups(args):
 
     # Sanity check
     assert np.all(p_bunch[LABEL_COL] == POS_LABEL), "Negative example in positive (labeled) set"
-    assert len(p_bunch[LABEL_COL]) == args.size_p, "Positive set has wrong number of examples"
+    assert len(p_bunch[LABEL_COL]) == int(args.size_p * size_scalar), \
+        "Positive set has wrong number of examples"
     assert np.all(n_bunch[LABEL_COL] == NEG_LABEL), "Positive example in negative (labeled) set"
-    assert len(n_bunch[LABEL_COL]) == args.size_n, "Negative set has wrong number of examples"
-    assert len(u_bunch[LABEL_COL]) == args.size_u, "Unlabeled set has wrong number of examples"
+    assert len(n_bunch[LABEL_COL]) == int(args.size_n * size_scalar), \
+        "Negative set has wrong number of examples"
+    assert len(u_bunch[LABEL_COL]) == int(args.size_u * size_scalar), \
+        "Unlabeled set has wrong number of examples"
 
     ng_data = NewsgroupsData(text=TEXT, label=LABEL)
-    ng_data.train = _build_train_set(p_bunch, u_bunch, n_bunch, TEXT, LABEL)
+    full_train_ds = _build_train_set(p_bunch, u_bunch, n_bunch, TEXT, LABEL)
+    split_ratio = 1 / (1 + VALIDATION_FRAC)
+    ng_data.train, ng_data.valid = full_train_ds.split(split_ratio, stratified=True)
+
     ng_data.unlabel = _bunch_to_ds(u_bunch, TEXT, LABEL)
     ng_data.test = _bunch_to_ds(test_bunch, TEXT, LABEL)
 
@@ -417,5 +434,5 @@ def load_20newsgroups(args: Namespace):
     if args.rho is not None:
         assert (1 - serial.prior) >= args.rho, "Input parameter rho invalid given dataset"
 
-    _print_stats(serial.text, serial.label)
+    _print_stats(serial)
     return serial
