@@ -48,8 +48,8 @@ class BaseClassifier(nn.Module):
         self._ff = nn.Sequential()
         in_dim = self.Config.RNN_HIDDEN_DIM << (1 if self.Config.BIDIRECTIONAL else 0)
         for i in range(1, self.Config.FF_HIDDEN_DEPTH + 1):
-            self._ff.add_module("Hidden_{i:02}_Lin", nn.Linear(in_dim, self.Config.FF_HIDDEN_DIM))
-            self._ff.add_module("Hidden_{i:02}_Act", self.Config.FF_ACTIVATION())
+            self._ff.add_module(f"Hidden_{i:02}_Lin", nn.Linear(in_dim, self.Config.FF_HIDDEN_DIM))
+            self._ff.add_module(f"Hidden_{i:02}_Act", self.Config.FF_ACTIVATION())
             # self._ff.add_module("Hidden_{i:02}_BN", nn.BatchNorm1d(self.Config.FF_HIDDEN_DIM))
             in_dim = self.Config.FF_HIDDEN_DIM
         # Add output layer

@@ -163,7 +163,7 @@ class NlpBiasedLearner(nn.Module):
         """
         if pos_classes is None:
             def _logistic_loss_univariate(in_tensor: Tensor) -> Tensor:
-                return -F.logsigmoid(in_tensor).mean()
+                return -F.logsigmoid(in_tensor)
 
             return _logistic_loss_univariate
 
@@ -186,9 +186,11 @@ class NlpBiasedLearner(nn.Module):
                                   weight_decay=self._sigma.Config.WEIGHT_DECAY)
 
         pos_label = {self._map_neg, self._map_pos}
+
+        univar_log_loss = self._build_logistic_loss()
         pu_loss = PULoss(prior=self.prior + self._rho, pos_label=pos_label,
-                         loss=self._build_logistic_loss(pos_label))
-        valid_loss = partial(pu_loss.zero_one_loss)
+                         loss=univar_log_loss)
+        valid_loss = partial(pu_loss.calc_loss_only)
         for ep in range(1, self.Config.NUM_EPOCH + 1):
             self._sigma.train()
             train_loss, num_batch = torch.zeros(()), 0
@@ -278,6 +280,7 @@ class SigmaLearner(nn.Module):
 
     def forward_fit(self, x: Tensor, x_len: Tensor) -> Tensor:
         r""" Forward method only used during training """
+        # noinspection PyUnresolvedReferences
         return self._model.forward(x, x_len).squeeze()
 
     def forward(self, x: Tensor, x_len: Tensor) -> Tensor:
