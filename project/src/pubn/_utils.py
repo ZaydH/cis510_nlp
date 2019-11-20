@@ -27,10 +27,10 @@ IS_TALAPAS = _check_is_talapas()
 BASE_DIR = Path(".").absolute() if not IS_TALAPAS else Path("/home/zhammoud/projects/nlp")
 
 IS_CUDA = torch.cuda.is_available()
-TORCH_DEVICE = torch.device("cuda:0" if IS_CUDA else "cpu")
 if IS_CUDA:
     # noinspection PyUnresolvedReferences
-    torch.set_default_dtype(torch.cuda.FloatTensor)
+    torch.set_default_tensor_type(torch.cuda.FloatTensor)
+TORCH_DEVICE = torch.device("cuda:0" if IS_CUDA else "cpu")
 
 POS_LABEL = 1
 U_LABEL = 0

@@ -8,6 +8,7 @@ from pathlib import Path
 import pickle as pk
 from typing import List, Optional, Set, Tuple
 
+import nltk
 import nltk.tokenize
 import numpy as np
 import sklearn.datasets
@@ -30,6 +31,8 @@ VALID_DATA_SUBSETS = ("train", "test", "all")
 DATA_COL = "data"
 LABEL_COL = "target"
 LABEL_NAMES_COL = "target_names"
+
+DATA_DIR = BASE_DIR / ".data"
 
 
 @dataclass(init=True)
@@ -251,11 +254,11 @@ def _select_negative_bunch(size_n: int, bunch: Bunch, neg_cls: Set[int],
                            bias: Optional[List[Tuple[NewsgroupsData.Categories, float]]],
                            remove_from_bunch: bool) -> Tuple[Bunch, Bunch]:
     r"""
-    Randomly selects a negative bunch of size \p size_n.  If \p bias is \p None, the negative bunch 
+    Randomly selects a negative bunch of size \p size_n.  If \p bias is \p None, the negative bunch
     is selected u.a.r. from all class IDs in \p neg_cls.  Otherwise, probability each group is
     selected is specified by the \p bias vector.  Optionally removes the selected elements
     from \p bunch.
-    
+
     :param size_n:  Size of new negative set.
     :param bunch: Bunch from which to select the negative elements.
     :param neg_cls: ID numbers for the negative set
@@ -319,14 +322,18 @@ def _create_serialized_20newsgroups(args):
 
     :param args: Test setup information
     """
-    data_dir = BASE_DIR / ".data"
-    cache_dir = data_dir / ".vector_cache"
+    cache_dir = DATA_DIR / ".vector_cache"
     cache_dir.mkdir(parents=True, exist_ok=True)
 
     p_cls = {cls_id for cls_grp in args.pos for cls_id in cls_grp.value}
     n_cls = {cls_id for cls_grp in args.neg for cls_id in cls_grp.value}
-    complete_train = _download_20newsgroups("train", data_dir, p_cls, n_cls)
+    complete_train = _download_20newsgroups("train", DATA_DIR, p_cls, n_cls)
 
+    # Download the nltk tokenizer
+    nltk_path = DATA_DIR / "nltk"
+    nltk_path.mkdir(parents=True, exist_ok=True)
+    nltk.data.path.append(str(nltk_path))
+    nltk.download("punkt", download_dir=str(nltk_path))
     tokenizer = nltk.tokenize.word_tokenize
     # noinspection PyPep8Naming
     TEXT = Field(sequential=True, tokenize=tokenizer, lower=True, include_lengths=True,
@@ -343,7 +350,7 @@ def _create_serialized_20newsgroups(args):
                                               remove_from_bunch=False)
     u_bunch = _reduce_to_fixed_size(u_bunch, new_size=args.size_u)
 
-    test_bunch = _download_20newsgroups("test", data_dir, p_cls, n_cls)
+    test_bunch = _download_20newsgroups("test", DATA_DIR, p_cls, n_cls)
 
     # Binarize the labels
     for bunch in (p_bunch, u_bunch, n_bunch, test_bunch):
