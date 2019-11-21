@@ -239,7 +239,7 @@ class NlpBiasedLearner(nn.Module):
         sigma_x = []
         for batch in unlabel:
             sigma_x.append(self._sigma.forward(*batch.text))
-        sigma_x, _ = torch.cat(sigma_x, dim=1).sort()
+        sigma_x, _ = torch.cat(sigma_x, dim=0).squeeze().sort()
 
         idx = math.floor(self._tau * (1 - self.prior - self._rho) * sigma_x.numel())
         self._eta = float(sigma_x[int(idx)].item())
