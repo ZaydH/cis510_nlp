@@ -48,7 +48,7 @@ class NlpBiasedLearner(nn.Module):
             self._sigma = None
 
         self._prefix = self.l_type.name.lower()
-        self._train_start = self._optim = self._best_loss = self._logger = None
+        self._train_start = self._optim = self.best_loss = self._logger = None
 
         # True labels get mapped to different values by LabelField object.  Stores the mapped values
         self._map_pos = self._map_neg = None
@@ -59,7 +59,7 @@ class NlpBiasedLearner(nn.Module):
         r""" Set initial values/construct all variables used in a fit method """
         # Fields that apply regardless of loss method
         self._train_start = time.time()
-        self._best_loss = np.inf
+        self.best_loss = np.inf
 
         tb_dir = BASE_DIR / "tb"
         TrainingLogger.create_tensorboard(tb_dir)
@@ -221,9 +221,9 @@ class NlpBiasedLearner(nn.Module):
         """
         valid_loss = self._calc_valid_loss(valid_itr, loss_func)
 
-        is_best = float(valid_loss.item()) < self._best_loss
+        is_best = float(valid_loss.item()) < self.best_loss
         if is_best:
-            self._best_loss = float(valid_loss.item())
+            self.best_loss = float(valid_loss.item())
             save_module(self, self._build_serialize_name(self._prefix))
         self._logger.log(ep, [train_loss, valid_loss, is_best, time.time() - self._train_start])
 

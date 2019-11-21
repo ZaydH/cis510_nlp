@@ -9,7 +9,7 @@ from fastai.metrics import auc_roc_score
 import torch
 from torchtext.data import Dataset, LabelField
 
-from pubn import POS_LABEL, construct_iterator
+from pubn import BASE_DIR, POS_LABEL, construct_iterator
 from pubn.model import NlpBiasedLearner
 
 
@@ -23,6 +23,7 @@ class LearnerResults:
         auprc: float = None
         f1: float = None
 
+    valid_loss = None
     unlabel = None
     test = None
 
@@ -32,6 +33,8 @@ def calculate_results(args: Namespace, classifier: NlpBiasedLearner, labels: Lab
     classifier.eval()
 
     res = LearnerResults()
+    res.valid_loss = classifier.best_loss
+
     for ds, name in ((unlabel_ds, "unlabel"), (test_ds, "test")):
         itr = construct_iterator(ds, bs=args.bs, shuffle=False)
         all_y, dec_scores = [], []
@@ -80,3 +83,7 @@ def _single_ds_results(ds_name: str, args: Namespace, y: np.ndarray, y_hat: np.n
     logging.debug(f"{str_prefix} Confusion Matrix:\n{results.conf_matrix}")
 
     return results
+
+
+def _write_results_to_disk(args: Namespace) -> None:
+    results_dir = BASE_DIR / "results"
