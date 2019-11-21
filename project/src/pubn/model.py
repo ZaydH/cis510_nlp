@@ -42,7 +42,7 @@ class NlpBiasedLearner(nn.Module):
         self.prior = prior
         self._rho = rho
         self._eta = None
-        if self.l_type == LossType.PUBN:
+        if self._is_pubn():
             if self._rho is None: raise ValueError("rho required for PUbN loss")
             self._sigma = SigmaLearner(embedding_weights)
         else:
@@ -73,14 +73,14 @@ class NlpBiasedLearner(nn.Module):
     def fit(self, train: Dataset, valid: Dataset, unlabel: Dataset, label: LabelField):
         r""" Fits the learner"""
         # Filter the dataset based on the training configuration
-        if self.l_type == LossType.NNPU or self.l_type == LossType.PN:
-            exclude_lbl = NEG_LABEL if self.l_type == LossType.NNPU else U_LABEL
+        if not self._is_pubn():
+            exclude_lbl = NEG_LABEL if self._is_nnpu() else U_LABEL
             train = exclude_label_in_dataset(train, exclude_lbl)
             valid = exclude_label_in_dataset(valid, exclude_lbl)
 
         self._map_pos, self._map_neg = label.vocab.stoi[POS_LABEL], label.vocab.stoi[NEG_LABEL]
 
-        if self.l_type == LossType.PUBN:
+        if self._is_pubn():
             self._configure_fit_vars()
             # noinspection PyUnresolvedReferences
             train_itr = construct_iterator(train, bs=self._sigma.Config.BATCH_SIZE, shuffle=True)
