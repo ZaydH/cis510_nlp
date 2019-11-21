@@ -178,7 +178,7 @@ class PUbN:
         u_mask = p_mask.logical_xor(bn_mask).logical_not()
 
         l_pos = self.prior * self.loss_func(dec_scores[p_mask]) if p_mask.any() else torch.zeros(())
-        l_bn = self.rho * self.loss_func(dec_scores[bn_mask]) if bn_mask.any() else torch.zeros(())
+        l_bn = self.rho * self.loss_func(-dec_scores[bn_mask]) if bn_mask.any() else torch.zeros(())
 
         l_u_n = self._unlabel_neg_loss(u_mask, sigma_x, dec_scores, is_u=True) \
                 + self.prior * self._unlabel_neg_loss(p_mask, sigma_x, dec_scores, is_u=False) \
