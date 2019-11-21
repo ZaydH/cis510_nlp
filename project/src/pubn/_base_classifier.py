@@ -17,7 +17,7 @@ class ClassifierConfig:
     LEARNING_RATE = 1E-3
     # WEIGHT_DECAY = 5E-3
     # LEARNING_RATE = 1E-4
-    WEIGHT_DECAY = 0E-3
+    WEIGHT_DECAY = 1E-4
 
     BIDIRECTIONAL = True
     EMBED_DIM = 300
