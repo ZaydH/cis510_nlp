@@ -57,8 +57,9 @@ def construct_filename(prefix: str, args: Namespace, out_dir: Path, file_ext: st
 
     if args.bias:
         # Ensure bias has same order as
-        bias_sorted = [x for _, x in sorted(zip(args.neg, args.bias))]
-        fields.append(f"bias={','.join([f'{x:02}' for x in bias_sorted])}")
+        bias_sorted = [x for _, x in sorted(args.bias)]
+        bias_str = ','.join([f"{x:.2f}" for x in bias_sorted])
+        fields.append(f"bias={bias_str}")
 
     if add_timestamp:
         time_str = time.strftime("%Y-%m-%d-%H-%M-%S")

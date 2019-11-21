@@ -210,7 +210,7 @@ class NlpBiasedLearner(nn.Module):
         pu_loss = PULoss(prior=self.prior + self._rho, pos_label=pos_label,
                          train_loss=univar_log_loss, valid_loss=univar_sigmoid_loss)
         valid_loss = partial(pu_loss.calc_valid_loss)
-        forward = partial(self._sigma.forward)
+        forward = partial(self._sigma.forward_fit)
         for ep in range(1, self.Config.NUM_EPOCH + 1):
             self._sigma.train()
             train_loss, num_batch = torch.zeros(()), 0

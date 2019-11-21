@@ -53,10 +53,10 @@ def _error_check_args(args: Namespace):
     if args.bias:
         if len(args.bias) != len(args.neg):
             raise ValueError("Bias and negative vector length mismatch")
+        if abs(sum(args.bias) - 1) > 1E-3:
+            raise ValueError("Bias probability sum too far from 1")
         if any(x < 0 for x in args.bias):
             raise ValueError("Bias values must be non-negative")
-        if sum(args.bias):
-            raise ValueError("No positive bias probabilities specified")
 
     if args.rho is not None:
         if args.loss != LossType.PUBN.name.lower():
