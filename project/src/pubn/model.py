@@ -27,8 +27,7 @@ class NlpBiasedLearner(nn.Module):
     Config = ClassifierConfig
     _log = None
 
-    def __init__(self, args: Namespace, embedding_weights: Tensor, prior: float,
-                 rho: Optional[float]):
+    def __init__(self, args: Namespace, embedding_weights: Tensor, prior: float):
         super().__init__()
         self._setup_logger()
 
@@ -40,13 +39,16 @@ class NlpBiasedLearner(nn.Module):
         self.l_type = args.loss
 
         self.prior = prior
-        self._rho = rho
+        self._rho = args.rho
+        self._tau = args.tau
         self._eta = None
         if self._is_pubn():
             if self._rho is None: raise ValueError("rho required for PUbN loss")
+            if self._tau is None: raise ValueError("tau required for PUbN loss")
             self._sigma = SigmaLearner(embedding_weights)
         else:
             if self._rho is not None: raise ValueError("rho specified but PUbN loss not used")
+            if self._tau is not None: raise ValueError("tau specified but PUbN loss not used")
             self._sigma = None
 
         self._prefix = self.l_type.name.lower()

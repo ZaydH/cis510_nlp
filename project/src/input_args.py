@@ -58,14 +58,16 @@ def _error_check_args(args: Namespace):
         if any(x < 0 for x in args.bias):
             raise ValueError("Bias values must be non-negative")
 
-    if args.rho is not None:
-        if args.loss != LossType.PUBN.name.lower():
-            raise ValueError(f"rho specified but not valid for loss \"{args.loss}\"")
-        if args.rho <= 0 or args.rho >= 1:
-            raise ValueError(f"rho must be in the range (0,1)")
-    else:
-        if args.loss == LossType.PUBN.name.lower():
-            raise ValueError("rho not specified but PUbN used")
+    for name in ("rho", "tau"):
+        val = args.__getattribute__(name)
+        if val is not None:
+            if args.loss != LossType.PUBN.name.lower():
+                raise ValueError(f"{name} specified but not valid for loss \"{args.loss}\"")
+            if val <= 0 or val >= 1:
+                raise ValueError(f"{name} must be in the range (0,1)")
+        else:
+            if args.loss == LossType.PUBN.name.lower():
+                raise ValueError(f"{name} not specified but PUbN used")
 
 
 def _refactor_args(args: Namespace) -> None:

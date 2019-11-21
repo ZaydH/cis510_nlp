@@ -10,8 +10,7 @@ from pubn.model import NlpBiasedLearner
 def _main(args: Namespace):
     ngd = load_20newsgroups(args)  # ToDo fix 20 newsgroups to filter empty examples
 
-    classifier = NlpBiasedLearner(args, ngd.text.vocab.vectors,
-                                  prior=ngd.prior, rho=args.rho)
+    classifier = NlpBiasedLearner(args, ngd.text.vocab.vectors, prior=ngd.prior)
     # noinspection PyUnresolvedReferences
     classifier.fit(train=ngd.train, valid=ngd.valid, unlabel=ngd.unlabel, label=ngd.label)
 
