@@ -1,6 +1,7 @@
 from argparse import Namespace
 import logging
 from functools import partial
+import math
 from pathlib import Path
 import time
 from typing import Callable, Optional, Set, Union
@@ -118,6 +119,7 @@ class NlpBiasedLearner(nn.Module):
             assert self.l_type == LossType.PN, "Unknown loss type"
             loss_func = valid_loss = bivar_log_loss
 
+        forward = partial(self.forward)
         # noinspection PyUnresolvedReferences
         for ep in range(1, self._model.Config.NUM_EPOCH + 1):
             # noinspection PyUnresolvedReferences
@@ -152,7 +154,7 @@ class NlpBiasedLearner(nn.Module):
 
                 self._optim.step()
             train_loss /= num_batch
-            self._log_epoch(ep, train_loss, valid, valid_loss)
+            self._log_epoch(ep, train_loss, forward, valid, valid_loss)
         self._restore_best_model()
 
     @staticmethod
@@ -193,6 +195,7 @@ class NlpBiasedLearner(nn.Module):
         pu_loss = PULoss(prior=self.prior + self._rho, pos_label=pos_label,
                          loss=univar_log_loss)
         valid_loss = partial(pu_loss.calc_loss_only)
+        forward = partial(self._sigma.forward)
         for ep in range(1, self.Config.NUM_EPOCH + 1):
             self._sigma.train()
             train_loss, num_batch = torch.zeros(()), 0
@@ -208,7 +211,7 @@ class NlpBiasedLearner(nn.Module):
 
                 self._optim.step()
             train_loss /= num_batch
-            self._log_epoch(ep, train_loss, valid, valid_loss)
+            self._log_epoch(ep, train_loss, forward, valid, valid_loss)
         self._restore_best_model()
         self._sigma.eval()
 
@@ -224,21 +227,24 @@ class NlpBiasedLearner(nn.Module):
             sigma_x.append(self._sigma.forward(*batch.text))
         sigma_x, _ = torch.cat(sigma_x, dim=1).sort()
 
-        idx = self._tau * (1 - self.prior - self._rho) * sigma_x.numel()
-        self._eta = float(sigma_x[idx].item())
+        idx = math.floor(self._tau * (1 - self.prior - self._rho) * sigma_x.numel())
+        self._eta = float(sigma_x[int(idx)].item())
 
         return self._eta
 
-    def _log_epoch(self, ep: int, train_loss: Tensor, valid_itr: Iterator, loss_func: Callable):
+    def _log_epoch(self, ep: int, train_loss: Tensor, forward: Callable, valid_itr: Iterator,
+                   loss_func: Callable) -> None:
         r"""
         Log the results of the epoch
 
         :param ep: Epoch number
         :param train_loss: Training loss value
+        :param forward: \p forward method used to calculate the loss
         :param valid_itr: Validation \p Iterator
         :param loss_func: Function used to calculate the loss
         """
-        valid_loss = self._calc_valid_loss(valid_itr, loss_func)
+        with torch.no_grad():
+            valid_loss = self._calc_valid_loss(forward, valid_itr, loss_func)
 
         is_best = float(valid_loss.item()) < self.best_loss
         if is_best:
@@ -246,19 +252,20 @@ class NlpBiasedLearner(nn.Module):
             save_module(self, self._build_serialize_name(self._prefix))
         self._logger.log(ep, [train_loss, valid_loss, is_best, time.time() - self._train_start])
 
-    def _calc_valid_loss(self, itr: Iterator, loss_func: Callable):
-        r""" Calculate the validation loss for \p itr """
+    def _calc_valid_loss(self, forward: Callable, itr: Iterator, loss_func: Callable) -> Tensor:
+        r""" Calculate the validation loss for \p itr using forward method """
         self.eval()
 
         dec_scores, labels, sigma_x = [], [], []
         with torch.no_grad():
             for batch in itr:
-                dec_scores.append(self.forward(*batch.text))
+                dec_scores.append(forward(*batch.text))
                 labels.append(batch.label)
-                if self._is_pubn(): sigma_x.append(self._sigma.forward(*batch.text))
+                if self._is_pubn() and not self._sigma.training:
+                    sigma_x.append(self._sigma.forward(*batch.text))
         dec_scores, labels = torch.cat(dec_scores, dim=0), torch.cat(labels, dim=0)
 
-        if not self._is_pubn():
+        if not self._is_pubn() and not self._sigma.training:
             return loss_func(dec_scores.squeeze(dim=1), labels.squeeze(dim=1))
 
         sigma_x = torch.cat(self._sigma.forward(*batch.text))
