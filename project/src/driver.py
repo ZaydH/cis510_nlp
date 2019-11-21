@@ -8,15 +8,14 @@ from pubn.model import NlpBiasedLearner
 
 
 def _main(args: Namespace):
-    newsgroups = load_20newsgroups(args)  # ToDo fix 20 newsgroups to filter empty examples
+    ngd = load_20newsgroups(args)  # ToDo fix 20 newsgroups to filter empty examples
 
-    classifier = NlpBiasedLearner(args, newsgroups.text.vocab.vectors,
-                                  prior=newsgroups.prior, rho=args.rho)
+    classifier = NlpBiasedLearner(args, ngd.text.vocab.vectors,
+                                  prior=ngd.prior, rho=args.rho)
     # noinspection PyUnresolvedReferences
-    classifier.fit(newsgroups.train, newsgroups.valid, newsgroups.label)
+    classifier.fit(train=ngd.train, valid=ngd.valid, unlabel=ngd.unlabel, label=ngd.label)
 
-    calculate_results(args, classifier, newsgroups.label, unlabel_ds=newsgroups.unlabel,
-                      test_ds=newsgroups.test)
+    calculate_results(args, classifier, ngd.label, unlabel_ds=ngd.unlabel, test_ds=ngd.test)
 
 
 if __name__ == "__main__":

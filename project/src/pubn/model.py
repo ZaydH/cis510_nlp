@@ -40,6 +40,7 @@ class NlpBiasedLearner(nn.Module):
 
         self.prior = prior
         self._rho = rho
+        self._eta = None
         if self.l_type == LossType.PUBN:
             if self._rho is None: raise ValueError("rho required for PUbN loss")
             self._sigma = SigmaLearner(embedding_weights)
@@ -68,22 +69,26 @@ class NlpBiasedLearner(nn.Module):
                                       logger_name=self.Config.LOGGER_NAME,
                                       tb_grp_name=self.l_type.name)
 
-    def fit(self, train: Dataset, valid: Dataset, labels: LabelField):
+    def fit(self, train: Dataset, valid: Dataset, unlabel: Dataset, label: LabelField):
         r""" Fits the learner"""
         # Filter the dataset based on the training configuration
         if self.l_type == LossType.NNPU or self.l_type == LossType.PN:
             exclude_lbl = NEG_LABEL if self.l_type == LossType.NNPU else U_LABEL
             train = exclude_label_in_dataset(train, exclude_lbl)
-            valid = exclude_label_in_dataset(train, exclude_lbl)
+            valid = exclude_label_in_dataset(valid, exclude_lbl)
 
-        self._map_pos, self._map_neg = labels.vocab.stoi[POS_LABEL], labels.vocab.stoi[NEG_LABEL]
+        self._map_pos, self._map_neg = label.vocab.stoi[POS_LABEL], label.vocab.stoi[NEG_LABEL]
 
         if self.l_type == LossType.PUBN:
+            self._configure_fit_vars()
             # noinspection PyUnresolvedReferences
             train_itr = construct_iterator(train, bs=self._sigma.Config.BATCH_SIZE, shuffle=True)
             # noinspection PyUnresolvedReferences
             valid_itr = construct_iterator(valid, bs=self._sigma.Config.BATCH_SIZE, shuffle=True)
             self._fit_sigma(train_itr, valid_itr)
+            # noinspection PyUnresolvedReferences
+            u_itr = construct_iterator(unlabel, bs=self._sigma.Config.BATCH_SIZE, shuffle=True)
+            self._calculate_eta(u_itr)
 
         self._configure_fit_vars()
         # noinspection PyUnresolvedReferences
@@ -94,23 +99,21 @@ class NlpBiasedLearner(nn.Module):
 
     def _fit_base(self, train: Iterator, valid: Iterator):
         r""" Shared functions for nnPU and supervised learning """
-        is_nnpu, is_pubn = (self.l_type == LossType.NNPU), (self.l_type == LossType.PUBN)
         # noinspection PyUnresolvedReferences
         self._optim = optim.AdamW(self._model.parameters(), lr=self._model.Config.LEARNING_RATE,
-                                  weight_decay=self._model.Config.WEIGHT_DECAY)
+                                  weight_decay=self._model.Config.WEIGHT_DECAY, amsgrad=True)
 
         univar_log_loss = self._build_logistic_loss()
         bivar_log_loss = self._build_logistic_loss(pos_classes=self._map_pos)
-        if is_nnpu:
+        if self._is_nnpu():
             nnpu = PULoss(prior=self.prior, pos_label=self._map_pos,
                           loss=univar_log_loss)
             valid_loss = partial(nnpu.calc_loss_only)
-        elif is_pubn:
+        elif self._is_pubn():
             pubn = PUbN(prior=self.prior, rho=self._rho, eta=self._eta,
                         pos_label=self._map_pos, neg_label=self._map_neg,
-                        loss=univar_log_loss)  # ToDo fix missing loss
-            # valid_loss  # ToDo Fix missing valid loss
-            raise NotImplementedError
+                        loss=univar_log_loss)
+            valid_loss = partial(pubn.calc_loss)
         else:
             assert self.l_type == LossType.PN, "Unknown loss type"
             loss_func = valid_loss = bivar_log_loss
@@ -127,7 +130,7 @@ class NlpBiasedLearner(nn.Module):
                 # noinspection PyUnresolvedReferences
                 dec_scores = self._model.forward(*batch.text)
 
-                if is_nnpu:
+                if self._is_nnpu():
                     # noinspection PyUnboundLocalVariable
                     loss = nnpu.calc_loss(dec_scores, batch.label)
                     # noinspection PyUnresolvedReferences
@@ -135,11 +138,10 @@ class NlpBiasedLearner(nn.Module):
                     # noinspection PyUnresolvedReferences
                     loss = loss.loss_var
                 else:
-                    if is_pubn:
-                        # ToDo loss missing
+                    if self._is_pubn():
                         sigma_x = self._sigma.forward(*batch.text)
+                        # noinspection PyUnboundLocalVariable
                         loss = pubn.calc_loss(dec_scores, batch.label, sigma_x)
-                        raise NotImplementedError
                     else:
                         assert self.l_type == LossType.PN, "Unknown loss type"
                         # noinspection PyUnboundLocalVariable
@@ -183,7 +185,7 @@ class NlpBiasedLearner(nn.Module):
         # noinspection PyUnresolvedReferences
         self._optim = optim.AdamW(self._sigma.parameters(),
                                   lr=self._sigma.Config.LEARNING_RATE,
-                                  weight_decay=self._sigma.Config.WEIGHT_DECAY)
+                                  weight_decay=self._sigma.Config.WEIGHT_DECAY, amsgrad=True)
 
         pos_label = {self._map_neg, self._map_pos}
 
@@ -210,6 +212,23 @@ class NlpBiasedLearner(nn.Module):
         self._restore_best_model()
         self._sigma.eval()
 
+    def _calculate_eta(self, unlabel: Iterator) -> float:
+        r"""
+        Calculates eta for PUbN
+
+        :param unlabel: Set of unlabeled examples
+        :return: Value of eta
+        """
+        sigma_x = []
+        for batch in unlabel:
+            sigma_x.append(self._sigma.forward(*batch.text))
+        sigma_x, _ = torch.cat(sigma_x, dim=1).sort()
+
+        idx = self._tau * (1 - self.prior - self._rho) * sigma_x.numel()
+        self._eta = float(sigma_x[idx].item())
+
+        return self._eta
+
     def _log_epoch(self, ep: int, train_loss: Tensor, valid_itr: Iterator, loss_func: Callable):
         r"""
         Log the results of the epoch
@@ -231,14 +250,19 @@ class NlpBiasedLearner(nn.Module):
         r""" Calculate the validation loss for \p itr """
         self.eval()
 
-        dec_scores, labels = [], []
+        dec_scores, labels, sigma_x = [], [], []
         with torch.no_grad():
             for batch in itr:
                 dec_scores.append(self.forward(*batch.text))
                 labels.append(batch.label)
+                if self._is_pubn(): sigma_x.append(self._sigma.forward(*batch.text))
         dec_scores, labels = torch.cat(dec_scores, dim=0), torch.cat(labels, dim=0)
 
-        return loss_func(dec_scores.squeeze(), labels.squeeze())
+        if not self._is_pubn():
+            return loss_func(dec_scores.squeeze(dim=1), labels.squeeze(dim=1))
+
+        sigma_x = torch.cat(self._sigma.forward(*batch.text))
+        return loss_func(dec_scores.squeeze(dim=1), labels.squeeze(dim=1), sigma_x.squeeze(dim=1))
 
     def forward(self, x: Tensor, x_len: Tensor) -> Tensor:
         # noinspection PyUnresolvedReferences
@@ -269,6 +293,14 @@ class NlpBiasedLearner(nn.Module):
         cls._log = logging.getLogger(cls.Config.LOGGER_NAME)
         cls._log.propagate = False  # Do not propagate log messages to a parent logger
         create_stdout_handler(cls.Config.LOG_LEVEL, logger_name=cls.Config.LOGGER_NAME)
+
+    def _is_pubn(self) -> bool:
+        r""" Returns \p True if the loss is PUbN """
+        return self.l_type == LossType.PUBN
+
+    def _is_nnpu(self) -> bool:
+        r""" Returns \p True if the loss is nnPU """
+        return self.l_type == LossType.NNPU
 
 
 class SigmaLearner(nn.Module):
