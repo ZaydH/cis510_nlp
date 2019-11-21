@@ -29,7 +29,8 @@ class TrainingLogger:
     def create_tensorboard(cls, file_path: PathOrStr, hparams: OptDict = None):
         r""" Creates the \p Tensorboard for logging """
         if cls.has_tensorboard():
-            raise RuntimeError("Already has a tensorboard. Cannot recreate")
+            # raise RuntimeError("Already has a tensorboard. Cannot recreate")
+            return
 
         if not isinstance(file_path, Path):
             file_path = Path(file_path)
