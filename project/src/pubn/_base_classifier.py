@@ -70,4 +70,4 @@ class BaseClassifier(nn.Module):
         ff_in = seq_out[seq_len - 1, torch.arange(batch_size)]  # ToDo verify correctness
         assert ff_in.shape[0] == batch_size, "Batch size mismatch"
         y_hat = self._ff.forward(ff_in)
-        return y_hat.squeeze()
+        return y_hat.squeeze(dim=1)
