@@ -113,6 +113,9 @@ def _write_results_to_disk(args: Namespace, res: LearnerResults) -> None:
     header, fields = [], []
     for key, val in vars(args).items():
         header.append(key.replace("_", "-"))
+        if key == "bias":
+            fields.append("|".join([f"{x:.2f}" for _, x for in val]))
+            continue
         fields.append(_log_val(val))
 
     header.append("valid_loss")
