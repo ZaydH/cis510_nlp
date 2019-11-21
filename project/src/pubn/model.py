@@ -265,7 +265,7 @@ class NlpBiasedLearner(nn.Module):
                     sigma_x.append(self._sigma.forward(*batch.text))
         dec_scores, labels = torch.cat(dec_scores, dim=0), torch.cat(labels, dim=0)
 
-        if not self._is_pubn() and not self._sigma.training:
+        if not self._is_pubn() or not self._sigma.training:
             return loss_func(dec_scores.squeeze(dim=1), labels.squeeze(dim=1))
 
         sigma_x = torch.cat(self._sigma.forward(*batch.text))
