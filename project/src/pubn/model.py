@@ -231,13 +231,14 @@ class NlpBiasedLearner(nn.Module):
         r""" Calculate the validation loss for \p itr """
         self.eval()
 
-        tot_loss, n_batch = torch.zeros(()), 0
+        dec_scores, labels = [], []
         with torch.no_grad():
             for batch in itr:
-                n_batch += 1
-                tot_loss += loss_func(self.forward(*batch.text), batch.label).detach()
+                dec_scores.append(self.forward(*batch.text))
+                labels.append(batch.label)
+        dec_scores, labels = torch.cat(dec_scores, dim=0), torch.cat(labels, dim=0)
 
-        return tot_loss / n_batch
+        return loss_func(dec_scores.squeeze(), labels.squeeze())
 
     def forward(self, x: Tensor, x_len: Tensor) -> Tensor:
         # noinspection PyUnresolvedReferences
