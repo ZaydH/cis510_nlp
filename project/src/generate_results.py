@@ -29,6 +29,8 @@ class LearnerResults:
 
 def calculate_results(args: Namespace, classifier: NlpBiasedLearner, labels: LabelField,
                       unlabel_ds: Dataset, test_ds: Dataset):
+    classifier.eval()
+
     res = LearnerResults()
     for ds, name in ((unlabel_ds, "unlabel"), (test_ds, "test")):
         itr = construct_iterator(ds, bs=args.bs, shuffle=False)

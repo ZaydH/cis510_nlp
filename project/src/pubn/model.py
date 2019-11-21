@@ -249,6 +249,7 @@ class NlpBiasedLearner(nn.Module):
         self._log.debug(f"Starting: {msg}")
         load_module(self, self._build_serialize_name(self._prefix))
         self._log.debug(f"COMPLETED: {msg}")
+        self.eval()
 
     def _build_serialize_name(self, prefix: str) -> Path:
         r"""
@@ -262,7 +263,7 @@ class NlpBiasedLearner(nn.Module):
 
     @classmethod
     def _setup_logger(cls) -> None:
-        r""" Creates a logger for just the ddPU class """
+        r""" Creates a logger for just the NLP class """
         if cls._log is not None: return
         cls._log = logging.getLogger(cls.Config.LOGGER_NAME)
         cls._log.propagate = False  # Do not propagate log messages to a parent logger
