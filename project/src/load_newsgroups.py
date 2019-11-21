@@ -33,8 +33,6 @@ DATA_COL = "data"
 LABEL_COL = "target"
 LABEL_NAMES_COL = "target_names"
 
-DATA_DIR = BASE_DIR / ".data"
-
 # Validation set is disjoint from the training set.  If dataet size is n, total set size is
 # n * (1 + VALIDATION_FRAC).
 VALIDATION_FRAC = 0.2
@@ -353,15 +351,16 @@ def _create_serialized_20newsgroups(args):
 
     :param args: Test setup information
     """
-    cache_dir = DATA_DIR / ".vector_cache"
+    data_dir = BASE_DIR / ".data"
+    cache_dir = data_dir / ".vector_cache"
     cache_dir.mkdir(parents=True, exist_ok=True)
 
     p_cls = {cls_id for cls_grp in args.pos for cls_id in cls_grp.value}
     n_cls = {cls_id for cls_grp in args.neg for cls_id in cls_grp.value}
-    complete_train = _download_20newsgroups("train", DATA_DIR, p_cls, n_cls)
+    complete_train = _download_20newsgroups("train", data_dir, p_cls, n_cls)
 
     # Download the nltk tokenizer
-    nltk_path = DATA_DIR / "nltk"
+    nltk_path = data_dir / "nltk"
     nltk_path.mkdir(parents=True, exist_ok=True)
     nltk.data.path.append(str(nltk_path))
     nltk.download("punkt", download_dir=str(nltk_path))
@@ -382,7 +381,7 @@ def _create_serialized_20newsgroups(args):
                                               args.bias, remove_from_bunch=False)
     u_bunch = _reduce_to_fixed_size(u_bunch, new_size=int(args.size_u * size_scalar))
 
-    test_bunch = _download_20newsgroups("test", DATA_DIR, p_cls, n_cls)
+    test_bunch = _download_20newsgroups("test", data_dir, p_cls, n_cls)
 
     for name, bunch in (("P", p_bunch), ("N", n_bunch), ("U", u_bunch), ("Test", test_bunch)):
         _log_category_frequency(args.pos, name, bunch)

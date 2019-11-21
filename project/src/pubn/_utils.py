@@ -3,6 +3,7 @@ from enum import Enum
 from pathlib import Path
 import re
 import socket
+import time
 from typing import Set
 
 import torch
@@ -42,7 +43,8 @@ def construct_iterator(ds: Dataset, bs: int, shuffle: bool = True) -> Iterator:
     return Iterator(dataset=ds, batch_size=bs, shuffle=shuffle, device=TORCH_DEVICE)
 
 
-def construct_filename(prefix: str, args: Namespace, out_dir: Path, file_ext: str) -> Path:
+def construct_filename(prefix: str, args: Namespace, out_dir: Path, file_ext: str,
+                       add_timestamp: bool = False) -> Path:
     r""" Standardize naming scheme for the filename """
 
     def _classes_to_str(cls_set: Set[Enum]) -> str:
@@ -57,6 +59,10 @@ def construct_filename(prefix: str, args: Namespace, out_dir: Path, file_ext: st
         # Ensure bias has same order as
         bias_sorted = [x for _, x in sorted(zip(args.neg, args.bias))]
         fields.append(f"bias={','.join([f'{x:02}' for x in bias_sorted])}")
+
+    if add_timestamp:
+        time_str = time.strftime("%Y-%m-%d-%H-%M-%S")
+        fields.append(time_str)
 
     if file_ext[0] != ".": file_ext = "." + file_ext
     fields[-1] += file_ext

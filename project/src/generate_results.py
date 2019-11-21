@@ -1,22 +1,29 @@
 from argparse import Namespace
 from dataclasses import dataclass
+from enum import Enum
 import logging
+from typing import ClassVar
 
 import numpy as np
 from sklearn.metrics import confusion_matrix, average_precision_score, f1_score
 
 from fastai.metrics import auc_roc_score
 import torch
+from torch import Tensor
 from torchtext.data import Dataset, LabelField
 
-from pubn import BASE_DIR, POS_LABEL, construct_iterator
+from pubn import BASE_DIR, POS_LABEL, construct_filename, construct_iterator
 from pubn.model import NlpBiasedLearner
 
 
 @dataclass
 class LearnerResults:
+    r""" Encapsulates ALL results for a single NLP learner MODEL """
+    FIELD_SEP: ClassVar[str] = ","
+
     @dataclass(init=True)
     class DatasetResult:
+        r""" Encapsulates results of a model on a SINGLE DATASET """
         ds_size: int
         accuracy: float = None
         auroc: float = None
@@ -30,6 +37,7 @@ class LearnerResults:
 
 def calculate_results(args: Namespace, classifier: NlpBiasedLearner, labels: LabelField,
                       unlabel_ds: Dataset, test_ds: Dataset):
+    r""" Calculates and writes to disk the model's results """
     classifier.eval()
 
     res = LearnerResults()
@@ -54,9 +62,12 @@ def calculate_results(args: Namespace, classifier: NlpBiasedLearner, labels: Lab
 
         res.__setattr__(name, _single_ds_results(name, args, y, y_hat, dec_scores))
 
+    _write_results_to_disk(args, res)
+
 
 def _single_ds_results(ds_name: str, args: Namespace, y: np.ndarray, y_hat: np.ndarray,
                        dec_scores: np.ndarray) -> LearnerResults.DatasetResult:
+    r""" Logs and returns the results on a single dataset """
     loss_name = args.loss.name
     results = LearnerResults.DatasetResult(y.shape[0])
 
@@ -81,9 +92,43 @@ def _single_ds_results(ds_name: str, args: Namespace, y: np.ndarray, y_hat: np.n
     logging.debug(f"{str_prefix} F1-Score: %.6f", results.f1)
 
     logging.debug(f"{str_prefix} Confusion Matrix:\n{results.conf_matrix}")
+    results.conf_matrix = str(results.conf_matrix).replace("\n", " ")
 
     return results
 
 
-def _write_results_to_disk(args: Namespace) -> None:
+def _write_results_to_disk(args: Namespace, res: LearnerResults) -> None:
+    r""" Logs the results to disk for later analysis """
+    def _log_val(_v) -> str:
+        if isinstance(_v, str): return _v
+        if isinstance(_v, int): return f"{_v:d}"
+        if isinstance(_v, Tensor): _v = float(_v.item())
+        if isinstance(_v, float): return f"{_v:.15f}"
+        if isinstance(_v, Enum): return _v.name
+        if isinstance(_v, set):
+            return "|".join([_log_val(_x) for _x in sorted(_v)])
+        if _v is None: return "NA"
+        raise ValueError(f"Unknown value type \"{type(_v)}\" to log")
+
+    header, fields = [], []
+    for key, val in vars(args).items():
+        header.append(key.replace("_", "-"))
+        fields.append(_log_val(val))
+
+    header.append("valid_loss")
+    fields.append(_log_val(res.valid_loss))
+
+    for res_name in ("unlabel", "test"):
+        res_val = res.__getattribute__(res_name)
+        for fld_name, fld_val in vars(res_val).items():
+            header.append(f"{res_name}-{fld_name}")
+            fields.append(_log_val(fld_val))
+
     results_dir = BASE_DIR / "results"
+    results_dir.mkdir(parents=True, exist_ok=True)
+    filename = construct_filename(prefix="res", args=args, out_dir=results_dir, file_ext="csv",
+                                  add_timestamp=True)
+    with open(str(filename), "w+") as f_out:
+        f_out.write(LearnerResults.FIELD_SEP.join(header))
+        f_out.write("\n")
+        f_out.write(LearnerResults.FIELD_SEP.join(fields))
