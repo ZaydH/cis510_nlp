@@ -104,8 +104,8 @@ class NlpBiasedLearner(nn.Module):
         self._optim = optim.AdamW(self._model.parameters(), lr=self._model.Config.LEARNING_RATE,
                                   weight_decay=self._model.Config.WEIGHT_DECAY, amsgrad=True)
 
-        univar_log_loss = self._build_logistic_loss()
-        bivar_log_loss = self._build_logistic_loss(pos_classes=self._map_pos)
+        univar_log_loss, univar_sigmoid_loss = self._build_losses()
+        bivar_log_loss, bivar_sigmoid_loss = self._build_losses(pos_classes=self._map_pos)
         if self._is_nnpu():
             nnpu = PULoss(prior=self.prior, pos_label=self._map_pos,
                           loss=univar_log_loss)
@@ -117,7 +117,8 @@ class NlpBiasedLearner(nn.Module):
             valid_loss = partial(pubn.calc_loss)
         else:
             assert self.l_type == LossType.PN, "Unknown loss type"
-            loss_func = valid_loss = bivar_log_loss
+            loss_func = bivar_log_loss
+            valid_loss = bivar_sigmoid_loss
 
         forward = partial(self.forward)
         # noinspection PyUnresolvedReferences
@@ -158,29 +159,42 @@ class NlpBiasedLearner(nn.Module):
         self._restore_best_model()
 
     @staticmethod
-    def _build_logistic_loss(pos_classes: Optional[Union[Set[int], int]] = None) -> Callable:
+    def _build_losses(pos_classes: Optional[Union[Set[int], int]] = None) -> Callable:
         r"""
-        Constructor method for a logistic loss function
+        Constructor method for basic losses, specifically the logistic and sigmoid losses.
 
-        :param pos_classes: Set of (mapped) class labels to treat as "positive"
-        :return: Sigmoid loss function using the positive classes in \p pos_classes
+        :param pos_classes: Set of (mapped) class labels to treat as "positive"  If not specified,
+                            then return the univariate version of the losses.
+        :return: Logistic and sigmoid loss functions, respectively.
         """
         if pos_classes is None:
             def _logistic_loss_univariate(in_tensor: Tensor) -> Tensor:
                 return -F.logsigmoid(in_tensor)
 
-            return _logistic_loss_univariate
+            def _sigmoid_loss_univariate(in_tensor: Tensor) -> Tensor:
+                return torch.sigmoid(-in_tensor)
 
-        if isinstance(pos_classes, int): pos_classes = {pos_classes}
+            return _logistic_loss_univariate, _sigmoid_loss_univariate
 
-        def _logistic_loss_bivariate(in_tensor: Tensor, target: Tensor) -> Tensor:
+        if isinstance(pos_classes, int):
+            pos_classes = {pos_classes}
+
+        def _build_y_tensor(target: Tensor) -> Tensor:
+            r""" Create a y vector from target since may change labels """
             y = torch.full(target.shape, -1)
             for pos_lbl in pos_classes:
                 y[target == pos_lbl] = 1
-            yx = in_tensor * y
+            return y
+
+        def _logistic_loss_bivariate(in_tensor: Tensor, target: Tensor) -> Tensor:
+            yx = in_tensor * _build_y_tensor(target)
             return -F.logsigmoid(yx).mean()
 
-        return _logistic_loss_bivariate
+        def _sigmoid_loss_bivariate(in_tensor: Tensor, target: Tensor) -> Tensor:
+            yx = in_tensor * _build_y_tensor(target)
+            return torch.sigmoid(-yx).mean()
+
+        return _logistic_loss_bivariate, _sigmoid_loss_bivariate
 
     def _fit_sigma(self, train: Iterator, valid: Iterator):
         r""" Fit the sigma function Pr[s = + 1 | x] """
@@ -191,7 +205,7 @@ class NlpBiasedLearner(nn.Module):
 
         pos_label = {self._map_neg, self._map_pos}
 
-        univar_log_loss = self._build_logistic_loss()
+        univar_log_loss = self._build_losses()
         pu_loss = PULoss(prior=self.prior + self._rho, pos_label=pos_label,
                          loss=univar_log_loss)
         valid_loss = partial(pu_loss.calc_loss_only)
