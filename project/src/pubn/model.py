@@ -341,7 +341,7 @@ class SigmaLearner(nn.Module):
 
     def forward(self, x: Tensor, x_len: Tensor) -> Tensor:
         with torch.no_grad():
-            return F.sigmoid(self.forward_fit(x, x_len))
+            return torch.sigmoid(self.forward_fit(x, x_len))
 
 
 def save_module(module: nn.Module, filepath: Path) -> None:
