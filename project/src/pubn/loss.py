@@ -1,15 +1,10 @@
 import collections
 from enum import Enum
-from typing import Callable, Set, Union
+from typing import Callable, Optional, Set, Union
 
 import torch
 from torch import Tensor
 import torch.nn as nn
-
-
-def _default_loss(x: Tensor) -> Tensor:
-    r""" Default loss function for the loss functions """
-    return torch.sigmoid(-x)
 
 
 class PULoss:
@@ -18,14 +13,17 @@ class PULoss:
     LossInfo = collections.namedtuple("LossInfo", ["loss_var", "grad_var"])
 
     def __init__(self, prior: float, pos_label: Union[Set[int], int],
-                 loss: Callable, gamma: float = 1, beta: float = 0, use_nnpu: bool = True):
+                 train_loss: Callable, gamma: float = 1, beta: float = 0, use_nnpu: bool = True,
+                 valid_loss: Optional[Callable] = None):
         r"""
         :param prior: Positive class prior probability, i.e., :math:`\Pr[y = +1]`
         :param pos_label: Integer labels assigned to positive-valued examples.
-        :param loss: Loss function underlying the classifier
+        :param train_loss: Loss function underlying the classifier
         :param gamma:
         :param beta:
         :param use_nnpu: If \p True, use nnPU loss.  Otherwise, use uPU.
+        :param valid_loss: Optional validation loss.  If not specified, uses \p train_loss for
+                           validaiton.
         """
         if not 0 < prior < 1:
             raise NotImplementedError("The class prior should be in (0, 1)")
@@ -36,8 +34,10 @@ class PULoss:
 
         self.gamma = gamma
         self.beta = beta
-        self.loss_func = loss
         self._is_nnpu = use_nnpu
+
+        self._train_loss = train_loss
+        self._valid_loss = valid_loss if valid_loss is not None else self._train_loss
 
     @property
     def is_nnpu(self) -> bool:
@@ -77,6 +77,21 @@ class PULoss:
         :param label: Labels for each sample in \p.
         :return: Named tuple with value used for loss and the one used for the gradient
         """
+        return self._base_calc_loss(self._train_loss, dec_scores, label)
+
+    def calc_valid_loss(self, dec_scores: Tensor, label: Tensor) -> 'LossInfo':
+        r""" Calculates only the loss information """
+        return self._base_calc_loss(self._valid_loss, dec_scores=dec_scores, label=label).loss_var
+
+    def _base_calc_loss(self, loss_func: Callable, dec_scores: Tensor, label: Tensor) -> 'LossInfo':
+        r"""
+        nnPU uses separate approaches for determining the loss and variable used for calculating
+        the gradient.
+        :param loss_func: Surrogate loss function to use in the calculation
+        :param dec_scores: Decision function value
+        :param label: Labels for each sample in \p.
+        :return: Named tuple with value used for loss and the one used for the gradient
+        """
         dec_scores, label = dec_scores.squeeze(), label.squeeze()
         self._verify_loss_inputs(dec_scores, label)
 
@@ -85,10 +100,10 @@ class PULoss:
         u_mask = ~p_mask
         has_p, has_u = p_mask.any(), u_mask.any()
 
-        y_unlabel = self.loss_func(-dec_scores)
+        y_unlabel = loss_func(-dec_scores)
         neg_risk = y_unlabel[u_mask].mean() if has_u else torch.zeros(())
         if has_p:
-            y_pos = self.loss_func(dec_scores[p_mask])
+            y_pos = loss_func(dec_scores[p_mask])
             pos_risk = self.prior * y_pos.mean()
 
             neg_risk -= self.prior * y_unlabel[p_mask].mean()
@@ -100,32 +115,6 @@ class PULoss:
             loss = pos_risk - self.beta
             gradient_var = -self.gamma * neg_risk
         return self.LossInfo(loss_var=loss, grad_var=gradient_var)
-
-    def calc_loss_only(self, dec_scores: Tensor, label: Tensor) -> 'LossInfo':
-        r""" Calculates only the loss information """
-        return self.calc_loss(dec_scores=dec_scores, label=label).loss_var
-
-    # def zero_one_loss(self, dec_scores: Tensor, labels: Tensor) -> Tensor:
-    #     r"""
-    #     In validation, 0/1 loss is used for validation. This method implements that approach.
-    #
-    #     :param dec_scores: Decision function value
-    #     :param labels: Labels for each sample in \p.
-    #     :return: Named tuple with value used for loss and the one used for the gradient
-    #     """
-    #     dec_scores, labels = dec_scores.squeeze(), labels.squeeze()
-    #     self._verify_loss_inputs(dec_scores, labels)
-    #
-    #     # Mask used to filter the dec_scores tensor and in loss calculations
-    #     p_mask = self._find_p_mask(labels)
-    #     one_val = 1  # Sign value for examples to be positively labeled
-    #     p_err = (dec_scores[p_mask].sign() != one_val).float().mean()
-    #
-    #     u_mask = ~p_mask
-    #     # By checking against P_LABEL, inherent negation so do not use != operator
-    #     u_err = (dec_scores[u_mask].sign() == one_val).float().mean()
-    #
-    #     return 2 * self.prior * p_err + u_err - self.prior
 
     def _find_p_mask(self, labels: Tensor) -> Tensor:
         r"""
@@ -146,8 +135,15 @@ class PUbN:
     Biased Negative Data. ICML 2019.
     """
     def __init__(self, prior: float, rho: float, eta: float,
-                 pos_label: int, neg_label: int,
-                 loss: Callable = _default_loss):
+                 pos_label: int, neg_label: int, train_loss: Callable,
+                 valid_loss: Optional[Callable] = None):
+        r"""
+        :param prior: Positive class prior probability, i.e., :math:`\Pr[y = +1]`
+        :param pos_label: Integer labels assigned to positive-valued examples.
+        :param train_loss: Loss function underlying the classifier
+        :param valid_loss: Optional validation loss.  If not specified, uses \p train_loss for
+                           validaiton.
+        """
         for name, val in (("prior", prior), ("eta", eta)):
             if val <= 0 or val >= 0:
                 raise ValueError(f"Value of {val} must be in range (0,1)")
@@ -161,7 +157,8 @@ class PUbN:
         assert pos_label != neg_label, "Positive and negative labels must be different"
         self._pos_label, self._neg_label = pos_label, neg_label
 
-        self.loss_func = loss
+        self._train_loss = train_loss
+        self._valid_loss = valid_loss if valid_loss is not None else self._train_loss
 
     def calc_loss(self, dec_scores: Tensor, labels: Tensor, sigma_x: Tensor) -> Tensor:
         r"""
@@ -172,24 +169,49 @@ class PUbN:
         :param sigma_x: Estimated value of :math:`\sigma(x)=\Pr[s = +1 \vert x]`.
         :return: PUbN loss (see Eq. (7)) in paper
         """
+        return self._base_calc_loss(self._train_loss, dec_scores, labels, sigma_x)
+
+    def calc_valid_loss(self, dec_scores: Tensor, labels: Tensor, sigma_x: Tensor) -> Tensor:
+        r"""
+        Calculates the positive-unlabeled biased negative loss
+
+        :param dec_scores: Decision function scores, i.e., :math:~`g(x)`
+        :param labels: Label vector
+        :param sigma_x: Estimated value of :math:`\sigma(x)=\Pr[s = +1 \vert x]`.
+        :return: PUbN loss (see Eq. (7)) in paper
+        """
+        return self._base_calc_loss(self._valid_loss, dec_scores, labels, sigma_x)
+
+    def _base_calc_loss(self, loss_func: Callable, dec_scores: Tensor, labels: Tensor,
+                        sigma_x: Tensor) -> Tensor:
+        r"""
+        Calculates the positive-unlabeled biased negative loss
+
+        :param loss_func: Surrogate loss function to use in the calculation
+        :param dec_scores: Decision function scores, i.e., :math:~`g(x)`
+        :param labels: Label vector
+        :param sigma_x: Estimated value of :math:`\sigma(x)=\Pr[s = +1 \vert x]`.
+        :return: PUbN loss (see Eq. (7)) in paper
+        """
         # Labeled loss terms
         p_mask, bn_mask = (labels == self._pos_label), (labels == self._neg_label)
         assert not (p_mask & bn_mask).any(), "Labels not disjoint"
         u_mask = p_mask.logical_xor(bn_mask).logical_not()
 
-        l_pos = self.prior * self.loss_func(dec_scores[p_mask]) if p_mask.any() else torch.zeros(())
-        l_bn = self.rho * self.loss_func(-dec_scores[bn_mask]) if bn_mask.any() else torch.zeros(())
+        l_pos = self.prior * loss_func(dec_scores[p_mask]) if p_mask.any() else torch.zeros(())
+        l_bn = self.rho * loss_func(-dec_scores[bn_mask]) if bn_mask.any() else torch.zeros(())
 
-        l_u_n = self._unlabel_neg_loss(u_mask, sigma_x, dec_scores, is_u=True) \
-                + self.prior * self._unlabel_neg_loss(p_mask, sigma_x, dec_scores, is_u=False) \
-                + self.rho * self._unlabel_neg_loss(bn_mask, sigma_x, dec_scores, is_u=False)
+        l_u_n = self._u_n_loss(loss_func, u_mask, sigma_x, dec_scores, is_u=True) \
+                + self.prior * self._u_n_loss(loss_func, p_mask, sigma_x, dec_scores, is_u=False) \
+                + self.rho * self._u_n_loss(loss_func, bn_mask, sigma_x, dec_scores, is_u=False)
 
         return l_u_n + self.prior * l_pos + self.rho * l_bn
 
-    def _unlabel_neg_loss(self, orig_mask: Tensor, sigma_x: Tensor, dec_scores: Tensor,
-                          is_u: bool) -> Tensor:
+    def _u_n_loss(self, loss_func: Callable, orig_mask: Tensor, sigma_x: Tensor, dec_scores: Tensor,
+                  is_u: bool) -> Tensor:
         r"""
         Calculates a single term of the expected
+        :param loss_func: Surrogate loss function to use in the calculation
         :param orig_mask: Masks for either
         :param sigma_x: Estimated value of :math:`\sigma(x)=\Pr[s = +1 \vert x]`.
         :param dec_scores: Decision function scores
@@ -205,7 +227,7 @@ class PUbN:
         if not mask.any(): return torch.zeros(())
 
         dec_scores, sigma_x = dec_scores[mask], sigma_x[mask]
-        loss = self.loss_func(-dec_scores)
+        loss = loss_func(-dec_scores)
         neg_sigma = -sigma_x + 1
         if not is_u:
             neg_sigma = neg_sigma / sigma_x

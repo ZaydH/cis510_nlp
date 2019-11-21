@@ -4,7 +4,7 @@ from functools import partial
 import math
 from pathlib import Path
 import time
-from typing import Callable, Optional, Set, Union
+from typing import Callable, Optional, Set, Tuple, Union
 
 import numpy as np
 
@@ -108,13 +108,13 @@ class NlpBiasedLearner(nn.Module):
         bivar_log_loss, bivar_sigmoid_loss = self._build_losses(pos_classes=self._map_pos)
         if self._is_nnpu():
             nnpu = PULoss(prior=self.prior, pos_label=self._map_pos,
-                          loss=univar_log_loss)
-            valid_loss = partial(nnpu.calc_loss_only)
+                          train_loss=univar_log_loss, valid_loss=univar_sigmoid_loss)
+            valid_loss = partial(nnpu.calc_valid_loss)
         elif self._is_pubn():
             pubn = PUbN(prior=self.prior, rho=self._rho, eta=self._eta,
                         pos_label=self._map_pos, neg_label=self._map_neg,
-                        loss=univar_log_loss)
-            valid_loss = partial(pubn.calc_loss)
+                        train_loss=univar_log_loss, valid_loss=univar_sigmoid_loss)
+            valid_loss = partial(pubn.calc_valid_loss)
         else:
             assert self.l_type == LossType.PN, "Unknown loss type"
             loss_func = bivar_log_loss
@@ -159,7 +159,8 @@ class NlpBiasedLearner(nn.Module):
         self._restore_best_model()
 
     @staticmethod
-    def _build_losses(pos_classes: Optional[Union[Set[int], int]] = None) -> Callable:
+    def _build_losses(pos_classes: Optional[Union[Set[int], int]] = None) \
+            -> Tuple[Callable, Callable]:
         r"""
         Constructor method for basic losses, specifically the logistic and sigmoid losses.
 
@@ -205,10 +206,10 @@ class NlpBiasedLearner(nn.Module):
 
         pos_label = {self._map_neg, self._map_pos}
 
-        univar_log_loss = self._build_losses()
+        univar_log_loss, univar_sigmoid_loss = self._build_losses()
         pu_loss = PULoss(prior=self.prior + self._rho, pos_label=pos_label,
-                         loss=univar_log_loss)
-        valid_loss = partial(pu_loss.calc_loss_only)
+                         train_loss=univar_log_loss, valid_loss=univar_sigmoid_loss)
+        valid_loss = partial(pu_loss.calc_valid_loss)
         forward = partial(self._sigma.forward)
         for ep in range(1, self.Config.NUM_EPOCH + 1):
             self._sigma.train()
