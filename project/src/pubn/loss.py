@@ -145,7 +145,7 @@ class PUbN:
                            validaiton.
         """
         for name, val in (("prior", prior), ("eta", eta)):
-            if val <= 0 or val >= 0:
+            if val <= 0 or val >= 1:
                 raise ValueError(f"Value of {val} must be in range (0,1)")
         if rho <= 0 or rho > 1 - prior:
             raise ValueError("rho must be in range (0, 1 - prior]")
