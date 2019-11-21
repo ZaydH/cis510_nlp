@@ -266,10 +266,10 @@ class NlpBiasedLearner(nn.Module):
         dec_scores, labels = torch.cat(dec_scores, dim=0), torch.cat(labels, dim=0)
 
         if not self._is_pubn() or not self._sigma.training:
-            return loss_func(dec_scores.squeeze(dim=1), labels.squeeze(dim=1))
+            return loss_func(dec_scores, labels)
 
         sigma_x = torch.cat(self._sigma.forward(*batch.text))
-        return loss_func(dec_scores.squeeze(dim=1), labels.squeeze(dim=1), sigma_x.squeeze(dim=1))
+        return loss_func(dec_scores, labels, sigma_x)
 
     def forward(self, x: Tensor, x_len: Tensor) -> Tensor:
         # noinspection PyUnresolvedReferences
