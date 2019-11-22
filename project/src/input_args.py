@@ -1,7 +1,7 @@
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser, Namespace
 import logging
 
-from load_newsgroups import NewsgroupsData
+from newsgroups import NewsgroupsSerial
 from pubn.loss import LossType
 from pubn.model import NlpBiasedLearner, SigmaLearner
 
@@ -13,9 +13,9 @@ def parse_args() -> Namespace:
     args.add_argument("size_u", help="# elements in the UNLABELED set", type=int)
     args.add_argument("loss", help="Loss type to use", choices=[x.name.lower() for x in LossType])
     args.add_argument("--pos", help="List of class IDs for POSITIVE class", nargs='+', type=str,
-                      choices=[e.name.lower() for e in NewsgroupsData.Categories])
+                      choices=[e.name.lower() for e in NewsgroupsSerial.Categories])
     args.add_argument("--neg", help="List of class IDs for NEGATIVE class", nargs='+', type=str,
-                      choices=[e.name.lower() for e in NewsgroupsData.Categories])
+                      choices=[e.name.lower() for e in NewsgroupsSerial.Categories])
     msg = ("Bias vector for the negative class (optional). \n. If specified, must be the same "
            "length as the negative class list.  Values are automatically normalized to sum to 1")
     args.add_argument("--bias", help=msg, nargs='*', type=float)
@@ -77,7 +77,7 @@ def _refactor_args(args: Namespace) -> None:
 
     # Convert 20 newsgroups group names to actual objects
     for ds_name in ("pos", "neg"):
-        val = [NewsgroupsData.Categories[x.upper()] for x in args.__getattribute__(ds_name)]
+        val = [NewsgroupsSerial.Categories[x.upper()] for x in args.__getattribute__(ds_name)]
         args.__setattr__(ds_name, val)
 
     if args.bias:

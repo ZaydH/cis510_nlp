@@ -2,13 +2,16 @@ from argparse import Namespace
 
 from generate_results import calculate_results
 from input_args import parse_args
-from load_newsgroups import load_20newsgroups
+import newsgroups
 from logger_utils import setup_logger
+
+from pubn import DATA_DIR
 from pubn.model import NlpBiasedLearner
 
 
 def _main(args: Namespace):
-    ngd = load_20newsgroups(args)  # ToDo fix 20 newsgroups to filter empty examples
+    preprocessed_dir = (DATA_DIR / "preprocessed") if args.preprocess else None
+    ngd = newsgroups.load(args, preprocessed_dir)
 
     classifier = NlpBiasedLearner(args, ngd.text.vocab.vectors, prior=ngd.prior)
     # noinspection PyUnresolvedReferences

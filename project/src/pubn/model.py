@@ -4,15 +4,13 @@ from functools import partial
 import math
 from pathlib import Path
 import time
-from typing import Callable, Optional, Set, Tuple, Union
+from typing import Callable, Optional, Set, Union
 
 import numpy as np
 
 import torch
 from torch import Tensor
 import torch.nn as nn
-# noinspection PyPep8Naming
-import torch.nn.functional as F
 import torch.optim as optim
 from torchtext.data import Iterator, Dataset, LabelField, Example
 
@@ -27,12 +25,13 @@ class NlpBiasedLearner(nn.Module):
     Config = ClassifierConfig
     _log = None
 
-    def __init__(self, args: Namespace, embedding_weights: Tensor, prior: float):
+    def __init__(self, args: Namespace, embedding_weights: Optional[Tensor], prior: float):
         super().__init__()
         self._setup_logger()
 
         self._log.debug(f"NLP Learner: Prior: {prior:.3f}")
 
+        self._is_rnn = embedding_weights is None  # True if just a FF classifier
         self._model = BaseClassifier(embedding_weights)
 
         self._args = args
@@ -161,45 +160,6 @@ class NlpBiasedLearner(nn.Module):
             self._log_epoch(ep, train_loss, forward, valid, valid_loss)
         self._restore_best_model()
 
-    @staticmethod
-    def _build_losses(pos_classes: Optional[Union[Set[int], int]] = None) \
-            -> Tuple[Callable, Callable]:
-        r"""
-        Constructor method for basic losses, specifically the logistic and sigmoid losses.
-
-        :param pos_classes: Set of (mapped) class labels to treat as "positive"  If not specified,
-                            then return the univariate version of the losses.
-        :return: Logistic and sigmoid loss functions, respectively.
-        """
-        if pos_classes is None:
-            def _logistic_loss_univariate(in_tensor: Tensor) -> Tensor:
-                return -F.logsigmoid(in_tensor)
-
-            def _sigmoid_loss_univariate(in_tensor: Tensor) -> Tensor:
-                return torch.sigmoid(-in_tensor)
-
-            return _logistic_loss_univariate, _sigmoid_loss_univariate
-
-        if isinstance(pos_classes, int):
-            pos_classes = {pos_classes}
-
-        def _build_y_tensor(target: Tensor) -> Tensor:
-            r""" Create a y vector from target since may change labels """
-            y = torch.full(target.shape, -1)
-            for pos_lbl in pos_classes:
-                y[target == pos_lbl] = 1
-            return y
-
-        def _logistic_loss_bivariate(in_tensor: Tensor, target: Tensor) -> Tensor:
-            yx = in_tensor * _build_y_tensor(target)
-            return -F.logsigmoid(yx).mean()
-
-        def _sigmoid_loss_bivariate(in_tensor: Tensor, target: Tensor) -> Tensor:
-            yx = in_tensor * _build_y_tensor(target)
-            return torch.sigmoid(-yx).mean()
-
-        return _logistic_loss_bivariate, _sigmoid_loss_bivariate
-
     def _fit_sigma(self, train: Iterator, valid: Iterator):
         r""" Fit the sigma function Pr[s = + 1 | x] """
         self._sigma.is_fit = True
@@ -292,7 +252,7 @@ class NlpBiasedLearner(nn.Module):
         sigma_x = torch.cat(sigma_x, dim=0)
         return loss_func(dec_scores, labels, sigma_x)
 
-    def forward(self, x: Tensor, x_len: Tensor) -> Tensor:
+    def forward(self, x: Tensor, x_len: Optional[Tensor]) -> Tensor:
         # noinspection PyUnresolvedReferences
         return self._model.forward(x, x_len).squeeze()
 
@@ -342,12 +302,12 @@ class SigmaLearner(nn.Module):
         self.is_fit = False
         self.to(TORCH_DEVICE)
 
-    def forward_fit(self, x: Tensor, x_len: Tensor) -> Tensor:
+    def forward_fit(self, x: Tensor, x_len: Optional[Tensor]) -> Tensor:
         r""" Forward method only used during training """
         # noinspection PyUnresolvedReferences
         return self._model.forward(x, x_len)
 
-    def forward(self, x: Tensor, x_len: Tensor) -> Tensor:
+    def forward(self, x: Tensor, x_len: Optional[Tensor]) -> Tensor:
         with torch.no_grad():
             return torch.sigmoid(self.forward_fit(x, x_len))
 
@@ -369,7 +329,6 @@ def load_module(module: nn.Module, filepath: Path):
     """
     # Map location allows for mapping model trained on any device to be loaded
     module.load_state_dict(torch.load(str(filepath), map_location=TORCH_DEVICE))
-    # module.load_state_dict(torch.load(str(filepath)))
 
     module.eval()
     return module

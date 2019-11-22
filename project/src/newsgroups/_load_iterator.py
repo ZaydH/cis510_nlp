@@ -40,7 +40,7 @@ VALIDATION_FRAC = 0.2
 
 
 @dataclass(init=True)
-class NewsgroupsData:
+class NewsgroupsSerial:
     r""" Encapsulates the 20 newsgroups dataset """
     text: Field
     label: LabelField
@@ -60,7 +60,7 @@ class NewsgroupsData:
         SOC = {15}
         TALK = {16, 17, 18, 19}
 
-        def __lt__(self, other: 'NewsgroupsData.Categories') -> bool:
+        def __lt__(self, other: 'NewsgroupsSerial.Categories') -> bool:
             return min(self.value) < min(other.value)
 
     @staticmethod
@@ -258,7 +258,7 @@ def _select_bunch_uar(size: int, bunch: Bunch, cls_ids: Set[int],
 
 
 def _select_negative_bunch(size_n: int, bunch: Bunch, neg_cls: Set[int],
-                           bias: Optional[List[Tuple[NewsgroupsData.Categories, float]]],
+                           bias: Optional[List[Tuple[NewsgroupsSerial.Categories, float]]],
                            remove_from_bunch: bool) -> Tuple[Bunch, Bunch]:
     r"""
     Randomly selects a negative bunch of size \p size_n.  If \p bias is \p None, the negative bunch
@@ -298,7 +298,7 @@ def _bunch_to_ds(bunch: Bunch, text: Field, label: LabelField) -> Dataset:
     return Dataset(examples, fields)
 
 
-def _print_stats(ngd: NewsgroupsData):
+def _print_stats(ngd: NewsgroupsSerial):
     r""" Log information about the dataset as a sanity check """
     logging.info(f"Maximum sequence length: {ngd.text.fix_length}")
     logging.info(f"Length of Text Vocabulary: {str(len(ngd.text.vocab))}")
@@ -326,7 +326,7 @@ def _build_train_set(p_bunch: Bunch, u_bunch: Bunch, n_bunch: Optional[Bunch],
     return _bunch_to_ds(t_bunch, text, label)
 
 
-def _log_category_frequency(p_cls: Set[NewsgroupsData.Categories], ds_name: str,
+def _log_category_frequency(p_cls: Set[NewsgroupsSerial.Categories], ds_name: str,
                             bunch: Bunch) -> None:
     r"""
     Print the breakdown of classes in the \p Bunch
@@ -339,7 +339,7 @@ def _log_category_frequency(p_cls: Set[NewsgroupsData.Categories], ds_name: str,
     tot = sum(counter.values())
 
     pos_sum = 0
-    for cat in sorted([c for c in NewsgroupsData.Categories]):
+    for cat in sorted([c for c in NewsgroupsSerial.Categories]):
         cls_sum = sum(counter[cls_id] for cls_id in cat.value)
         if cat in p_cls: pos_sum += cls_sum
         logging.debug(f"{ds_name} Class {cat.name}: {100 * cls_sum / tot:.1f}% ({cls_sum}/{tot})")
@@ -399,7 +399,7 @@ def _create_serialized_20newsgroups(args):
     assert len(u_bunch[LABEL_COL]) == int(args.size_u * size_scalar), \
         "Unlabeled set has wrong number of examples"
 
-    ng_data = NewsgroupsData(text=TEXT, label=LABEL)
+    ng_data = NewsgroupsSerial(text=TEXT, label=LABEL)
     full_train_ds = _build_train_set(p_bunch, u_bunch, n_bunch, TEXT, LABEL)
     split_ratio = 1 / (1 + VALIDATION_FRAC)
     ng_data.train, ng_data.valid = full_train_ds.split(split_ratio, stratified=True)
@@ -414,7 +414,7 @@ def _create_serialized_20newsgroups(args):
     ng_data.dump(args)
 
 
-def load_20newsgroups(args: Namespace):
+def load_newsgroups_iterator(args: Namespace) -> NewsgroupsSerial:
     r"""
     Automatically downloads the 20 newsgroups dataset.
     :param args: Parsed command line arguments
@@ -423,11 +423,11 @@ def load_20newsgroups(args: Namespace):
     assert not (args.pos & args.neg), "Positive and negative classes not disjoint"
 
     # Load the serialized file if it exists
-    if not NewsgroupsData.serial_exists(args):
+    if not NewsgroupsSerial.serial_exists(args):
         _create_serialized_20newsgroups(args)
     # _create_serialized_20newsgroups(serialize_path, args)
 
-    serial = NewsgroupsData.load(args)
+    serial = NewsgroupsSerial.load(args)
     serial.prior = calculate_prior(serial.test)
     if args.rho is not None:
         assert (1 - serial.prior) >= args.rho, "Input parameter rho invalid given dataset"

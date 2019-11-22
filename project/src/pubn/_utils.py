@@ -4,9 +4,12 @@ from pathlib import Path
 import re
 import socket
 import time
-from typing import Set
+from typing import Callable, Optional, Set, Tuple, Union
 
 import torch
+from torch import Tensor
+# noinspection PyPep8Naming
+import torch.nn.functional as F
 from torchtext.data import Dataset, Iterator
 
 
@@ -37,6 +40,45 @@ TORCH_DEVICE = torch.device("cuda:0" if IS_CUDA else "cpu")
 POS_LABEL = 1
 U_LABEL = 0
 NEG_LABEL = -1
+
+
+def build_loss_functions(pos_classes: Optional[Union[Set[int], int]] = None) \
+        -> Tuple[Callable, Callable]:
+    r"""
+    Constructor method for basic losses, specifically the logistic and sigmoid losses.
+
+    :param pos_classes: Set of (mapped) class labels to treat as "positive"  If not specified,
+                        then return the univariate version of the losses.
+    :return: Logistic and sigmoid loss functions, respectively.
+    """
+    if pos_classes is None:
+        def _logistic_loss_univariate(in_tensor: Tensor) -> Tensor:
+            return -F.logsigmoid(in_tensor)
+
+        def _sigmoid_loss_univariate(in_tensor: Tensor) -> Tensor:
+            return torch.sigmoid(-in_tensor)
+
+        return _logistic_loss_univariate, _sigmoid_loss_univariate
+
+    if isinstance(pos_classes, int):
+        pos_classes = {pos_classes}
+
+    def _build_y_tensor(target: Tensor) -> Tensor:
+        r""" Create a y vector from target since may change labels """
+        y = torch.full(target.shape, -1)
+        for pos_lbl in pos_classes:
+            y[target == pos_lbl] = 1
+        return y
+
+    def _logistic_loss_bivariate(in_tensor: Tensor, target: Tensor) -> Tensor:
+        yx = in_tensor * _build_y_tensor(target)
+        return -F.logsigmoid(yx).mean()
+
+    def _sigmoid_loss_bivariate(in_tensor: Tensor, target: Tensor) -> Tensor:
+        yx = in_tensor * _build_y_tensor(target)
+        return torch.sigmoid(-yx).mean()
+
+    return _logistic_loss_bivariate, _sigmoid_loss_bivariate
 
 
 def construct_iterator(ds: Dataset, bs: int, shuffle: bool = True) -> Iterator:
