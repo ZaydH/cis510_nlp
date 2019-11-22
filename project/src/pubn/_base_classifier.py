@@ -68,7 +68,7 @@ class BaseClassifier(nn.Module):
 
     def is_rnn(self) -> bool:
         r""" Returns \p True if the object has an RNN"""
-        return self._rnn is None
+        return self._rnn is not None
 
     # noinspection PyUnresolvedReferences
     def forward(self, x: Tensor, seq_len: Optional[Tensor] = None) -> Tensor:

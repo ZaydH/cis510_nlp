@@ -4,7 +4,7 @@ from functools import partial
 import math
 from pathlib import Path
 import time
-from typing import Callable, Optional, Set, Union
+from typing import Callable, Optional, Set, Tuple, Union
 
 import numpy as np
 
@@ -12,11 +12,14 @@ import torch
 from torch import Tensor
 import torch.nn as nn
 import torch.optim as optim
-from torchtext.data import Iterator, Dataset, LabelField, Example
+from torch.utils.data import Dataset, Subset, TensorDataset
+from torchtext.data import Dataset as TextDataset, Batch
+from torchtext.data import LabelField, Example
 
 from ._base_classifier import BaseClassifier, ClassifierConfig
-from ._utils import BASE_DIR, NEG_LABEL, POS_LABEL, TORCH_DEVICE, U_LABEL, construct_iterator, \
-    construct_filename
+from ._utils import BASE_DIR, DatasetType, LoaderType, NEG_LABEL, POS_LABEL, TORCH_DEVICE, \
+    U_LABEL, build_loss_functions, construct_filename, construct_loader
+
 from .logger import TrainingLogger, create_stdout_handler
 from .loss import LossType, PULoss, PUbN
 
@@ -71,42 +74,51 @@ class NlpBiasedLearner(nn.Module):
                                       logger_name=self.Config.LOGGER_NAME,
                                       tb_grp_name=self.l_type.name)
 
-    def fit(self, train: Dataset, valid: Dataset, unlabel: Dataset, label: LabelField):
+    def fit(self, train: DatasetType, valid: DatasetType, unlabel: DatasetType,
+            label: Optional[LabelField]):
         r""" Fits the learner"""
+        # noinspection PyUnresolvedReferences
+        assert (label is None) ^ (self._model.is_rnn()), "label and model version mismatch"
+
         # Filter the dataset based on the training configuration
         if not self._is_pubn():
             exclude_lbl = NEG_LABEL if self._is_nnpu() else U_LABEL
             train = exclude_label_in_dataset(train, exclude_lbl)
             valid = exclude_label_in_dataset(valid, exclude_lbl)
 
-        self._map_pos, self._map_neg = label.vocab.stoi[POS_LABEL], label.vocab.stoi[NEG_LABEL]
+        self._map_pos, self._map_neg = POS_LABEL, NEG_LABEL
+        if self._is_rnn:
+            self._map_pos, self._map_neg = label.vocab.stoi[POS_LABEL], label.vocab.stoi[NEG_LABEL]
 
         if self._is_pubn():
             self._configure_fit_vars()
             # noinspection PyUnresolvedReferences
-            train_itr = construct_iterator(train, bs=self._sigma.Config.BATCH_SIZE, shuffle=True)
+            train_itr = construct_loader(train, bs=self._sigma.Config.BATCH_SIZE, shuffle=True)
             # noinspection PyUnresolvedReferences
-            valid_itr = construct_iterator(valid, bs=self._sigma.Config.BATCH_SIZE, shuffle=True)
+            valid_itr = construct_loader(valid, bs=self._sigma.Config.BATCH_SIZE, shuffle=True,
+                                         drop_last=False)
             self._fit_sigma(train_itr, valid_itr)
             # noinspection PyUnresolvedReferences
-            u_itr = construct_iterator(unlabel, bs=self._sigma.Config.BATCH_SIZE, shuffle=True)
+            u_itr = construct_loader(unlabel, bs=self._sigma.Config.BATCH_SIZE, shuffle=True,
+                                     drop_last=False)
             self._calculate_eta(u_itr)
 
         self._configure_fit_vars()
         # noinspection PyUnresolvedReferences
-        train_itr = construct_iterator(train, bs=self.Config.BATCH_SIZE, shuffle=True)
+        train_itr = construct_loader(train, bs=self.Config.BATCH_SIZE, shuffle=True)
         # noinspection PyUnresolvedReferences
-        valid_itr = construct_iterator(valid, bs=self.Config.BATCH_SIZE, shuffle=True)
+        valid_itr = construct_loader(valid, bs=self.Config.BATCH_SIZE, shuffle=True,
+                                     drop_last=False)
         self._fit_base(train_itr, valid_itr)
 
-    def _fit_base(self, train: Iterator, valid: Iterator):
+    def _fit_base(self, train: LoaderType, valid: LoaderType):
         r""" Shared functions for nnPU and supervised learning """
         # noinspection PyUnresolvedReferences
         self._optim = optim.AdamW(self._model.parameters(), lr=self._model.Config.LEARNING_RATE,
                                   weight_decay=self._model.Config.WEIGHT_DECAY, amsgrad=True)
 
-        univar_log_loss, univar_sigmoid_loss = self._build_losses()
-        bivar_log_loss, bivar_sigmoid_loss = self._build_losses(pos_classes=self._map_pos)
+        univar_log_loss, univar_sigmoid_loss = build_loss_functions()
+        bivar_log_loss, bivar_sigmoid_loss = build_loss_functions(pos_classes=self._map_pos)
         if self._is_nnpu():
             nnpu = PULoss(prior=self.prior, pos_label=self._map_pos,
                           train_loss=univar_log_loss, valid_loss=univar_sigmoid_loss)
@@ -132,25 +144,27 @@ class NlpBiasedLearner(nn.Module):
             train_loss, num_batch = torch.zeros(()), 0
             for batch in train:
                 self._optim.zero_grad()
+
+                forward_in, labels = get_forward_input_and_labels(batch)
                 # noinspection PyUnresolvedReferences
-                dec_scores = self._model.forward(*batch.text)
+                dec_scores = self._model.forward(*forward_in)
 
                 if self._is_nnpu():
                     # noinspection PyUnboundLocalVariable
-                    loss = nnpu.calc_loss(dec_scores, batch.label)
+                    loss = nnpu.calc_loss(dec_scores, labels)
                     # noinspection PyUnresolvedReferences
                     loss.grad_var.backward()
                     # noinspection PyUnresolvedReferences
                     loss = loss.loss_var
                 else:
                     if self._is_pubn():
-                        sigma_x = self._sigma.forward(*batch.text)
+                        sigma_x = self._sigma.forward(*forward_in)
                         # noinspection PyUnboundLocalVariable
-                        loss = pubn.calc_loss(dec_scores, batch.label, sigma_x)
+                        loss = pubn.calc_loss(dec_scores, labels, sigma_x)
                     else:
                         assert self.l_type == LossType.PN, "Unknown loss type"
                         # noinspection PyUnboundLocalVariable
-                        loss = loss_func(dec_scores, batch.label)
+                        loss = loss_func(dec_scores, labels)
                     loss.backward()
                 train_loss += loss.detach()
                 num_batch += 1
@@ -160,7 +174,7 @@ class NlpBiasedLearner(nn.Module):
             self._log_epoch(ep, train_loss, forward, valid, valid_loss)
         self._restore_best_model()
 
-    def _fit_sigma(self, train: Iterator, valid: Iterator):
+    def _fit_sigma(self, train: LoaderType, valid: LoaderType) -> None:
         r""" Fit the sigma function Pr[s = + 1 | x] """
         self._sigma.is_fit = True
         # noinspection PyUnresolvedReferences
@@ -170,7 +184,7 @@ class NlpBiasedLearner(nn.Module):
 
         pos_label = {self._map_neg, self._map_pos}
 
-        univar_log_loss, univar_sigmoid_loss = self._build_losses()
+        univar_log_loss, univar_sigmoid_loss = build_loss_functions()
         pu_loss = PULoss(prior=self.prior + self._rho, pos_label=pos_label,
                          train_loss=univar_log_loss, valid_loss=univar_sigmoid_loss)
         valid_loss = partial(pu_loss.calc_valid_loss)
@@ -180,10 +194,12 @@ class NlpBiasedLearner(nn.Module):
             train_loss, num_batch = torch.zeros(()), 0
             for batch in train:
                 self._optim.zero_grad()
-                # noinspection PyUnresolvedReferences
-                dec_scores = self._sigma.forward_fit(*batch.text)
 
-                loss = pu_loss.calc_loss(dec_scores, batch.label)
+                forward_in, labels = get_forward_input_and_labels(batch)
+                # noinspection PyUnresolvedReferences
+                dec_scores = self._sigma.forward_fit(*forward_in)
+
+                loss = pu_loss.calc_loss(dec_scores, labels)
                 loss.grad_var.backward()
                 train_loss += loss.loss_var.detach()
                 num_batch += 1
@@ -198,7 +214,7 @@ class NlpBiasedLearner(nn.Module):
 
         self._sigma.is_fit = False
 
-    def _calculate_eta(self, unlabel: Iterator) -> float:
+    def _calculate_eta(self, unlabel: LoaderType) -> float:
         r"""
         Calculates eta for PUbN
 
@@ -207,7 +223,8 @@ class NlpBiasedLearner(nn.Module):
         """
         sigma_x = []
         for batch in unlabel:
-            sigma_x.append(self._sigma.forward(*batch.text))
+            forward_in, _ = get_forward_input_and_labels(batch)
+            sigma_x.append(self._sigma.forward(*forward_in))
         sigma_x, _ = torch.cat(sigma_x, dim=0).squeeze().sort()
 
         idx = math.floor(self._tau * (1 - self.prior - self._rho) * sigma_x.numel())
@@ -215,7 +232,7 @@ class NlpBiasedLearner(nn.Module):
 
         return self._eta
 
-    def _log_epoch(self, ep: int, train_loss: Tensor, forward: Callable, valid_itr: Iterator,
+    def _log_epoch(self, ep: int, train_loss: Tensor, forward: Callable, valid_itr: LoaderType,
                    loss_func: Callable) -> None:
         r"""
         Log the results of the epoch
@@ -223,7 +240,7 @@ class NlpBiasedLearner(nn.Module):
         :param ep: Epoch number
         :param train_loss: Training loss value
         :param forward: \p forward method used to calculate the loss
-        :param valid_itr: Validation \p Iterator
+        :param valid_itr: Validation loader (e.g., \p DataDataLoader, \p Iterator)
         :param loss_func: Function used to calculate the loss
         """
         with torch.no_grad():
@@ -235,15 +252,16 @@ class NlpBiasedLearner(nn.Module):
             save_module(self, self._build_serialize_name(self._prefix))
         self._logger.log(ep, [train_loss, valid_loss, is_best, time.time() - self._train_start])
 
-    def _calc_valid_loss(self, forward: Callable, itr: Iterator, loss_func: Callable) -> Tensor:
+    def _calc_valid_loss(self, forward: Callable, itr: LoaderType, loss_func: Callable) -> Tensor:
         r""" Calculate the validation loss for \p itr using forward method """
         dec_scores, labels, sigma_x = [], [], []
         with torch.no_grad():
             for batch in itr:
-                dec_scores.append(forward(*batch.text))
-                labels.append(batch.label)
+                forward_in, lbls = get_forward_input_and_labels(batch)
+                dec_scores.append(forward(*forward_in))
+                labels.append(lbls)
                 if self._is_pubn() and not self._sigma.is_fit:
-                    sigma_x.append(self._sigma.forward(*batch.text))
+                    sigma_x.append(self._sigma.forward(*forward_in))
         dec_scores, labels = torch.cat(dec_scores, dim=0), torch.cat(labels, dim=0)
 
         if not self._is_pubn() or self._sigma.is_fit:
@@ -334,11 +352,36 @@ def load_module(module: nn.Module, filepath: Path):
     return module
 
 
-def exclude_label_in_dataset(ds: Dataset, label_to_exclude: Union[int, Set[int]]) -> Dataset:
-    r""" Creates a new \p Dataset that will exclude the label of \p label_to_exclude """
+def exclude_label_in_dataset(ds: DatasetType,
+                             label_to_exclude: Union[int, Set[int]]) -> Dataset:
+    r""" Creates a new \p TextDataset that will exclude the label of \p label_to_exclude """
+    if isinstance(label_to_exclude, int):
+        label_to_exclude = {label_to_exclude}
+
+    # TensorDataset allows for use of the Subset wrapper
+    if isinstance(ds, TensorDataset):
+        _, y = ds.tensors
+        idx = [idx for idx, _y in enumerate(y) if int(_y) in label_to_exclude]
+        return Subset(ds, idx)
+
     def _filter_label(x: Example):
         # noinspection PyUnresolvedReferences
         return x.label not in label_to_exclude
 
-    if isinstance(label_to_exclude, int): label_to_exclude = {label_to_exclude}
-    return Dataset(examples=ds.examples, fields=ds.fields, filter_pred=_filter_label)
+    return TextDataset(examples=ds.examples, fields=ds.fields, filter_pred=_filter_label)
+
+
+def get_forward_input_and_labels(batch: Union[Batch, Tuple[Tensor, Tensor]]) \
+        -> Tuple[Tuple[Tensor, Optional[Tensor]], Tensor]:
+    r"""
+    Gets input to the \p forward method and the labels
+
+    :param batch: Batch from \p Iterator/\p DeviceDataLoader
+    :return: Tuple of the input to forward method and labels tensor
+    """
+    if isinstance(batch, Batch):
+        # noinspection PyUnresolvedReferences
+        return batch.text, batch.label
+
+    assert isinstance(batch, tuple), "Unknown inputs type"
+    return (batch[0], None), batch[1]

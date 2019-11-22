@@ -7,10 +7,13 @@ import time
 from typing import Callable, Optional, Set, Tuple, Union
 
 import torch
+from fastai.basic_data import DeviceDataLoader
 from torch import Tensor
 # noinspection PyPep8Naming
 import torch.nn.functional as F
-from torchtext.data import Dataset, Iterator
+from torch.utils.data import DataLoader, TensorDataset
+from torchtext.data import Dataset as TextDataset
+from torchtext.data import Iterator
 
 
 def _check_is_talapas() -> bool:
@@ -36,6 +39,11 @@ if IS_CUDA:
     # noinspection PyUnresolvedReferences
     torch.set_default_tensor_type(torch.cuda.FloatTensor)
 TORCH_DEVICE = torch.device("cuda:0" if IS_CUDA else "cpu")
+
+NUM_WORKERS = 0 if IS_CUDA else 0  # For stability on a Mac/GPU
+
+DatasetType = Union[TensorDataset, TextDataset]
+LoaderType = Union[DeviceDataLoader, Iterator]
 
 POS_LABEL = 1
 U_LABEL = 0
@@ -81,9 +89,16 @@ def build_loss_functions(pos_classes: Optional[Union[Set[int], int]] = None) \
     return _logistic_loss_bivariate, _sigmoid_loss_bivariate
 
 
-def construct_iterator(ds: Dataset, bs: int, shuffle: bool = True) -> Iterator:
+def construct_loader(ds: Union[TensorDataset, TextDataset], bs: int, shuffle: bool = True,
+                     drop_last: bool = False) -> Union[DeviceDataLoader, Iterator]:
     r""" Construct \p Iterator which emulates a \p DataLoader """
-    return Iterator(dataset=ds, batch_size=bs, shuffle=shuffle, device=TORCH_DEVICE)
+    if isinstance(ds, TextDataset):
+        return Iterator(dataset=ds, batch_size=bs, shuffle=shuffle, device=TORCH_DEVICE)
+
+    dl = DataLoader(dataset=ds, batch_size=bs, shuffle=shuffle, drop_last=drop_last,
+                    num_workers=NUM_WORKERS)
+    # noinspection PyArgumentList
+    return DeviceDataLoader(dl=dl, device=TORCH_DEVICE)
 
 
 def construct_filename(prefix: str, args: Namespace, out_dir: Path, file_ext: str,

@@ -5,29 +5,39 @@ from dataclasses import dataclass
 from enum import Enum
 import itertools
 import logging
+import os
 from pathlib import Path
 import pickle as pk
+import sys
 from typing import List, Optional, Set, Tuple
 
+import h5py
 import nltk
 import nltk.tokenize
 import numpy as np
 import sklearn.datasets
+from sklearn import preprocessing
 # noinspection PyProtectedMember
 from sklearn.utils import Bunch
 
+import torch
+from torch import Tensor
 import torchtext
+from torch.utils.data import TensorDataset
 from torchtext.data import Example, Field, LabelField
 import torchtext.datasets
 from torchtext.data.dataset import Dataset
 import torchtext.vocab
+
+import allennlp.commands
+from allennlp.common.file_utils import cached_path
 
 # Valid Choices - Any subset of: ('headers', 'footers', 'quotes')
 from pubn import BASE_DIR, DATA_DIR, NEG_LABEL, POS_LABEL, U_LABEL, construct_filename, \
     calculate_prior
 
 # DATASET_REMOVE = ('headers', 'footers', 'quotes')  # ToDo settle on dataset elements to remove
-DATASET_REMOVE = ('headers', 'footers')
+DATASET_REMOVE = ()
 VALID_DATA_SUBSETS = ("train", "test", "all")
 
 DATA_COL = "data"
@@ -37,6 +47,19 @@ LABEL_NAMES_COL = "target_names"
 # Validation set is disjoint from the training set.  If dataet size is n, total set size is
 # n * (1 + VALIDATION_FRAC).
 VALIDATION_FRAC = 0.2
+
+
+class NewsgroupsCategories(Enum):
+    ALT = {0}
+    COMP = {1, 2, 3, 4, 5}
+    MISC = {6}
+    REC = {7, 8, 9, 10}
+    SCI = {11, 12, 13, 14}
+    SOC = {15}
+    TALK = {16, 17, 18, 19}
+
+    def __lt__(self, other: 'NewsgroupsCategories') -> bool:
+        return min(self.value) < min(other.value)
 
 
 @dataclass(init=True)
@@ -50,18 +73,6 @@ class NewsgroupsSerial:
     unlabel: Dataset = None
 
     prior: float = None
-
-    class Categories(Enum):
-        ALT = {0}
-        COMP = {1, 2, 3, 4, 5}
-        MISC = {6}
-        REC = {7, 8, 9, 10}
-        SCI = {11, 12, 13, 14}
-        SOC = {15}
-        TALK = {16, 17, 18, 19}
-
-        def __lt__(self, other: 'NewsgroupsSerial.Categories') -> bool:
-            return min(self.value) < min(other.value)
 
     @staticmethod
     def _pickle_filename(args: Namespace) -> Path:
@@ -104,6 +115,15 @@ class NewsgroupsSerial:
                 continue
             newsgroup.__setattr__(key, Dataset(flds[key], newsgroup.build_fields()))
         return newsgroup
+
+
+def _download_nltk_tokenizer():
+    r""" NLTK uses 'punkt' tokenizer which needs to be downloaded """
+    # Download the nltk tokenizer
+    nltk_path = DATA_DIR / "nltk"
+    nltk_path.mkdir(parents=True, exist_ok=True)
+    nltk.data.path.append(str(nltk_path))
+    nltk.download("punkt", download_dir=str(nltk_path))
 
 
 def _download_20newsgroups(subset: str, pos_cls: Set[int], neg_cls: Set[int]):
@@ -258,7 +278,7 @@ def _select_bunch_uar(size: int, bunch: Bunch, cls_ids: Set[int],
 
 
 def _select_negative_bunch(size_n: int, bunch: Bunch, neg_cls: Set[int],
-                           bias: Optional[List[Tuple[NewsgroupsSerial.Categories, float]]],
+                           bias: Optional[List[Tuple[NewsgroupsCategories, float]]],
                            remove_from_bunch: bool) -> Tuple[Bunch, Bunch]:
     r"""
     Randomly selects a negative bunch of size \p size_n.  If \p bias is \p None, the negative bunch
@@ -326,7 +346,7 @@ def _build_train_set(p_bunch: Bunch, u_bunch: Bunch, n_bunch: Optional[Bunch],
     return _bunch_to_ds(t_bunch, text, label)
 
 
-def _log_category_frequency(p_cls: Set[NewsgroupsSerial.Categories], ds_name: str,
+def _log_category_frequency(p_cls: Set[NewsgroupsCategories], ds_name: str,
                             bunch: Bunch) -> None:
     r"""
     Print the breakdown of classes in the \p Bunch
@@ -339,14 +359,14 @@ def _log_category_frequency(p_cls: Set[NewsgroupsSerial.Categories], ds_name: st
     tot = sum(counter.values())
 
     pos_sum = 0
-    for cat in sorted([c for c in NewsgroupsSerial.Categories]):
+    for cat in sorted([c for c in NewsgroupsCategories]):
         cls_sum = sum(counter[cls_id] for cls_id in cat.value)
         if cat in p_cls: pos_sum += cls_sum
         logging.debug(f"{ds_name} Class {cat.name}: {100 * cls_sum / tot:.1f}% ({cls_sum}/{tot})")
     logging.debug(f"{ds_name} Prior: {100 * pos_sum / tot:.1f}%")
 
 
-def _create_serialized_20newsgroups(args):
+def _create_serialized_20newsgroups_iterator(args):
     r"""
     Creates a serialized 20 newsgroups dataset
 
@@ -356,11 +376,6 @@ def _create_serialized_20newsgroups(args):
     n_cls = {cls_id for cls_grp in args.neg for cls_id in cls_grp.value}
     complete_train = _download_20newsgroups("train", p_cls, n_cls)
 
-    # Download the nltk tokenizer
-    nltk_path = DATA_DIR / "nltk"
-    nltk_path.mkdir(parents=True, exist_ok=True)
-    nltk.data.path.append(str(nltk_path))
-    nltk.download("punkt", download_dir=str(nltk_path))
     tokenizer = nltk.tokenize.word_tokenize
     # noinspection PyPep8Naming
     TEXT = Field(sequential=True, tokenize=tokenizer, lower=True, include_lengths=True,
@@ -414,7 +429,7 @@ def _create_serialized_20newsgroups(args):
     ng_data.dump(args)
 
 
-def load_newsgroups_iterator(args: Namespace) -> NewsgroupsSerial:
+def _load_newsgroups_iterator(args: Namespace) -> NewsgroupsSerial:
     r"""
     Automatically downloads the 20 newsgroups dataset.
     :param args: Parsed command line arguments
@@ -424,7 +439,7 @@ def load_newsgroups_iterator(args: Namespace) -> NewsgroupsSerial:
 
     # Load the serialized file if it exists
     if not NewsgroupsSerial.serial_exists(args):
-        _create_serialized_20newsgroups(args)
+        _create_serialized_20newsgroups_iterator(args)
     # _create_serialized_20newsgroups(serialize_path, args)
 
     serial = NewsgroupsSerial.load(args)
@@ -434,3 +449,235 @@ def load_newsgroups_iterator(args: Namespace) -> NewsgroupsSerial:
 
     _print_stats(serial)
     return serial
+
+
+# ================================================================================= #
+#   Preprocessed related functions
+# ================================================================================= #
+
+
+OPTION_FILE = "https://allennlp.s3.amazonaws.com/models/elmo/2x4096_512_2048cnn_2xhighway_5.5B" \
+              "/elmo_2x4096_512_2048cnn_2xhighway_5.5B_options.json "
+WEIGHT_FILE = "https://allennlp.s3.amazonaws.com/models/elmo/2x4096_512_2048cnn_2xhighway_5.5B" \
+              "/elmo_2x4096_512_2048cnn_2xhighway_5.5B_weights.hdf5 "
+
+PREPROCESSED_FIELD = "data"
+
+
+@dataclass
+class NewsgroupsPreprocessed:
+    prior: float = None
+    train: TensorDataset = None
+    valid: TensorDataset = None
+    unlabel: TensorDataset = None
+    test: TensorDataset = None
+
+    @staticmethod
+    def _pickle_filename(args: Namespace) -> Path:
+        r""" Filename for the serialized file """
+        path = BASE_DIR / "tensors" / "preprocessed"
+        return construct_filename("preprocessed", args, out_dir=path, file_ext="pk")
+
+    @classmethod
+    def serial_exists(cls, args: Namespace) -> bool:
+        r""" Returns \p True if the serialized file exists """
+        return cls._pickle_filename(args).exists()
+
+    def dump(self, args: Namespace) -> None:
+        r""" Serialize the newsgroup data to disk """
+        path = self._pickle_filename(args)
+
+        msg = f"Writing serialized (preprocessed) file {str(path)}"
+        logging.debug(f"Starting: {msg}")
+        with open(str(path), "wb+") as f_out:
+            pk.dump(self, f_out)
+        logging.debug(f"COMPLETED: {msg}")
+
+    @classmethod
+    def load(cls, args: Namespace):
+        r""" Load the serialized (preprocessed) newsgroups dataset """
+        path = cls._pickle_filename(args)
+        with open(str(path), "rb") as f_in:
+            return pk.load(f_in)
+
+
+def _build_elmo_file_path(ds_name: str) -> Path:
+    r"""
+    Constructs the file path to store the preprocessed vector h5py file.
+    :param ds_name: Either "test" or "train"
+    :return: Path to the elmo file directory
+    """
+    newsgroups_dir = DATA_DIR / "20_newsgroups"
+    newsgroups_dir.mkdir(parents=True, exist_ok=True)
+
+    return newsgroups_dir / f"20newsgroups_elmo_mmm_{ds_name}.hdf5"
+
+
+def _generate_preprocessed_vectors(bunch: Bunch, ds_name: str) -> None:
+    r"""
+    Constructs the preprocessed vectors for either the test or train datasets.
+    :param bunch: Newsgroup bunch
+    :param ds_name: Either "test" or "train"
+    """
+    assert ds_name == "train" or ds_name == "test"
+
+    n = len(bunch.data)
+
+    allennlp_dir = DATA_DIR / "allennlp"
+    allennlp_dir.mkdir(parents=True, exist_ok=True)
+    os.putenv('ALLENNLP_CACHE_ROOT', str(allennlp_dir))
+
+    elmo = allennlp.commands.elmo.ElmoEmbedder(cached_path(OPTION_FILE, str(allennlp_dir)),
+                                               cached_path(WEIGHT_FILE, "."),
+                                               0 if torch.cuda.is_available() else -1)
+
+    data = np.zeros([n, 9216])
+    elmo_path = str(_build_elmo_file_path(ds_name))
+    f = h5py.File(elmo_path, 'w')
+    f.create_dataset(PREPROCESSED_FIELD, data=data)
+    f.close()
+
+    msg = f"Creating the preprocessed vectors for \"{ds_name}\" set"
+    logging.info(f"Starting: {msg}")
+    if not torch.cuda.is_available():  # Has to be out of for loop or stdout overwrite messes up
+        print('cuda fail')
+    for i in range(n):
+        sentence = nltk.tokenize.word_tokenize(bunch.data[i])
+        sys.stdout.write(f"Processing {ds_name} document {i+1}/{n}\r")
+        sys.stdout.flush()
+        em = elmo.embed_batch([sentence])
+        em = np.concatenate(
+            [np.mean(em[0], axis=1).flatten(),
+             np.min(em[0], axis=1).flatten(),
+             np.max(em[0], axis=1).flatten()])
+        f = h5py.File(elmo_path, 'r+')
+        f[PREPROCESSED_FIELD][i] = em
+        f.close()
+    print("")
+
+    f = h5py.File(elmo_path, 'r+')
+    f[PREPROCESSED_FIELD] = preprocessing.scale(f[PREPROCESSED_FIELD][:])
+    f.close()
+    logging.info(f"COMPLETED: {msg}")
+
+
+def _binarize_tensor_labels(y: Tensor, p_cls: Set[int], n_cls: Set[int]) -> Tensor:
+    r""" Binarize the labels """
+    bin_idx = [torch.full_like(y, NEG_LABEL) for _ in range(2)]
+    for i, cls_set in enumerate((p_cls, n_cls)):
+        for cls_id in cls_set:
+            bin_idx[i][y == cls_id] = POS_LABEL
+
+    assert not (bin_idx[0] & bin_idx[1]).any(), "Overlapping labels"
+    assert bin_idx[0] ^ bin_idx[1], "Unknown labels found"
+    return bin_idx[0]  # First element is positive list
+
+
+def _select_tensor_uar(x: Tensor, y: Tensor, cls_ids: Set[int], size: int) -> Tuple[Tensor, Tensor]:
+    r""" Select a subset of the data """
+    idx = []
+    for i in range(y.numel()):
+        if int(y[i]) in cls_ids:
+            idx.append(i)
+    assert len(idx) >= size, "Dataset too small"
+    # select s
+    idx = torch.tensor(idx).permute()[:size].sort()
+    return x[idx], y[idx]
+
+
+def _select_neg_tensor(x: Tensor, y: Tensor, n_cls: Set[int],
+                       bias: Optional[List[Tuple[NewsgroupsCategories, float]]],
+                       size_n: int) -> Tuple[Tensor, Tensor]:
+    r"""
+    Randomly selects a negative bunch of size \p size_n.  If \p bias is \p None, the negative bunch
+    is selected u.a.r. from all class IDs in \p neg_cls.  Otherwise, probability each group is
+    selected is specified by the \p bias vector.  Optionally removes the selected elements
+    from \p bunch.
+
+    :param x: (Negative) X tensor
+    :param y: (Negative) y tensor
+    :param n_cls: ID numbers for the negative set
+    :param bias: Optional vector for bias
+    :param size_n:  Size of new negative set.
+    """
+    # If no bias, select the elements u.a.r.
+    if bias is None:
+        return _select_tensor_uar(x, y, n_cls, size_n)
+
+    # Multinomial distribution from Pr[x|y=-1,s =+1]
+    grp_sizes = np.random.multinomial(size_n, [prob for _, prob in bias])
+    # Determine selected index
+    all_x, all_y = [], []
+    for (cls_lst, _), size in zip(bias, grp_sizes):
+        x, y = _select_tensor_uar(x, y, cls_lst.vale, size)
+        all_x.append(x)
+        all_y.append(y)
+
+    return torch.cat(all_x), torch.cat(all_y)
+
+
+def _valid_split(x: Tensor) -> Tuple[Tensor, Tensor]:
+    r""" Split tensor into test and validation sets """
+    idx = torch.tensor(list(range(x.shape[0]))).permute()
+
+    split_point = int(x.numel() / (1 + VALIDATION_FRAC))
+    return x[idx[:split_point]], x[idx[split_point:]]
+
+
+def _create_serialized_20newsgroups_preprocessed(args: Namespace) -> None:
+    r""" Serializes the 20 newsgroups as preprocessed vectors """
+    p_ids = {x for cat in args.pos for x in cat.value}
+    n_ids = {x for cat in args.neg for x in cat.value}
+
+    ngp = NewsgroupsPreprocessed()
+    for ds_name in ("train", "test"):
+        newsgroups_dir = DATA_DIR / "20_newsgroups"
+        newsgroups_dir.mkdir(parents=True, exist_ok=True)
+        bunch = sklearn.datasets.fetch_20newsgroups(data_home=newsgroups_dir, shuffle=False,
+                                                    remove=DATASET_REMOVE, subset=ds_name)
+
+        path = _build_elmo_file_path(ds_name)
+        if not path.exists():
+            _generate_preprocessed_vectors(bunch, ds_name)
+
+        vecs = h5py.File(str(path), 'r')
+        x, y = torch.from_numpy(vecs[PREPROCESSED_FIELD][:]), torch.tensor(bunch.target)
+        ngp.__setattr__(ds_name, TensorDataset(x, _binarize_tensor_labels(y, p_ids, n_ids)))
+        if ds_name == "train":
+            unlabel_x, unlabel_y = x, y
+        elif ds_name == "test":
+            p_mask = (_binarize_tensor_labels(y, p_ids, n_ids) == POS_LABEL)
+            ngp.prior = y[p_mask].numel() / y.numel()
+
+    scale = 1 + VALIDATION_FRAC
+    # noinspection PyUnboundLocalVariable,PyUnboundLocalVariable
+    p_tens = _select_tensor_uar(unlabel_x, unlabel_y, p_ids, int(scale * args.size_p))
+    u_tens = _select_tensor_uar(unlabel_x, unlabel_y, p_ids.union(n_ids), int(scale * args.size_u))
+    n_tens = _select_neg_tensor(unlabel_x, unlabel_y, n_ids, args.bias, int(scale * args.size_n))
+
+    full_x = [_valid_split(x) for x, _ in (p_tens, u_tens, n_tens)]
+    full_y = [POS_LABEL, U_LABEL, NEG_LABEL]
+
+    # Build the validation and train set
+    for idx, (name, scale) in enumerate((("train", 1), ("valid", VALIDATION_FRAC))):
+        x_grp = [split[idx] for split in full_x]
+        y_grp = [torch.full((x.numel()), lbl, dtype=torch.int64) for x, lbl in zip(x_grp, full_y)]
+
+        x_tensor, y_tensor = torch.cat(x_grp, dim=0), torch.cat(y_grp, dim=0)
+        assert x_tensor.shape[0] == y_tensor.shape[0], "Tensor shape mismatch"
+        ngp.__setattr__(name, TensorDataset(x_tensor, y_tensor))
+    ngp.dump(args)
+
+
+def load(args: Namespace):
+    assert args.pos and args.neg, "Class list empty"
+    assert not (args.pos & args.neg), "Positive and negative classes not disjoint"
+
+    _download_nltk_tokenizer()
+
+    if not args.preprocess:
+        return _load_newsgroups_iterator(args)
+
+    if not NewsgroupsPreprocessed.serial_exists(args):
+        _create_serialized_20newsgroups_preprocessed(args)
+    return NewsgroupsPreprocessed.load(args)

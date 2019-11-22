@@ -12,7 +12,7 @@ import torch
 from torch import Tensor
 from torchtext.data import Dataset, LabelField
 
-from pubn import BASE_DIR, POS_LABEL, construct_filename, construct_iterator
+from pubn import BASE_DIR, POS_LABEL, construct_filename, construct_loader
 from pubn.model import NlpBiasedLearner
 
 
@@ -44,7 +44,7 @@ def calculate_results(args: Namespace, classifier: NlpBiasedLearner, labels: Lab
     res.valid_loss = classifier.best_loss
 
     for ds, name in ((unlabel_ds, "unlabel"), (test_ds, "test")):
-        itr = construct_iterator(ds, bs=args.bs, shuffle=False)
+        itr = construct_loader(ds, bs=args.bs, shuffle=False)
         all_y, dec_scores = [], []
         with torch.no_grad():
             for batch in itr:
@@ -101,6 +101,7 @@ def _write_results_to_disk(args: Namespace, res: LearnerResults) -> None:
     r""" Logs the results to disk for later analysis """
     def _log_val(_v) -> str:
         if isinstance(_v, str): return _v
+        if isinstance(_v, bool): return str(_v)
         if isinstance(_v, int): return f"{_v:d}"
         if isinstance(_v, Tensor): _v = float(_v.item())
         if isinstance(_v, float): return f"{_v:.15f}"
