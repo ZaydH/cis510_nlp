@@ -17,8 +17,8 @@ import torch.optim as optim
 from torchtext.data import Iterator, Dataset, LabelField, Example
 
 from ._base_classifier import BaseClassifier, ClassifierConfig
-from ._utils import BASE_DIR, IS_CUDA, NEG_LABEL, POS_LABEL, TORCH_DEVICE, U_LABEL, \
-    construct_iterator, construct_filename
+from ._utils import BASE_DIR, NEG_LABEL, POS_LABEL, TORCH_DEVICE, U_LABEL, construct_iterator, \
+    construct_filename
 from .logger import TrainingLogger, create_stdout_handler
 from .loss import LossType, PULoss, PUbN
 
@@ -57,7 +57,7 @@ class NlpBiasedLearner(nn.Module):
         # True labels get mapped to different values by LabelField object.  Stores the mapped values
         self._map_pos = self._map_neg = None
 
-        if IS_CUDA: self.cuda(TORCH_DEVICE)
+        self.to(TORCH_DEVICE)
 
     def _configure_fit_vars(self):
         r""" Set initial values/construct all variables used in a fit method """
@@ -122,6 +122,7 @@ class NlpBiasedLearner(nn.Module):
             loss_func = bivar_log_loss
             valid_loss = bivar_sigmoid_loss
 
+        # noinspection PyUnresolvedReferences
         forward = partial(self._model.forward)
         # noinspection PyUnresolvedReferences
         for ep in range(1, self._model.Config.NUM_EPOCH + 1):
@@ -338,8 +339,8 @@ class SigmaLearner(nn.Module):
         super().__init__()
         self._model = BaseClassifier(embed=embedding_weights)
 
-        is_fit = False
-        if IS_CUDA: self.cuda(TORCH_DEVICE)
+        self.is_fit = False
+        self.to(TORCH_DEVICE)
 
     def forward_fit(self, x: Tensor, x_len: Tensor) -> Tensor:
         r""" Forward method only used during training """

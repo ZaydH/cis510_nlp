@@ -20,6 +20,7 @@ def parse_args() -> Namespace:
            "length as the negative class list.  Values are automatically normalized to sum to 1")
     args.add_argument("--bias", help=msg, nargs='*', type=float)
 
+    args.add_argument("--preprocess", help="Use the preprocessed ELMO vectors", action="store_true")
     args.add_argument("--rho", help="Pr[y=-1, s=+1]", type=float, default=None)
     args.add_argument("--ep", help="Number of training epochs", type=int,
                       default=NlpBiasedLearner.Config.NUM_EPOCH)

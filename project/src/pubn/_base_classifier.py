@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 
 import torch
 from torch import Tensor
@@ -19,6 +20,10 @@ class ClassifierConfig:
     # LEARNING_RATE = 1E-4
     WEIGHT_DECAY = 1E-4
 
+    # Based on the PUbN paper.
+    # 9216 = 3 Layers * 3 (Min/Max/Avg) * 1024
+    PREPROCESS_DIM = 9216
+
     BIDIRECTIONAL = True
     EMBED_DIM = 300
 
@@ -35,18 +40,21 @@ class ClassifierConfig:
 class BaseClassifier(nn.Module):
     Config = ClassifierConfig
 
-    def __init__(self, embed: Tensor):
+    def __init__(self, embed: Optional[Tensor]):
         super().__init__()
-        # ToDo decide if unfreeze
-        self._embed = nn.Embedding.from_pretrained(embed.clone(), freeze=False)
+        if embed is None:
+            self._embed = self._rnn = None
+            in_dim = self.Config.PREPROCESS_DIM
+        else:
+            self._embed = nn.Embedding.from_pretrained(embed.clone(), freeze=False)
 
-        self._rnn = self.Config.BASE_RNN(num_layers=self.Config.RNN_DEPTH,
-                                         hidden_size=self.Config.RNN_HIDDEN_DIM,
-                                         input_size=self.Config.EMBED_DIM,
-                                         bidirectional=self.Config.BIDIRECTIONAL)
+            self._rnn = self.Config.BASE_RNN(num_layers=self.Config.RNN_DEPTH,
+                                             hidden_size=self.Config.RNN_HIDDEN_DIM,
+                                             input_size=self.Config.EMBED_DIM,
+                                             bidirectional=self.Config.BIDIRECTIONAL)
+            in_dim = self.Config.RNN_HIDDEN_DIM << (1 if self.Config.BIDIRECTIONAL else 0)
 
         self._ff = nn.Sequential()
-        in_dim = self.Config.RNN_HIDDEN_DIM << (1 if self.Config.BIDIRECTIONAL else 0)
         for i in range(1, self.Config.FF_HIDDEN_DEPTH + 1):
             self._ff.add_module(f"Hidden_{i:02}_Lin", nn.Linear(in_dim, self.Config.FF_HIDDEN_DIM))
             self._ff.add_module(f"Hidden_{i:02}_Act", self.Config.FF_ACTIVATION())
@@ -58,7 +66,30 @@ class BaseClassifier(nn.Module):
 
         self.to(TORCH_DEVICE)
 
-    def forward(self, x: Tensor, seq_len: Tensor) -> Tensor:
+    def is_rnn(self) -> bool:
+        r""" Returns \p True if the object has an RNN"""
+        return self._rnn is None
+
+    # noinspection PyUnresolvedReferences
+    def forward(self, x: Tensor, seq_len: Optional[Tensor] = None) -> Tensor:
+        if self.is_rnn():
+            return self._forward_rnn(x, seq_len)
+        assert seq_len is None, "Sequence length not valid for FF RNN"
+        return self._forward_ff(x)
+
+    def _forward_ff(self, x: Tensor) -> Tensor:
+        r""" Forward method if the block is only a FF block"""
+        assert not self.is_rnn(), "Base classifier type cannot be RNN if calling _forward_ff method"
+        assert len(x.shape) == 2, "FF base classifier can only have two dimensions"
+        assert x.shape[-1] == self.Config.PREPROCESS_DIM, "Unknown FF dimension"
+
+        return self._ff.forward(x)
+
+    def _forward_rnn(self, x: Tensor, seq_len: Optional[Tensor]) -> Tensor:
+        r""" Forward method when the base classifier is an RNN"""
+        assert self.is_rnn(), "Cannot call forward_rnn method if not an actual RNN"
+        assert seq_len is not None, "Sequence length required if doing an RNN test"
+
         batch_size = x.shape[1]
         assert batch_size == seq_len.numel(), "Number of elements mismatch"
         x_embed = self._embed(x)
