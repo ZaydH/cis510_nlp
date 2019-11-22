@@ -572,8 +572,6 @@ def _binarize_tensor_labels(y: Tensor, p_cls: Set[int], n_cls: Set[int]) -> Tens
         for cls_id in cls_set:
             bin_idx[i][y == cls_id] = POS_LABEL
 
-    assert not (bin_idx[0] & bin_idx[1]).any(), "Overlapping labels"
-    assert bin_idx[0] ^ bin_idx[1], "Unknown labels found"
     return bin_idx[0]  # First element is positive list
 
 
@@ -584,8 +582,7 @@ def _select_tensor_uar(x: Tensor, y: Tensor, cls_ids: Set[int], size: int) -> Tu
         if int(y[i]) in cls_ids:
             idx.append(i)
     assert len(idx) >= size, "Dataset too small"
-    # select s
-    idx = torch.tensor(idx).permute()[:size].sort()
+    idx, _ = torch.tensor(idx)[torch.randperm(len(idx))][:size].sort()
     return x[idx], y[idx]
 
 
@@ -622,9 +619,10 @@ def _select_neg_tensor(x: Tensor, y: Tensor, n_cls: Set[int],
 
 def _valid_split(x: Tensor) -> Tuple[Tensor, Tensor]:
     r""" Split tensor into test and validation sets """
-    idx = torch.tensor(list(range(x.shape[0]))).permute()
+    n = x.shape[0]
+    idx = torch.randperm(n)
 
-    split_point = int(x.numel() / (1 + VALIDATION_FRAC))
+    split_point = int(n / (1 + VALIDATION_FRAC))
     return x[idx[:split_point]], x[idx[split_point:]]
 
 
@@ -646,7 +644,7 @@ def _create_serialized_20newsgroups_preprocessed(args: Namespace) -> None:
 
         vecs = h5py.File(str(path), 'r')
         x = preprocessing.scale(vecs[PREPROCESSED_FIELD][:])
-        x, y = torch.from_numpy(x), torch.from_numpy(bunch.target)
+        x, y = torch.from_numpy(x).float(), torch.from_numpy(bunch.target)
 
         _log_category_frequency(args.pos, ds_name, y)
         fld_name = "unlabel" if ds_name == "train" else ds_name
@@ -668,7 +666,7 @@ def _create_serialized_20newsgroups_preprocessed(args: Namespace) -> None:
     _log_category_frequency(args.pos, "Pos", p_tens[1])
     _log_category_frequency(args.pos, "Unlabel", u_tens[1])
     _log_category_frequency(args.pos, "Neg", n_tens[1])
-    logging.info(f"Test Prior: {ngp.prior:.2f}")
+    logging.debug(f"Test Prior: {100 * ngp.prior:.2f}%%")
 
     full_x = [_valid_split(x) for x, _ in (p_tens, u_tens, n_tens)]
     full_y = [POS_LABEL, U_LABEL, NEG_LABEL]
@@ -676,7 +674,7 @@ def _create_serialized_20newsgroups_preprocessed(args: Namespace) -> None:
     # Build the validation and train set
     for idx, (name, scale) in enumerate((("train", 1), ("valid", VALIDATION_FRAC))):
         x_grp = [split[idx] for split in full_x]
-        y_grp = [torch.full((x.numel()), lbl, dtype=torch.int64) for x, lbl in zip(x_grp, full_y)]
+        y_grp = [torch.full(x.shape[:1], lbl, dtype=torch.int64) for x, lbl in zip(x_grp, full_y)]
 
         x_tensor, y_tensor = torch.cat(x_grp, dim=0), torch.cat(y_grp, dim=0)
         assert x_tensor.shape[0] == y_tensor.shape[0], "Tensor shape mismatch"

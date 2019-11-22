@@ -28,7 +28,7 @@ def parse_args() -> Namespace:
                       type=int, default=None)
     args.add_argument("--embed_dim", help="Word vector dimension", type=int,
                       default=NlpBiasedLearner.Config.EMBED_DIM)
-    args.add_argument("--seq_len", help="Maximum sequence length",  type=int, default=500)
+    args.add_argument("--seq_len", help="Maximum sequence length",  type=int, default=750)
     args.add_argument("--tau", help="Hyperparameter used to determine eta", type=float)
 
     args = args.parse_args()
@@ -40,6 +40,7 @@ def parse_args() -> Namespace:
 
 
 def _error_check_args(args: Namespace):
+    r""" Verify no arguments are obviously invalid """
     # Arguments error checking
     if args.bs is None:
         args.bs = (args.size_p + args.size_n + args.size_u) // 100

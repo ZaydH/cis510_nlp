@@ -34,7 +34,7 @@ class NlpBiasedLearner(nn.Module):
 
         self._log.debug(f"NLP Learner: Prior: {prior:.3f}")
 
-        self._is_rnn = embedding_weights is None  # True if just a FF classifier
+        self._is_rnn = (embedding_weights is not None)  # True if just a FF classifier
         self._model = BaseClassifier(embedding_weights)
 
         self._args = args
@@ -361,7 +361,7 @@ def exclude_label_in_dataset(ds: DatasetType,
     # TensorDataset allows for use of the Subset wrapper
     if isinstance(ds, TensorDataset):
         _, y = ds.tensors
-        idx = [idx for idx, _y in enumerate(y) if int(_y) in label_to_exclude]
+        idx = [idx for idx, _y in enumerate(y) if int(_y) not in label_to_exclude]
         return Subset(ds, idx)
 
     def _filter_label(x: Example):
@@ -383,5 +383,5 @@ def get_forward_input_and_labels(batch: Union[Batch, Tuple[Tensor, Tensor]]) \
         # noinspection PyUnresolvedReferences
         return batch.text, batch.label
 
-    assert isinstance(batch, tuple), "Unknown inputs type"
+    assert isinstance(batch, (list, tuple)), "Unknown inputs type"
     return (batch[0], None), batch[1]

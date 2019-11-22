@@ -11,7 +11,8 @@ from pubn.model import NlpBiasedLearner
 def _main(args: Namespace):
     ngd = load_20newsgroups.load(args)
 
-    classifier = NlpBiasedLearner(args, ngd.text.vocab.vectors, prior=ngd.prior)
+    embedding = None if args.preprocess else ngd.text.vocab.vectors
+    classifier = NlpBiasedLearner(args, embedding, prior=ngd.prior)
     # noinspection PyUnresolvedReferences
     classifier.fit(train=ngd.train, valid=ngd.valid, unlabel=ngd.unlabel,
                    label=None if args.preprocess else ngd.label)
