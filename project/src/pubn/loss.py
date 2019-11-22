@@ -164,7 +164,7 @@ class PUbN:
         r"""
         Calculates the positive-unlabeled biased negative loss
 
-        :param dec_scores: Decision function scores, i.e., :math:~`g(x)`
+        :param dec_scores: Decision function scores, i.e., :math:`g(x)`
         :param labels: Label vector
         :param sigma_x: Estimated value of :math:`\sigma(x)=\Pr[s = +1 \vert x]`.
         :return: PUbN loss (see Eq. (7)) in paper
@@ -175,7 +175,7 @@ class PUbN:
         r"""
         Calculates the positive-unlabeled biased negative loss
 
-        :param dec_scores: Decision function scores, i.e., :math:~`g(x)`
+        :param dec_scores: Decision function scores, i.e., :math:`g(x)`
         :param labels: Label vector
         :param sigma_x: Estimated value of :math:`\sigma(x)=\Pr[s = +1 \vert x]`.
         :return: PUbN loss (see Eq. (7)) in paper
@@ -188,7 +188,7 @@ class PUbN:
         Calculates the positive-unlabeled biased negative loss
 
         :param loss_func: Surrogate loss function to use in the calculation
-        :param dec_scores: Decision function scores, i.e., :math:~`g(x)`
+        :param dec_scores: Decision function scores, i.e., :math:`g(x)`
         :param labels: Label vector
         :param sigma_x: Estimated value of :math:`\sigma(x)=\Pr[s = +1 \vert x]`.
         :return: PUbN loss (see Eq. (7)) in paper
@@ -198,8 +198,9 @@ class PUbN:
         assert not (p_mask & bn_mask).any(), "Labels not disjoint"
         u_mask = p_mask.logical_xor(bn_mask).logical_not()
 
-        l_pos = self.prior * loss_func(dec_scores[p_mask]) if p_mask.any() else torch.zeros(())
-        l_bn = self.rho * loss_func(-dec_scores[bn_mask]) if bn_mask.any() else torch.zeros(())
+        has_p, has_bn = p_mask.any(), bn_mask.any()
+        l_pos = self.prior * loss_func(dec_scores[p_mask]).mean() if has_p else torch.zeros(())
+        l_bn = self.rho * loss_func(-dec_scores[bn_mask]).mean() if has_bn else torch.zeros(())
 
         l_u_n = self._u_n_loss(loss_func, u_mask, sigma_x, dec_scores, is_u=True) \
                 + self.prior * self._u_n_loss(loss_func, p_mask, sigma_x, dec_scores, is_u=False) \
@@ -220,7 +221,7 @@ class PUbN:
         """
         sigma_mask = sigma_x > self.eta
         if is_u:
-            sigma_mask = ~sigma_x
+            sigma_mask = ~sigma_mask
         mask = orig_mask & sigma_mask
 
         # No elements of a given type return 0

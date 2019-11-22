@@ -122,12 +122,12 @@ class NlpBiasedLearner(nn.Module):
             loss_func = bivar_log_loss
             valid_loss = bivar_sigmoid_loss
 
-        forward = partial(self.forward)
+        forward = partial(self._model.forward)
         # noinspection PyUnresolvedReferences
         for ep in range(1, self._model.Config.NUM_EPOCH + 1):
             # noinspection PyUnresolvedReferences
             self._model.train()
-            if self._sigma is not None: self._sigma().eval()  # Sigma frozen after first stage
+            if self._sigma is not None: self._sigma.eval()  # Sigma frozen after first stage
 
             train_loss, num_batch = torch.zeros(()), 0
             for batch in train:
@@ -201,6 +201,7 @@ class NlpBiasedLearner(nn.Module):
 
     def _fit_sigma(self, train: Iterator, valid: Iterator):
         r""" Fit the sigma function Pr[s = + 1 | x] """
+        self._sigma.is_fit = True
         # noinspection PyUnresolvedReferences
         self._optim = optim.AdamW(self._sigma.parameters(),
                                   lr=self._sigma.Config.LEARNING_RATE,
@@ -228,9 +229,13 @@ class NlpBiasedLearner(nn.Module):
 
                 self._optim.step()
             train_loss /= num_batch
+
+            self._sigma.eval()
             self._log_epoch(ep, train_loss, forward, valid, valid_loss)
         self._restore_best_model()
         self._sigma.eval()
+
+        self._sigma.is_fit = False
 
     def _calculate_eta(self, unlabel: Iterator) -> float:
         r"""
@@ -271,21 +276,19 @@ class NlpBiasedLearner(nn.Module):
 
     def _calc_valid_loss(self, forward: Callable, itr: Iterator, loss_func: Callable) -> Tensor:
         r""" Calculate the validation loss for \p itr using forward method """
-        self.eval()
-
         dec_scores, labels, sigma_x = [], [], []
         with torch.no_grad():
             for batch in itr:
                 dec_scores.append(forward(*batch.text))
                 labels.append(batch.label)
-                if self._is_pubn() and not self._sigma.training:
+                if self._is_pubn() and not self._sigma.is_fit:
                     sigma_x.append(self._sigma.forward(*batch.text))
         dec_scores, labels = torch.cat(dec_scores, dim=0), torch.cat(labels, dim=0)
 
-        if not self._is_pubn() or not self._sigma.training:
+        if not self._is_pubn() or self._sigma.is_fit:
             return loss_func(dec_scores, labels)
 
-        sigma_x = torch.cat(self._sigma.forward(*batch.text))
+        sigma_x = torch.cat(sigma_x, dim=0)
         return loss_func(dec_scores, labels, sigma_x)
 
     def forward(self, x: Tensor, x_len: Tensor) -> Tensor:
@@ -334,12 +337,14 @@ class SigmaLearner(nn.Module):
     def __init__(self, embedding_weights: Tensor):
         super().__init__()
         self._model = BaseClassifier(embed=embedding_weights)
+
+        is_fit = False
         if IS_CUDA: self.cuda(TORCH_DEVICE)
 
     def forward_fit(self, x: Tensor, x_len: Tensor) -> Tensor:
         r""" Forward method only used during training """
         # noinspection PyUnresolvedReferences
-        return self._model.forward(x, x_len).squeeze()
+        return self._model.forward(x, x_len)
 
     def forward(self, x: Tensor, x_len: Tensor) -> Tensor:
         with torch.no_grad():
