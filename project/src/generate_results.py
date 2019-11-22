@@ -2,7 +2,7 @@ from argparse import Namespace
 from dataclasses import dataclass
 from enum import Enum
 import logging
-from typing import ClassVar
+from typing import ClassVar, Optional
 
 import numpy as np
 from sklearn.metrics import confusion_matrix, average_precision_score, f1_score
@@ -12,7 +12,8 @@ import torch
 from torch import Tensor
 from torchtext.data import Dataset, LabelField
 
-from pubn import BASE_DIR, POS_LABEL, construct_filename, construct_loader
+from pubn import BASE_DIR, POS_LABEL, construct_filename, construct_loader, \
+    get_forward_input_and_labels
 from pubn.model import NlpBiasedLearner
 
 
@@ -35,7 +36,7 @@ class LearnerResults:
     test = None
 
 
-def calculate_results(args: Namespace, classifier: NlpBiasedLearner, labels: LabelField,
+def calculate_results(args: Namespace, classifier: NlpBiasedLearner, labels: Optional[LabelField],
                       unlabel_ds: Dataset, test_ds: Dataset):
     r""" Calculates and writes to disk the model's results """
     classifier.eval()
@@ -48,13 +49,15 @@ def calculate_results(args: Namespace, classifier: NlpBiasedLearner, labels: Lab
         all_y, dec_scores = [], []
         with torch.no_grad():
             for batch in itr:
-                all_y.append(batch.label)
-                dec_scores.append(classifier.forward(*batch.text))
+                forward_in, lbls = get_forward_input_and_labels(batch)
+                all_y.append(lbls)
+                dec_scores.append(classifier.forward(*forward_in))
 
         # Iterator transforms label so transform it back
-        tfm_y = torch.cat(all_y, dim=0).squeeze()
-        y = torch.full_like(tfm_y, -1)
-        y[tfm_y == labels.vocab.stoi[POS_LABEL]] = 1
+        y = tfm_y = torch.cat(all_y, dim=0).squeeze()
+        if labels is not None:
+            y = torch.full_like(tfm_y, -1)
+            y[tfm_y == labels.vocab.stoi[POS_LABEL]] = 1
         y = y.cpu().numpy()
 
         dec_scores = torch.cat(dec_scores, dim=0).squeeze()

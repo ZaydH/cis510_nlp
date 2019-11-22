@@ -17,7 +17,8 @@ def _main(args: Namespace):
     classifier.fit(train=ngd.train, valid=ngd.valid, unlabel=ngd.unlabel,
                    label=None if args.preprocess else ngd.label)
 
-    calculate_results(args, classifier, ngd.label, unlabel_ds=ngd.unlabel, test_ds=ngd.test)
+    label = None if args.preprocess else ngd.label
+    calculate_results(args, classifier, label, unlabel_ds=ngd.unlabel, test_ds=ngd.test)
 
 
 if __name__ == "__main__":

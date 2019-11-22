@@ -96,7 +96,7 @@ def construct_loader(ds: Union[TensorDataset, TextDataset], bs: int, shuffle: bo
         return Iterator(dataset=ds, batch_size=bs, shuffle=shuffle, device=TORCH_DEVICE)
 
     dl = DataLoader(dataset=ds, batch_size=bs, shuffle=shuffle, drop_last=drop_last,
-                    num_workers=NUM_WORKERS)
+                    num_workers=NUM_WORKERS, pin_memory=False)
     # noinspection PyArgumentList
     return DeviceDataLoader(dl=dl, device=TORCH_DEVICE)
 
