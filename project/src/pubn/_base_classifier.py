@@ -75,15 +75,13 @@ class BaseClassifier(nn.Module):
         if self.is_rnn():
             return self._forward_rnn(x, seq_len)
         assert seq_len is None, "Sequence length not valid for FF RNN"
+        assert x.shape[-1] == self.Config.PREPROCESS_DIM, "Unknown FF dimension"
         return self._forward_ff(x)
 
     def _forward_ff(self, x: Tensor) -> Tensor:
         r""" Forward method if the block is only a FF block"""
-        assert not self.is_rnn(), "Base classifier type cannot be RNN if calling _forward_ff method"
         assert len(x.shape) == 2, "FF base classifier can only have two dimensions"
-        assert x.shape[-1] == self.Config.PREPROCESS_DIM, "Unknown FF dimension"
-
-        return self._ff.forward(x)
+        return self._ff.forward(x).squeeze(dim=1)
 
     def _forward_rnn(self, x: Tensor, seq_len: Optional[Tensor]) -> Tensor:
         r""" Forward method when the base classifier is an RNN"""
@@ -100,5 +98,4 @@ class BaseClassifier(nn.Module):
         # Need to subtract 1 since to correct length for base
         ff_in = seq_out[seq_len - 1, torch.arange(batch_size)]  # ToDo verify correctness
         assert ff_in.shape[0] == batch_size, "Batch size mismatch"
-        y_hat = self._ff.forward(ff_in)
-        return y_hat.squeeze(dim=1)
+        return self._forward_ff(ff_in)
