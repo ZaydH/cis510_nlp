@@ -23,7 +23,8 @@ from torchtext.data.dataset import Dataset
 import torchtext.vocab
 
 # Valid Choices - Any subset of: ('headers', 'footers', 'quotes')
-from pubn import BASE_DIR, NEG_LABEL, POS_LABEL, U_LABEL, construct_filename, calculate_prior
+from pubn import BASE_DIR, DATA_DIR, NEG_LABEL, POS_LABEL, U_LABEL, construct_filename, \
+    calculate_prior
 
 # DATASET_REMOVE = ('headers', 'footers', 'quotes')  # ToDo settle on dataset elements to remove
 DATASET_REMOVE = ('headers', 'footers')
@@ -105,24 +106,24 @@ class NewsgroupsData:
         return newsgroup
 
 
-def _download_20newsgroups(subset: str, data_dir: Path, pos_cls: Set[int], neg_cls: Set[int]):
+def _download_20newsgroups(subset: str, pos_cls: Set[int], neg_cls: Set[int]):
     r"""
     Gets the specified \p subset of the 20 Newsgroups dataset.  If necessary, the dataset is
-    downloaded to directory \p data_dir.  It also tokenizes the import dataset
+    downloaded.  It also tokenizes the imported dataset
 
-    :param data_dir: Path to the directory to sore
     :param subset: Valid choices, "train", "test", and "all"
     :return: Dataset
     """
     msg = f"Download {subset} 20 newsgroups dataset"
     logging.debug(f"Starting: {msg}")
 
-    assert not data_dir.is_file(), "Must be a directory"
+    newsgroups_dir = DATA_DIR / "20_newsgroups"
+    assert not newsgroups_dir.is_file(), "Must be a directory"
     assert subset in VALID_DATA_SUBSETS, "Invalid data subset"
 
-    data_dir.mkdir(parents=True, exist_ok=True)
-    bunch = sklearn.datasets.fetch_20newsgroups(data_home=data_dir, shuffle=False,
-                                                  remove=DATASET_REMOVE, subset=subset)
+    newsgroups_dir.mkdir(parents=True, exist_ok=True)
+    bunch = sklearn.datasets.fetch_20newsgroups(data_home=newsgroups_dir, shuffle=False,
+                                                remove=DATASET_REMOVE, subset=subset)
     all_cls = pos_cls | neg_cls
     keep_idx = [val in all_cls for val in bunch[LABEL_COL]]
     assert any(keep_idx), "No elements to keep list"
@@ -351,16 +352,12 @@ def _create_serialized_20newsgroups(args):
 
     :param args: Test setup information
     """
-    data_dir = BASE_DIR / ".data"
-    cache_dir = data_dir / ".vector_cache"
-    cache_dir.mkdir(parents=True, exist_ok=True)
-
     p_cls = {cls_id for cls_grp in args.pos for cls_id in cls_grp.value}
     n_cls = {cls_id for cls_grp in args.neg for cls_id in cls_grp.value}
-    complete_train = _download_20newsgroups("train", data_dir, p_cls, n_cls)
+    complete_train = _download_20newsgroups("train", p_cls, n_cls)
 
     # Download the nltk tokenizer
-    nltk_path = data_dir / "nltk"
+    nltk_path = DATA_DIR / "nltk"
     nltk_path.mkdir(parents=True, exist_ok=True)
     nltk.data.path.append(str(nltk_path))
     nltk.download("punkt", download_dir=str(nltk_path))
@@ -371,6 +368,8 @@ def _create_serialized_20newsgroups(args):
     # noinspection PyPep8Naming
     LABEL = LabelField(sequential=False)
     complete_ds = _bunch_to_ds(complete_train, TEXT, LABEL)
+    cache_dir = DATA_DIR / ".vector_cache"
+    cache_dir.mkdir(parents=True, exist_ok=True)
     TEXT.build_vocab(complete_ds, min_freq=2,
                      vectors=torchtext.vocab.GloVe(name="6B", dim=args.embed_dim, cache=cache_dir))
 
@@ -381,7 +380,7 @@ def _create_serialized_20newsgroups(args):
                                               args.bias, remove_from_bunch=False)
     u_bunch = _reduce_to_fixed_size(u_bunch, new_size=int(args.size_u * size_scalar))
 
-    test_bunch = _download_20newsgroups("test", data_dir, p_cls, n_cls)
+    test_bunch = _download_20newsgroups("test", p_cls, n_cls)
 
     for name, bunch in (("P", p_bunch), ("N", n_bunch), ("U", u_bunch), ("Test", test_bunch)):
         _log_category_frequency(args.pos, name, bunch)

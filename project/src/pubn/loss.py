@@ -23,7 +23,7 @@ class PULoss:
         :param beta:
         :param use_nnpu: If \p True, use nnPU loss.  Otherwise, use uPU.
         :param valid_loss: Optional validation loss.  If not specified, uses \p train_loss for
-                           validaiton.
+                           validation.
         """
         if not 0 < prior < 1:
             raise NotImplementedError("The class prior should be in (0, 1)")

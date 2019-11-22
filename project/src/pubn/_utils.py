@@ -26,6 +26,7 @@ def _check_is_talapas() -> bool:
 
 IS_TALAPAS = _check_is_talapas()
 BASE_DIR = Path(".").absolute() if not IS_TALAPAS else Path("/home/zhammoud/projects/nlp")
+DATA_DIR = BASE_DIR / ".data"
 
 IS_CUDA = torch.cuda.is_available()
 if IS_CUDA:
