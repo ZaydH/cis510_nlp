@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 import pickle as pk
 import sys
-from typing import List, Optional, Set, Tuple
+from typing import List, Optional, Set, Tuple, Union
 
 import h5py
 import nltk
@@ -347,7 +347,7 @@ def _build_train_set(p_bunch: Bunch, u_bunch: Bunch, n_bunch: Optional[Bunch],
 
 
 def _log_category_frequency(p_cls: Set[NewsgroupsCategories], ds_name: str,
-                            bunch: Bunch) -> None:
+                            bunch: Union[Tensor, Bunch]) -> None:
     r"""
     Print the breakdown of classes in the \p Bunch
 
@@ -355,7 +355,11 @@ def _log_category_frequency(p_cls: Set[NewsgroupsCategories], ds_name: str,
     :param ds_name: Name of the dataset, e.g., "P", "N", "U", "Test"
     :param bunch: Bunch to get the class probabilities
     """
-    counter = Counter(bunch[LABEL_COL])
+    if isinstance(bunch, Bunch):
+        counter = Counter(bunch[LABEL_COL])
+    else:
+        assert isinstance(bunch, Tensor), "Expected tensor but unknown type"
+        counter = Counter(bunch.numpy())
     tot = sum(counter.values())
 
     pos_sum = 0
@@ -641,8 +645,13 @@ def _create_serialized_20newsgroups_preprocessed(args: Namespace) -> None:
             _generate_preprocessed_vectors(bunch, ds_name)
 
         vecs = h5py.File(str(path), 'r')
-        x, y = torch.from_numpy(vecs[PREPROCESSED_FIELD][:]), torch.tensor(bunch.target)
-        ngp.__setattr__(ds_name, TensorDataset(x, _binarize_tensor_labels(y, p_ids, n_ids)))
+        x = preprocessing.scale(vecs[PREPROCESSED_FIELD][:])
+        x, y = torch.from_numpy(x), torch.from_numpy(bunch.target)
+
+        _log_category_frequency(args.pos, ds_name, y)
+        fld_name = "unlabel" if ds_name == "train" else ds_name
+        ngp.__setattr__(fld_name, TensorDataset(x, _binarize_tensor_labels(y, p_ids, n_ids)))
+
         if ds_name == "train":
             unlabel_x, unlabel_y = x, y
         elif ds_name == "test":
@@ -654,6 +663,12 @@ def _create_serialized_20newsgroups_preprocessed(args: Namespace) -> None:
     p_tens = _select_tensor_uar(unlabel_x, unlabel_y, p_ids, int(scale * args.size_p))
     u_tens = _select_tensor_uar(unlabel_x, unlabel_y, p_ids.union(n_ids), int(scale * args.size_u))
     n_tens = _select_neg_tensor(unlabel_x, unlabel_y, n_ids, args.bias, int(scale * args.size_n))
+
+    # Sanity check the distribution
+    _log_category_frequency(args.pos, "Pos", p_tens[1])
+    _log_category_frequency(args.pos, "Unlabel", u_tens[1])
+    _log_category_frequency(args.pos, "Neg", n_tens[1])
+    logging.info(f"Test Prior: {ngp.prior:.2f}")
 
     full_x = [_valid_split(x) for x, _ in (p_tens, u_tens, n_tens)]
     full_y = [POS_LABEL, U_LABEL, NEG_LABEL]
