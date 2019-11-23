@@ -108,12 +108,12 @@ def construct_filename(prefix: str, args: Namespace, out_dir: Path, file_ext: st
         return ",".join([x.name.lower() for x in sorted(cls_set)])
 
     fields = [prefix] if prefix else []
-    fields += [f"n-p={args.size_p}", f"n-n={args.size_n}", f"n-u={args.size_u}",
+    fields += [args.loss.name.lower(),
+               f"n-p={args.size_p}", f"n-n={args.size_n}", f"n-u={args.size_u}",
                f"pos={_classes_to_str(args.pos)}", f"neg={_classes_to_str(args.neg)}"]
 
     if args.bias:
-        bias_sorted = [x for _, x in args.bias]
-        bias_str = ','.join([f"{x:.2f}" for x in bias_sorted])
+        bias_str = ','.join([f"{x:.2f}" for _, x in args.bias])
         fields.append(f"bias={bias_str}")
 
     if args.preprocess:
