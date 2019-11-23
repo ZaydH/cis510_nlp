@@ -88,7 +88,7 @@ def _refactor_args(args: Namespace) -> None:
     if args.bias:
         # noinspection PyTypeChecker
         bias_vec = [x / sum(args.bias) for x in args.bias]  # Normalize the total bias to 1
-        args.bias = [(cls, bias) for cls, bias in zip(args.neg, bias_vec) if bias > 0]
+        args.bias = [(cls, bias) for cls, bias in zip(args.neg, bias_vec)]
 
     # Must convert to sets after bias creation to ensure 1-to-1 mapping
     args.pos, args.neg = set(args.pos), set(args.neg)

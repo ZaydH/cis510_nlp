@@ -610,6 +610,8 @@ def _select_neg_tensor(x: Tensor, y: Tensor, n_cls: Set[int],
     # Determine selected index
     all_x, all_y = [], []
     for (cls_lst, _), size in zip(bias, grp_sizes):
+        if size == 0:
+            continue
         x, y = _select_tensor_uar(x, y, cls_lst.value, size)
         all_x.append(x)
         all_y.append(y)
