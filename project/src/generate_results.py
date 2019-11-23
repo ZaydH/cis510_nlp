@@ -134,7 +134,7 @@ def _write_results_to_disk(args: Namespace, res: LearnerResults) -> None:
     results_dir = BASE_DIR / "results"
     results_dir.mkdir(parents=True, exist_ok=True)
     filename = construct_filename(prefix="res", args=args, out_dir=results_dir, file_ext="csv",
-                                  add_timestamp=True)
+                                  include_loss_field=True, add_timestamp=True)
     with open(str(filename), "w+") as f_out:
         f_out.write(LearnerResults.FIELD_SEP.join(header))
         f_out.write("\n")

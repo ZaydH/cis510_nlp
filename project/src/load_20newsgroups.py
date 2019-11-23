@@ -78,7 +78,7 @@ class NewsgroupsSerial:
     def _pickle_filename(args: Namespace) -> Path:
         r""" File name for pickle file """
         serialize_dir = BASE_DIR / "tensors"
-        return construct_filename("data", args, serialize_dir, "pk")
+        return construct_filename("data", args, serialize_dir, "pk", include_loss_field=False)
 
     @classmethod
     def serial_exists(cls, args: Namespace) -> bool:
@@ -480,7 +480,8 @@ class NewsgroupsPreprocessed:
     def _pickle_filename(args: Namespace) -> Path:
         r""" Filename for the serialized file """
         path = BASE_DIR / "tensors" / "preprocessed"
-        return construct_filename("preprocessed", args, out_dir=path, file_ext="pk")
+        return construct_filename("preprocessed", args, out_dir=path, file_ext="pk",
+                                  include_loss_field=False)
 
     @classmethod
     def serial_exists(cls, args: Namespace) -> bool:

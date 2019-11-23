@@ -290,7 +290,7 @@ class NlpBiasedLearner(nn.Module):
         """
         serialize_dir = BASE_DIR / "models"
         serialize_dir.mkdir(parents=True, exist_ok=True)
-        return construct_filename(prefix, self._args, serialize_dir, "pth")
+        return construct_filename(prefix, self._args, serialize_dir, "pth", add_timestamp=False)
 
     @classmethod
     def _setup_logger(cls) -> None:

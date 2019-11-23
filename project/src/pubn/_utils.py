@@ -101,15 +101,16 @@ def construct_loader(ds: Union[TensorDataset, TextDataset], bs: int, shuffle: bo
 
 
 def construct_filename(prefix: str, args: Namespace, out_dir: Path, file_ext: str,
-                       add_timestamp: bool = False) -> Path:
+                       include_loss_field: bool = True, add_timestamp: bool = False) -> Path:
     r""" Standardize naming scheme for the filename """
 
     def _classes_to_str(cls_set: Set[Enum]) -> str:
         return ",".join([x.name.lower() for x in sorted(cls_set)])
 
     fields = [prefix] if prefix else []
-    fields += [args.loss.name.lower(),
-               f"n-p={args.size_p}", f"n-n={args.size_n}", f"n-u={args.size_u}",
+    if include_loss_field:
+        fields.append(args.loss.name.lower())
+    fields += [f"n-p={args.size_p}", f"n-n={args.size_n}", f"n-u={args.size_u}",
                f"pos={_classes_to_str(args.pos)}", f"neg={_classes_to_str(args.neg)}"]
 
     if args.bias:
