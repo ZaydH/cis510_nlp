@@ -1,11 +1,11 @@
 from argparse import Namespace
 
+from pubn.model import NlpBiasedLearner
+
 import load_20newsgroups
 from generate_results import calculate_results
 from input_args import parse_args
 from logger_utils import setup_logger
-
-from pubn.model import NlpBiasedLearner
 
 
 def _main(args: Namespace):

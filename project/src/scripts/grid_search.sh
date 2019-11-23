@@ -1,4 +1,4 @@
-#!/usr/bin/env zsh
+#!/usr/bin/env bash
 
 
 function run_learner() {
@@ -10,19 +10,30 @@ function run_learner() {
     printf "Neg: ${NEG}\n"
     printf "Learning Rate: ${LR}\n"
     printf "Batch Size: ${BATCH_SIZE}\n"
-    log_enabled_disabled "Bias" "${BIAS}"
+
+    log_enabled_disabled "Preprocessed" "${PREPROCESS}"
+    # log_enabled_disabled "Bias" "${BIAS}"
     log_enabled_disabled "Rho" "${RHO}"
     log_enabled_disabled "Tau" "${TAU}"
 
-    TAU_FLAG=$(construct_cli_string "tau" "${TAU}")
-    BIAS_FLAG=$(construct_cli_string "bias" "${BIAS}")
-    RHO_FLAG=$(construct_cli_string "rho" "${RHO}")
+    if [[ ! -z ${BIAS} ]]; then
+        BIAS_FLAG="--bias ${BIAS}"
+    else
+        BIAS_FLAG=""
+    fi
+    printf "Bias: ${BIAS_FLAG}\n"
+    if [[ ${LOSS} == "pubn" ]]; then
+        TAU_FLAG=$(construct_cli_string "tau" ${TAU})
+        RHO_FLAG=$(construct_cli_string "rho" ${RHO})
+    else
+        TAU_FLAG=()
+        RHO_FLAG=()
+    fi
 
-    # python3 ${SCRIPT_DIR}/driver.py ${SIZE_P} ${SIZE_N} ${SIZE_U} ${LOSS} \
-    #                                 --pos ${POS} --neg ${NEG} \
-    #                                 --bs ${BATCH_SIZE} --lr ${LR} \
-    #                                 ${TAU_FLAG} ${BIAS_FLAG} ${RHO_FLAG} \
-    #                   i             ${PREPROCESS}
+    python3 ${DRIVER_DIR}/driver.py ${SIZE_P} ${SIZE_N} ${SIZE_U} ${LOSS} \
+                                    --pos ${POS} --neg ${NEG} \
+                                    --bs ${BATCH_SIZE} --lr ${LR} \
+                                    ${TAU_FLAG} ${RHO_FLAG} ${PREPROCESS} ${BIAS_FLAG}
 }
 
 
@@ -62,7 +73,7 @@ function construct_cli_string() {
     fi
 }
 
-SCRIPT_DIR=$( realpath $(dirname $0)/.. )  # Directory containing all sub folders
+SCRIPT_DIR=$( realpath $(dirname $0)/ )  # Directory containing all sub folders
 DRIVER_DIR="${SCRIPT_DIR}/.."
 
 POS="alt comp misc rec"
@@ -77,23 +88,28 @@ PREPROCESS="--preprocess"
 
 TAU_ARR=( 0.7 0.5 0.9 )
 for TAU in "${TAU_ARR[@]}"; do
-    LR_ARR=( "1E-3" "5E-4" "5E-3" )
-    for LR in "${LR_ARR[@]}"; do
-        BIAS_ARR=( "1 0 0" "0 0 1" "0.1 0.5 0.4" )
-        RHO_ARR=( 0.21 0.17 0.1 )
-        for ((i=0;i<${#BIAS_ARR[@]};++i)); do
-            BIAS=""
-            RHO=""
-            LOSS="pn"
-            # Run unbiased first
-            run_learner
-
-            BIAS="${BIAS_ARR[i]}"
-            RHO="${RHO_ARR[i]}"
-            LOSS_ARR=( "pn" "nnpu" "pubn" )
-            for LOSS in "${LOSS_ARR[@]}"; do
+    for itr in {1..10}; do
+        LR_ARR=( "1E-3" "5E-4" "5E-3" )
+        for LR in "${LR_ARR[@]}"; do
+            BIAS_ARR=( "1 0 0" "0 0 1" "0.1 0.5 0.4" )
+            RHO_ARR=( 0.21 0.17 0.1 )
+            for ((i=1;i<=${#BIAS_ARR[@]};++i)); do
+                BIAS=""
+                RHO=""
+                LOSS="pn"
+                # Run unbiased first PN first
                 run_learner
+
+                BIAS="${BIAS_ARR[i]}"
+                RHO="${RHO_ARR[i]}"
+                LOSS_ARR=( "pn" "nnpu" "pubn" )
+                for LOSS in "${LOSS_ARR[@]}"; do
+                    run_learner
+                done
             done
         done
+        PATH_TO_DELETE="${HOME}/projects/nlp/tensors"
+        printf "Deleting folder: ${PATH_TO_DELETE}\n"
+        rm -rf ${PATH_TO_DELETE} > /dev/null
     done
 done
