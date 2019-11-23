@@ -610,7 +610,7 @@ def _select_neg_tensor(x: Tensor, y: Tensor, n_cls: Set[int],
     # Determine selected index
     all_x, all_y = [], []
     for (cls_lst, _), size in zip(bias, grp_sizes):
-        x, y = _select_tensor_uar(x, y, cls_lst.vale, size)
+        x, y = _select_tensor_uar(x, y, cls_lst.value, size)
         all_x.append(x)
         all_y.append(y)
 
@@ -635,7 +635,9 @@ def _create_serialized_20newsgroups_preprocessed(args: Namespace) -> None:
     for ds_name in ("train", "test"):
         newsgroups_dir = DATA_DIR / "20_newsgroups"
         newsgroups_dir.mkdir(parents=True, exist_ok=True)
-        bunch = sklearn.datasets.fetch_20newsgroups(data_home=newsgroups_dir, shuffle=False,
+        # shuffle=True is used since ElmoEmbedder stores states between sentences so randomness
+        # should reduce this effect
+        bunch = sklearn.datasets.fetch_20newsgroups(data_home=newsgroups_dir, shuffle=True,
                                                     remove=DATASET_REMOVE, subset=ds_name)
 
         path = _build_elmo_file_path(ds_name)

@@ -30,8 +30,7 @@ def _check_is_talapas() -> bool:
     return False
 
 
-IS_TALAPAS = _check_is_talapas()
-BASE_DIR = Path(".").absolute() if not IS_TALAPAS else Path("/home/zhammoud/projects/nlp")
+BASE_DIR = Path(".").absolute() if not _check_is_talapas() else Path("/home/zhammoud/projects/nlp")
 DATA_DIR = BASE_DIR / ".data"
 
 IS_CUDA = torch.cuda.is_available()
@@ -118,6 +117,9 @@ def construct_filename(prefix: str, args: Namespace, out_dir: Path, file_ext: st
         bias_sorted = [x for _, x in sorted(args.bias)]
         bias_str = ','.join([f"{x:.2f}" for x in bias_sorted])
         fields.append(f"bias={bias_str}")
+
+    if args.preprocess:
+        fields.append("pp")
 
     if add_timestamp:
         time_str = time.strftime("%Y-%m-%d-%H-%M-%S")

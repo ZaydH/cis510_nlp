@@ -28,7 +28,9 @@ def parse_args() -> Namespace:
                       type=int, default=None)
     args.add_argument("--embed_dim", help="Word vector dimension", type=int,
                       default=NlpBiasedLearner.Config.EMBED_DIM)
-    args.add_argument("--seq_len", help="Maximum sequence length",  type=int, default=750)
+    args.add_argument("--seq_len", help="Maximum sequence length",  type=int, default=1000)
+    args.add_argument("--lr", help="Learning rate", type=float,
+                      default=NlpBiasedLearner.Config.LEARNING_RATE)
     args.add_argument("--tau", help="Hyperparameter used to determine eta", type=float)
 
     args = args.parse_args()
@@ -45,7 +47,7 @@ def _error_check_args(args: Namespace):
     if args.bs is None:
         args.bs = (args.size_p + args.size_n + args.size_u) // 100
 
-    pos_flds = ("size_p", "size_n", "size_u", "bs", "ep", "embed_dim")
+    pos_flds = ("size_p", "size_n", "size_u", "bs", "ep", "embed_dim", "lr")
     for name in pos_flds:
         if args.__getattribute__(name) <= 0: raise ValueError(f"{name} must be positive valued")
 
@@ -59,6 +61,8 @@ def _error_check_args(args: Namespace):
             raise ValueError("Bias probability sum too far from 1")
         if any(x < 0 for x in args.bias):
             raise ValueError("Bias values must be non-negative")
+    else:
+        assert args.loss != LossType.PUBN.name.lower(), "bias required if PUbN used"
 
     for name in ("rho", "tau"):
         val = args.__getattribute__(name)
@@ -96,6 +100,7 @@ def _transfer_args_to_config(args: Namespace):
         config.NUM_EPOCH = args.ep
         config.BATCH_SIZE = args.bs
         config.EMBED_DIM = args.embed_dim
+        config.LEARNING_RATE = args.lr
 
     logging.info(f"Number of Training Epochs: {args.ep}")
     logging.info(f"Batch Size: {args.bs}")
