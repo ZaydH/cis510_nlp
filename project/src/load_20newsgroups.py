@@ -387,7 +387,7 @@ def _create_serialized_20newsgroups_iterator(args):
     # noinspection PyPep8Naming
     LABEL = LabelField(sequential=False)
     complete_ds = _bunch_to_ds(complete_train, TEXT, LABEL)
-    cache_dir = DATA_DIR / ".vector_cache"
+    cache_dir = DATA_DIR / "vector_cache"
     cache_dir.mkdir(parents=True, exist_ok=True)
     TEXT.build_vocab(complete_ds, min_freq=2,
                      vectors=torchtext.vocab.GloVe(name="6B", dim=args.embed_dim, cache=cache_dir))
