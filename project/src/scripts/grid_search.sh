@@ -93,7 +93,7 @@ for TAU in "${TAU_ARR[@]}"; do
         for LR in "${LR_ARR[@]}"; do
             BIAS_ARR=( "1 0 0" "0 0 1" "0.1 0.5 0.4" )
             RHO_ARR=( 0.21 0.17 0.1 )
-            for ((i=1;i<=${#BIAS_ARR[@]};++i)); do
+            for ((i=0;i<${#BIAS_ARR[@]};++i)); do
                 BIAS=""
                 RHO=""
                 LOSS="pn"
