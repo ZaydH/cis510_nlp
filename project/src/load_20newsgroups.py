@@ -16,6 +16,7 @@ import nltk
 import nltk.tokenize
 import numpy as np
 import sklearn.datasets
+from allennlp.commands.elmo import ElmoEmbedder
 from sklearn import preprocessing
 # noinspection PyProtectedMember
 from sklearn.utils import Bunch
@@ -29,11 +30,10 @@ import torchtext.datasets
 from torchtext.data.dataset import Dataset
 import torchtext.vocab
 
-import allennlp.commands
 from allennlp.common.file_utils import cached_path
 
 # Valid Choices - Any subset of: ('headers', 'footers', 'quotes')
-from pubn import BASE_DIR, DATA_DIR, NEG_LABEL, POS_LABEL, U_LABEL, construct_filename, \
+from pubn import BASE_DIR, DATA_DIR, IS_CUDA, NEG_LABEL, POS_LABEL, U_LABEL, construct_filename, \
     calculate_prior
 
 # DATASET_REMOVE = ('headers', 'footers', 'quotes')  # ToDo settle on dataset elements to remove
@@ -518,50 +518,49 @@ def _build_elmo_file_path(ds_name: str) -> Path:
     return newsgroups_dir / f"20newsgroups_elmo_mmm_{ds_name}.hdf5"
 
 
-def _generate_preprocessed_vectors(bunch: Bunch, ds_name: str) -> None:
+def _generate_preprocessed_vectors(ds_name: str):
     r"""
     Constructs the preprocessed vectors for either the test or train datasets.
-    :param bunch: Newsgroup bunch
     :param ds_name: Either "test" or "train"
     """
     assert ds_name == "train" or ds_name == "test"
+    newsgroups = sklearn.datasets.fetch_20newsgroups(subset=ds_name, shuffle=True)
 
-    n = len(bunch.data)
+    n = len(newsgroups.data)
 
     allennlp_dir = DATA_DIR / "allennlp"
     allennlp_dir.mkdir(parents=True, exist_ok=True)
     os.putenv('ALLENNLP_CACHE_ROOT', str(allennlp_dir))
 
-    elmo = allennlp.commands.elmo.ElmoEmbedder(cached_path(OPTION_FILE, str(allennlp_dir)),
-                                               cached_path(WEIGHT_FILE, "."),
-                                               0 if torch.cuda.is_available() else -1)
+    def _make_elmo(n_device: int) -> ElmoEmbedder:
+        return ElmoEmbedder(cached_path(OPTION_FILE, allennlp_dir),
+                            cached_path(WEIGHT_FILE, allennlp_dir), n_device)
 
+    # First learner use CUDA, second does not
+    elmos = [_make_elmo(i) for i in range(0, -2, -1)]
     data = np.zeros([n, 9216])
-    elmo_path = str(_build_elmo_file_path(ds_name))
-    f = h5py.File(elmo_path, 'w')
-    f.create_dataset(PREPROCESSED_FIELD, data=data)
-    f.close()
 
     msg = f"Creating the preprocessed vectors for \"{ds_name}\" set"
     logging.info(f"Starting: {msg}")
-    if not torch.cuda.is_available():  # Has to be out of for loop or stdout overwrite messes up
+    if not IS_CUDA:  # Has to be out of for loop or stdout overwrite messes up
         print('cuda fail')
     for i in range(n):
-        sentence = nltk.tokenize.word_tokenize(bunch.data[i])
+        item = [nltk.tokenize.word_tokenize(newsgroups.data[i])]
         sys.stdout.write(f"Processing {ds_name} document {i+1}/{n}\r")
         sys.stdout.flush()
-        em = elmo.embed_batch([sentence])
+        try:
+            em = elmos[0].embed_batch(item)
+        except RuntimeError:
+            em = elmos[1].embed_batch(item)
         em = np.concatenate(
-            [np.mean(em[0], axis=1).flatten(),
-             np.min(em[0], axis=1).flatten(),
-             np.max(em[0], axis=1).flatten()])
-        f = h5py.File(elmo_path, 'r+')
-        f[PREPROCESSED_FIELD][i] = em
-        f.close()
+                [np.mean(em[0], axis=1).flatten(),
+                 np.min(em[0], axis=1).flatten(),
+                 np.max(em[0], axis=1).flatten()])
+        data[i] = em
     print("")
 
-    f = h5py.File(elmo_path, 'r+')
-    f[PREPROCESSED_FIELD] = preprocessing.scale(f[PREPROCESSED_FIELD][:])
+    f = h5py.File(f'20newsgroups_elmo_mmm_{ds_name}.hdf5', 'w')
+    f.create_dataset(PREPROCESSED_FIELD, data=data)
     f.close()
     logging.info(f"COMPLETED: {msg}")
 
@@ -645,7 +644,7 @@ def _create_serialized_20newsgroups_preprocessed(args: Namespace) -> None:
 
         path = _build_elmo_file_path(ds_name)
         if not path.exists():
-            _generate_preprocessed_vectors(bunch, ds_name)
+            _generate_preprocessed_vectors(ds_name)
 
         vecs = h5py.File(str(path), 'r')
         x = preprocessing.scale(vecs[PREPROCESSED_FIELD][:])
