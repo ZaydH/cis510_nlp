@@ -86,30 +86,36 @@ BATCH_SIZE=250
 
 PREPROCESS="--preprocess"
 
-TAU_ARR=( 0.7 0.5 0.9 )
-for TAU in "${TAU_ARR[@]}"; do
-    for itr in {1..10}; do
-        LR_ARR=( "1E-3" "5E-4" "5E-3" )
-        for LR in "${LR_ARR[@]}"; do
-            BIAS_ARR=( "1 0 0" "0 0 1" "0.1 0.5 0.4" )
-            RHO_ARR=( 0.21 0.17 0.1 )
-            for ((i=0;i<${#BIAS_ARR[@]};++i)); do
-                BIAS=""
-                RHO=""
-                LOSS="pn"
-                # Run unbiased first PN first
-                run_learner
+for itr in {1..10}; do
+    LR_ARR=( "1E-3" "5E-4" "5E-3" )
+    for LR in "${LR_ARR[@]}"; do
+        # Try with no bias as a baseline
+        BIAS=""
+        RHO=""
+        LOSS="pn"
+        run_learner
 
-                BIAS="${BIAS_ARR[i]}"
-                RHO="${RHO_ARR[i]}"
-                LOSS_ARR=( "pn" "nnpu" "pubn" )
-                for LOSS in "${LOSS_ARR[@]}"; do
-                    run_learner
-                done
+        # Biased set
+        BIAS_ARR=( "1 0 0" "0 0 1" "0.1 0.5 0.4" )
+        RHO_ARR=( 0.21 0.17 0.1 )
+        for ((i=0;i<${#BIAS_ARR[@]};++i)); do
+            BIAS="${BIAS_ARR[i]}"
+            RHO="${RHO_ARR[i]}"
+            LOSS_ARR=( "pn" "nnpu" )
+            for LOSS in "${LOSS_ARR[@]}"; do
+                run_learner
+            done
+
+            # Tau only affects PUBN
+            LOSS="pubn"
+            TAU_ARR=( 0.7 0.5 0.9 )
+            for TAU in "${TAU_ARR[@]}"; do
+                run_learner
             done
         done
-        PATH_TO_DELETE="${HOME}/projects/nlp/tensors"
-        printf "Deleting folder: ${PATH_TO_DELETE}\n"
-        rm -rf ${PATH_TO_DELETE} > /dev/null
     done
+    # New dataset split
+    PATH_TO_DELETE="${HOME}/projects/nlp/tensors"
+    printf "Deleting folder: ${PATH_TO_DELETE}\n"
+    rm -rf ${PATH_TO_DELETE} > /dev/null
 done
