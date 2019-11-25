@@ -12,15 +12,17 @@ class PULoss:
 
     LossInfo = collections.namedtuple("LossInfo", ["loss_var", "grad_var"])
 
+    class Config:
+        GAMMA = 1
+        BETA = 0
+
     def __init__(self, prior: float, pos_label: Union[Set[int], int],
-                 train_loss: Callable, gamma: float = 1, beta: float = 0, use_nnpu: bool = True,
+                 train_loss: Callable, use_nnpu: bool = True,
                  valid_loss: Optional[Callable] = None):
         r"""
         :param prior: Positive class prior probability, i.e., :math:`\Pr[y = +1]`
         :param pos_label: Integer labels assigned to positive-valued examples.
         :param train_loss: Loss function underlying the classifier
-        :param gamma:
-        :param beta:
         :param use_nnpu: If \p True, use nnPU loss.  Otherwise, use uPU.
         :param valid_loss: Optional validation loss.  If not specified, uses \p train_loss for
                            validation.
@@ -32,8 +34,8 @@ class PULoss:
             pos_label = {pos_label}
         self.pos_label = pos_label
 
-        self.gamma = gamma
-        self.beta = beta
+        self.gamma = self.Config.GAMMA
+        self.beta = self.Config.BETA
         self._is_nnpu = use_nnpu
 
         self._train_loss = train_loss

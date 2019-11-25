@@ -2,7 +2,7 @@ from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser, Namespace
 import logging
 
 from load_20newsgroups import NewsgroupsCategories
-from pubn.loss import LossType
+from pubn.loss import LossType, PULoss
 from pubn.model import NlpBiasedLearner, SigmaLearner
 
 
@@ -32,6 +32,8 @@ def parse_args() -> Namespace:
     args.add_argument("--lr", help="Learning rate", type=float,
                       default=NlpBiasedLearner.Config.LEARNING_RATE)
     args.add_argument("--tau", help="Hyperparameter used to determine eta", type=float)
+    args.add_argument("--gamma", help="Hyperparameter for nnPU loss", type=float,
+                      default=PULoss.Config.GAMMA)
 
     args = args.parse_args()
 
@@ -101,6 +103,8 @@ def _transfer_args_to_config(args: Namespace):
         config.BATCH_SIZE = args.bs
         config.EMBED_DIM = args.embed_dim
         config.LEARNING_RATE = args.lr
+
+    PULoss.Config.GAMMA = args.GAMMA
 
     logging.info(f"Number of Training Epochs: {args.ep}")
     logging.info(f"Batch Size: {args.bs}")
