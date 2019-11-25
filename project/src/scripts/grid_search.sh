@@ -14,6 +14,7 @@ function run_learner() {
     log_enabled_disabled "Preprocessed" "${PREPROCESS}"
     # log_enabled_disabled "Bias" "${BIAS}"
     log_enabled_disabled "Rho" "${RHO}"
+    log_enabled_disabled "Gamma" "${GAMMA}"
     log_enabled_disabled "Tau" "${TAU}"
 
     if [[ ! -z ${BIAS} ]]; then
@@ -22,6 +23,8 @@ function run_learner() {
         BIAS_FLAG=""
     fi
     printf "Bias: ${BIAS_FLAG}\n"
+
+    GAMMA_FLAG=$(construct_cli_string "gamma" ${GAMMA})
     if [[ ${LOSS} == "pubn" ]]; then
         TAU_FLAG=$(construct_cli_string "tau" ${TAU})
         RHO_FLAG=$(construct_cli_string "rho" ${RHO})
@@ -33,14 +36,15 @@ function run_learner() {
     python3 ${DRIVER_DIR}/driver.py ${SIZE_P} ${SIZE_N} ${SIZE_U} ${LOSS} \
                                     --pos ${POS} --neg ${NEG} \
                                     --bs ${BATCH_SIZE} --lr ${LR} \
-                                    ${TAU_FLAG} ${RHO_FLAG} ${PREPROCESS} ${BIAS_FLAG}
+                                    ${TAU_FLAG} ${RHO_FLAG} ${GAMMA_FLAG} \
+                                    ${PREPROCESS} ${BIAS_FLAG}
 }
 
 
 function log_enabled_disabled() {
     if [ $# -gt 2 ]; then
         printf "Invalid input count for variable state logged. Exiting...\n"
-        exit -1
+        exit 1
     fi
     VAR_NAME=$1
     if [ $# -eq 2 ]; then
@@ -66,14 +70,14 @@ function construct_cli_string() {
     fi
     FLAG_NAME=$1
     FLAG_VAL=$2
-    if [ -z ${FLAG_VAL} ]; then
+    if [ -z "${FLAG_VAL}" ]; then
         echo ""
     else
         echo "--${FLAG_NAME} ${FLAG_VAL}"
     fi
 }
 
-SCRIPT_DIR=$( realpath $(dirname $0)/ )  # Directory containing all sub folders
+SCRIPT_DIR=$( realpath "$(dirname "$0")"/ )  # Directory containing all sub folders
 DRIVER_DIR="${SCRIPT_DIR}/.."
 
 POS="alt comp misc rec"
@@ -101,21 +105,24 @@ for itr in {1..10}; do
         for ((i=0;i<${#BIAS_ARR[@]};++i)); do
             BIAS="${BIAS_ARR[i]}"
             RHO="${RHO_ARR[i]}"
-            LOSS_ARR=( "pn" "nnpu" )
-            for LOSS in "${LOSS_ARR[@]}"; do
+            LOSS="pn"
+            run_learner
+            GAMMA_ARR=( 0.1 0.3 0.5 0.7 0.9 1.0 )
+            for GAMMA in "${GAMMA_ARR[@]}"; do
+                LOSS="nnpu"
                 run_learner
-            done
 
-            # Tau only affects PUBN
-            LOSS="pubn"
-            TAU_ARR=( 0.7 0.5 0.9 )
-            for TAU in "${TAU_ARR[@]}"; do
-                run_learner
+                # Tau only affects PUBN
+                LOSS="pubn"
+                TAU_ARR=( 0.7 0.5 0.9 )
+                for TAU in "${TAU_ARR[@]}"; do
+                    run_learner
+                done
             done
         done
     done
     # New dataset split
     PATH_TO_DELETE="${HOME}/projects/nlp/tensors"
     printf "Deleting folder: ${PATH_TO_DELETE}\n"
-    rm -rf ${PATH_TO_DELETE} > /dev/null
+    rm -rf "${PATH_TO_DELETE}" > /dev/null
 done
