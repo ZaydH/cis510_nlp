@@ -16,18 +16,13 @@ function run_learner() {
     log_enabled_disabled "Rho" "${RHO}"
     log_enabled_disabled "Gamma" "${GAMMA}"
     log_enabled_disabled "Tau" "${TAU}"
-
-    if [[ ! -z ${BIAS} ]]; then
-        BIAS_FLAG="--bias ${BIAS}"
-    else
-        BIAS_FLAG=""
-    fi
     printf "Bias: ${BIAS_FLAG}\n"
 
-    GAMMA_FLAG=$(construct_cli_string "gamma" ${GAMMA})
+    BIAS_FLAG=$(construct_cli_string "bias" "${BIAS}")
+    GAMMA_FLAG=$(construct_cli_string "gamma" "${GAMMA}")
     if [[ ${LOSS} == "pubn" ]]; then
-        TAU_FLAG=$(construct_cli_string "tau" ${TAU})
-        RHO_FLAG=$(construct_cli_string "rho" ${RHO})
+        TAU_FLAG=$(construct_cli_string "tau" "${TAU}")
+        RHO_FLAG=$(construct_cli_string "rho" "${RHO}")
     else
         TAU_FLAG=()
         RHO_FLAG=()
