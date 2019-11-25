@@ -104,7 +104,7 @@ def _transfer_args_to_config(args: Namespace):
         config.EMBED_DIM = args.embed_dim
         config.LEARNING_RATE = args.lr
 
-    PULoss.Config.GAMMA = args.GAMMA
+    PULoss.Config.GAMMA = args.gamma
 
     logging.info(f"Number of Training Epochs: {args.ep}")
     logging.info(f"Batch Size: {args.bs}")
