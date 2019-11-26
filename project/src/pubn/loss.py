@@ -201,14 +201,15 @@ class PUbN:
         u_mask = p_mask.logical_xor(bn_mask).logical_not()
 
         has_p, has_bn = p_mask.any(), bn_mask.any()
-        l_pos = self.prior * loss_func(dec_scores[p_mask]).mean() if has_p else torch.zeros(())
-        l_bn = self.rho * loss_func(-dec_scores[bn_mask]).mean() if has_bn else torch.zeros(())
+        # Multiplicative factors included in final sum
+        l_pos = loss_func(dec_scores[p_mask]).mean() if has_p else torch.zeros(())
+        l_bn = loss_func(-dec_scores[bn_mask]).mean() if has_bn else torch.zeros(())
 
         l_u_n = self._u_n_loss(loss_func, u_mask, sigma_x, dec_scores, is_u=True) \
                 + self.prior * self._u_n_loss(loss_func, p_mask, sigma_x, dec_scores, is_u=False) \
                 + self.rho * self._u_n_loss(loss_func, bn_mask, sigma_x, dec_scores, is_u=False)
 
-        return l_u_n + self.prior * l_pos + self.rho * l_bn
+        return self.prior * l_pos + self.rho * l_bn + l_u_n
 
     def _u_n_loss(self, loss_func: Callable, orig_mask: Tensor, sigma_x: Tensor, dec_scores: Tensor,
                   is_u: bool) -> Tensor:
