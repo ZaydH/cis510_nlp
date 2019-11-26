@@ -612,9 +612,9 @@ def _select_neg_tensor(x: Tensor, y: Tensor, n_cls: Set[int],
     for (cls_lst, _), size in zip(bias, grp_sizes):
         if size == 0:
             continue
-        x, y = _select_tensor_uar(x, y, cls_lst.value, size)
-        all_x.append(x)
-        all_y.append(y)
+        sub_x, sub_y = _select_tensor_uar(x, y, cls_lst.value, size)
+        all_x.append(sub_x)
+        all_y.append(sub_y)
 
     return torch.cat(all_x), torch.cat(all_y)
 
