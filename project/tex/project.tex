@@ -30,7 +30,7 @@
 
 \usepackage{hyperref}       % hyperlinks
 
-\title{Siamese-Based Autoencoders \\for Positive\-/Unlabeled Learning}
+\title{Addressing Negative Covariate Shift's Effects on 20~Newsgroups Classification}
 
 % The \author macro works with any number of authors. There are two commands
 % used to separate the names and addresses of multiple authors: \And and \AND.
@@ -53,15 +53,17 @@
 \maketitle
 
 \begin{abstract}
-  Positive\-/unlabeled learning constructs a binary classifier using only positive-labeled and unlabeled examples -- there is no negative-labeled training examples. Highly-expressive learners like deep neural networks often overfit problems where labeled data is limited.  This paper presents our \textit{double decoder positive-unlabeled} (\toolname)~learner -- a novel autoencoder-based Siamese neural network architecture.  We propose a two-step training algorithm and accompanying set of loss functions that adapt the Siamese triplet loss to use only a single training example -- labeled or unlabeled.  Our empirical results show that our method achieves state-of-the-art performance on MNIST-variant datasets.
+  Collecting representative, labeled training data can be challenging in some binary text classification domains. This project investigates techniques to address negative-class covariate shift.  We compare the performance learners training with non-negative positive-unlabeled (nnPU) and positive, unlabeled, biased-negative (PUbN) risk estimators. Our results indicate that the covariate shift's type may influence which risk estimator yields a superior classifier.
 \end{abstract}
 
 \input{introduction}
-\input{previous_work}
-\input{siamese_networks}
-\input{ddpu}
+% \input{previous_work}
+% \input{siamese_networks}
+\input{risk_estimators}
+\input{dataset}
+\input{architectures}
 \input{experimental_results}
-\input{conclusions}
+% \input{conclusions}
 
 \bibliographystyle{ieeetr}
 \bibliography{bib/ref.bib}
