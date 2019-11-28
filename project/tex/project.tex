@@ -1,0 +1,69 @@
+\documentclass{article}
+
+% if you need to pass options to natbib, use, e.g.:
+%     \PassOptionsToPackage{numbers, compress}{natbib}
+% before loading neurips_2019
+
+% ready for submission
+% \usepackage{neurips_2019}
+
+% to compile a preprint version, e.g., for submission to arXiv, add add the
+% [preprint] option:
+  \usepackage[final,nonatbib]{neurips_2019}
+
+% to compile a camera-ready version, add the [final] option, e.g.:
+%     \usepackage[final]{neurips_2019}
+
+% to avoid loading the natbib package, add option nonatbib:
+%     \usepackage[nonatbib]{neurips_2019}
+
+\usepackage[utf8]{inputenc} % allow utf-8 input
+\usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage{url}            % simple URL typesetting
+\usepackage{booktabs}       % professional-quality tables
+\usepackage{amsfonts}       % blackboard math symbols
+\usepackage{nicefrac}       % compact symbols for 1/2, etc.
+\usepackage{microtype}      % microtypography
+
+\input{global_macros}
+\input{macros}
+
+\usepackage{hyperref}       % hyperlinks
+
+\title{Siamese-Based Autoencoders \\for Positive\-/Unlabeled Learning}
+
+% The \author macro works with any number of authors. There are two commands
+% used to separate the names and addresses of multiple authors: \And and \AND.
+%
+% Using \And between authors leaves it to LaTeX to determine where to break the
+% lines. Using \AND forces a line break at that point. So, if LaTeX puts 3 of 4
+% authors names on the first line, and the last on the second line, try using
+% \AND instead of \And before the third author name.
+
+\author{%
+  Zayd S.\ Hammoudeh \\
+  Department of Computer \& Information Science \\
+  University of Oregon \\
+  Eugene, OR 97403 \\
+  \texttt{\href{mailto:zayd@cs.uoregon.edu}{zayd@cs.uoregon.edu}}
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+  Positive\-/unlabeled learning constructs a binary classifier using only positive-labeled and unlabeled examples -- there is no negative-labeled training examples. Highly-expressive learners like deep neural networks often overfit problems where labeled data is limited.  This paper presents our \textit{double decoder positive-unlabeled} (\toolname)~learner -- a novel autoencoder-based Siamese neural network architecture.  We propose a two-step training algorithm and accompanying set of loss functions that adapt the Siamese triplet loss to use only a single training example -- labeled or unlabeled.  Our empirical results show that our method achieves state-of-the-art performance on MNIST-variant datasets.
+\end{abstract}
+
+\input{introduction}
+\input{previous_work}
+\input{siamese_networks}
+\input{ddpu}
+\input{experimental_results}
+\input{conclusions}
+
+\bibliographystyle{ieeetr}
+\bibliography{bib/ref.bib}
+
+\end{document}

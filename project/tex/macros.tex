@@ -1,0 +1,48 @@
+\newcommand{\toolname}{ddPU}
+
+\newcommand{\Repel}{Repellent}
+\newcommand{\repel}{\MakeLowercase{\Repel}}
+
+\newcommand{\X}{x}
+\newcommand{\domain}{\real^{d}}
+\newcommand{\eX}[1]{\X_{(#1)}}
+\newcommand{\xA}{\eX{A}}
+\newcommand{\xP}{\eX{P}}
+\newcommand{\xN}{\eX{N}}
+
+\newcommand{\y}{y}
+\newcommand{\labels}{\set{{\pm}1}}
+\newcommand{\pCls}{{+}1}
+\newcommand{\nCls}{{-}1}
+
+\newcommand{\latent}{s}
+\newcommand{\params}{\theta}
+
+\newcommand{\pDist}{p}
+\newcommand{\joint}{\pDist_{XY}}
+\newcommand{\marginal}{\pDist_{X}}
+
+\newcommand{\size}{n}
+\newcommand{\train}{\mathcal{X}}
+\newcommand{\trainVar}[1]{\train_{\textnormal{#1}}}
+\newcommand{\unlabel}{\trainVar{U}}
+\newcommand{\pos}{\trainVar{P}}
+% Batch specific naming
+\newcommand{\cnt}{i}
+\newcommand{\unlI}[1]{#1{\mathcal{X}}_{\textnormal{U}}^{(\cnt)}}
+\newcommand{\posI}[1]{#1{\mathcal{X}}_{\textnormal{P}}^{(\cnt)}}
+
+
+% Siamese Network Related Macros
+\newcommand{\margin}{\alpha}
+\newcommand{\SiamDim}{m}
+\newcommand{\SiamFunc}{f}
+\newcommand{\distMetric}{\delta}
+\newcommand{\siamDist}[3]{\norm{#1\left(#2\right) - #1\left(#3\right)}}
+\newcommand{\lTrip}{\mathcal{L}_{\text{Triplet}}}
+
+% Function names for the DeepPU architecture
+\newcommand{\fPU}{g}
+\newcommand{\fPUenc}{\fPU_{\text{enc}}}
+\newcommand{\fPUp}{\fPU_{p}}
+\newcommand{\fPUn}{\fPU_{n}}
