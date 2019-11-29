@@ -30,7 +30,7 @@
 
 \usepackage{hyperref}       % hyperlinks
 
-\title{Addressing Negative Covariate \\ on 20~Newsgroups Classification}
+\title{Addressing Negative Covariate Shift \\ on 20~Newsgroups Classification}
 
 % The \author macro works with any number of authors. There are two commands
 % used to separate the names and addresses of multiple authors: \And and \AND.
@@ -53,17 +53,15 @@
 \maketitle
 
 \begin{abstract}
-  Collecting representative, labeled training data can be challenging in some binary text classification domains. This project investigates techniques to address negative-class covariate shift.  We compare the performance learners training with non-negative positive-unlabeled (nnPU) and positive, unlabeled, biased-negative (PUbN) risk estimators. Our results indicate that the covariate shift's type may influence which risk estimator yields a superior classifier.
+  Collecting representative, labeled training data can be challenging in some binary text classification domains. This project investigates techniques to address negative-class covariate shift.  We compare the performance of classifiers trained using the non-negative positive-unlabeled (nnPU) and positive, unlabeled, biased-negative (PUbN) risk estimators against standard supervised (positive-negative --~PN) baselines. Our results indicate that the type of marginal distribution bias may determine which risk estimator performs best.
 \end{abstract}
 
 \input{introduction}
-% \input{previous_work}
-% \input{siamese_networks}
 \input{risk_estimators}
-\input{dataset}
 \input{architectures}
+\input{dataset}
 \input{experimental_results}
-% \input{conclusions}
+\input{conclusions}
 
 \bibliographystyle{ieeetr}
 \bibliography{bib/ref.bib}

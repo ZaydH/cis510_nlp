@@ -1,0 +1,14 @@
+\section{20~newsgroups}\label{sec:20newsgroups}
+
+First published by Lang in 1995, the ``20~newsgroups'' dataset is a collection of internet discussion board posts.  The original dataset consisted 20,000~documents~\cite{20newsgroups} but was pruned to 18,828 documents in 2007 after duplicates and cross\-/posts were removed~\cite{Rennie:2007}.   The latest version of the dataset has a predefined split of 11,314~train and 7,532~test documents.
+
+Each document is assigned one of twenty possible labels depending on the original bulletin board where the document was posted.  Basic partition on each document category is provided in Table~\ref{tab:20newsgroups}.
+
+The set of twenty document classes partition into seven super-classes.  In our experiments, the positive class is composed of the first four super-classes (alt., comp., misc., \&~rec.) while the remainder (sci., soc., \&~talk.) make up the negative class.  The positive class prior probability~($\prior$) is approximately~0.56.
+
+\begin{table}[t]
+  \centering
+  \caption{}\label{tab:20newsgroups}
+  \input{tables/20newsgroups}
+\end{table}
+
