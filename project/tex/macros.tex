@@ -1,14 +1,10 @@
 \newcommand{\X}{x}
-\newcommand{\domain}{\real^{d}}
-\newcommand{\eX}[1]{\X_{(#1)}}
-\newcommand{\xA}{\eX{A}}
-\newcommand{\xP}{\eX{P}}
-\newcommand{\xN}{\eX{N}}
-
+\newcommand{\domainX}{\real^{d}}
 \newcommand{\y}{y}
-\newcommand{\labels}{\set{{\pm}1}}
-\newcommand{\pCls}{{+}1}
-\newcommand{\nCls}{{-}1}
+\newcommand{\domainY}{\set{{\pm}1}}
+
+\newcommand{\pcls}{{+}1}
+\newcommand{\ncls}{{-}1}
 
 \newcommand{\latent}{s}
 \newcommand{\params}{\theta}
@@ -16,6 +12,10 @@
 \newcommand{\pDist}{p}
 \newcommand{\joint}{\pDist_{XY}}
 \newcommand{\marginal}{\pDist_{X}}
+\newcommand{\posterior}{\pDist(\y \vert \X)}
+\newcommand{\pcond}{\pDist_{\textnormal{P}}}
+\newcommand{\ncond}{\pDist_{\textnormal{N}}}
+\newcommand{\prior}{\pi}
 
 \newcommand{\size}{n}
 \newcommand{\train}{\mathcal{X}}
