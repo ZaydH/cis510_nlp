@@ -2,15 +2,11 @@
 
 Risk estimators are generally classifier agnostic.  They can be coupled with whatever learner yields the most appropriate inductive bias. When labeled data is limited (e.g.,~non-existent for some classes), transfer learning often improves a classifiers performance by enhancing the dataset used to learn the features.
 
-This section proposes two neural architectures for 20~newsgroups classification.  The LSTM~model in Section~\ref{sec:Architectures:LSTM} only takes limited advantage of transfer learning but is overall more flexible.  Section~\ref{sec:Architectures:ELMo}'s ELMo~model relies almost entirely on transfer learning and is more rigid. A comparison of the empirical results is provided in Section~\ref{sec:ExperimentalResults}.
-
-\subsection{Tokenization}
-
-Irrespective of the classifier architecture, each newsgroup document was tokenized using the \texttt{nltk}~tokenizer.
+This section proposes two neural architectures for 20~newsgroups classification.  The LSTM~model in Section~\ref{sec:Architectures:LSTM} only takes limited advantage of transfer learning but is overall more flexible.  Section~\ref{sec:Architectures:ELMo}'s ELMo~model relies almost entirely on transfer learning and is more rigid. A comparison of each architecture's empirical results is provided in Section~\ref{sec:ExperimentalResults}.
 
 \subsection{End-to-End LSTM Network}\label{sec:Architectures:LSTM}
 
-This architecture is a ``classic'' deep neural classifier.  Document words are encoded using GloVe and fed into a bidirectional LSTM with one or more layers.  The LSTM output for the last document token is fed into a feedforward network with one or more hidden layers and ReLU activation.
+This neural network is the ``traditional'' deep NLP classifier. Document words are encoded using GloVe and fed into a bidirectional LSTM with one or more layers.  The LSTM output for the last document token is fed into a feedforward network with one or more hidden layers and ReLU activation.
 
 In this model, the only transferred knowledge is the embedding matrix. All weights in the LSTM and feedforward block must be learned from scratch which is challenging but provides significantly learner flexibility.  We experimented with freezing and unfreezing the embedding weights.
 
@@ -22,10 +18,12 @@ The Allen Institute for AI provides multiple pretrained ELMo models.  We used th
 
 The original ELMo embedder model has three layers --- a character CNN (for improved robustness for unknown words) followed by two bidirectional LSTMs.  The output for each layer is a 1,024\-/dimension vector.  Given an input stream of $m$~tokens, the learner output is a tensor of size~${\langle \textnormal{\#Layers} \times d_{\textnormal{layer}} \times \textnormal{\#Tokens} \rangle}$ --- in this case~${\langle 3 \times 1024 \times m \rangle}$.
 
-We used the paradigm proposed by R\"{u}ckl\'{e}\etal~\cite{Ruckle:2018} whereby given a tensor like the above, a sentence representation is formed by taking the minimum, maximum, and average value along each layer output dimension. Therefore, our model turns each document into a 9,216-dimensional vector~(${3\times3\times1024}$).
+We used the paradigm proposed by R\"{u}ckl\'{e}\etal~\cite{Ruckle:2018} whereby given a tensor like the above, a sentence representation is formed by taking the minimum, maximum, and average value along each layer output dimension. Therefore, our model turns each document into a vector of dimension ${9,216 = 3 \cdot 3 \cdot 1024}$.
 
 Each aforementioned static aforementioned document representation is input into a feedforward network with two hidden layers of dimension~300 and ReLU~activation.  This feedforward block is the only portion of the network trained making each epoch very fast~(<500ms).\footnote{This ELMo\-/based model is based on the work of Hsieh\etal~\cite{Hsieh:2018}.}
 
 \subsection{Implementation}
+
+Irrespective of the classifier architecture, each newsgroup document was tokenized using the \texttt{nltk}~tokenizer.
 
 Both architectures are implemented in PyTorch with the source code available on~\href{\sourceCode}{Github}.  The classic LSTM model is the default. To instead use the ELMo~preprocessed vectors, enable flag~\texttt{\-/\-/preprocessed}.

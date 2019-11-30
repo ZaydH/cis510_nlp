@@ -1,7 +1,79 @@
 \section{Risk estimation}\label{sec:RiskEstimators}
 
-\subsection{PN}
+Let~$\func{\dec}{\domainX}{\real}$ be a decision function from feature vector~$\X$ to a real number, and let~$\func{\loss}{\domainX \times \domainY}{\real_{{\geq}0}}$ be the loss function.  A \textit{risk estimator},~$\risk$,\footnote{Although formally a function of~$\dec$ as shown in Eq.~\eqref{eq:RiskEstimator:Expectation}, the decision function is dropped for notational brevity going forward.} quantifies the $\dec$'s~expected loss; formally,
 
-\subsection{nnPU}
+\begin{equation}\label{eq:RiskEstimator:Expectation}
+  \risk(\dec) = \mathbb{E}_{(\X,\y) \sim \joint}\sbrack{\floss{\decX}{\y}}\text{.}
+\end{equation}
 
-\subsection{PUbN}
+Since joint distribution~$\joint$ is unknown, the true expected risk is unknown.  Rather, an empirical estimate of the expected risk,~$\emprisk$ is used in practice.  In the remainder of this section, we provide an overview of the PN, PU (specifically nnPU), and PUbN risk estimators as well as their empirical estimates\footnote{All empirical risk estimates described here can be used with both batch and stochastic gradient descent}.
+
+\subsection{PN --- positive-negative}
+
+PN~classification has access to both positive and negative labeled examples.  Therefore, the risk estimator is exactly specified by Eq.~\eqref{eq:RiskEstimator:Expectation}.  Estimating the PN~empirical risk is straightforward as shown in Eq.~\eqref{eq:EmpRisk:PN}; it is merely the mean loss for all examples in positive-negative training set~$\train$.  This formulation applies irrespective of covariate shift, if any.
+
+\begin{equation}\label{eq:EmpRisk:PN}
+  \emprisk = \frac{1}{\abs{\train}} \sum_{(\X,\y) \in \train} \floss{\decX}{\y}
+\end{equation}
+
+\subsection{nnPU --- non-negative positive-unlabeled}
+
+Since positive\-/unlabeled~(PU) learning has no negative labeled examples, the traditional supervised learning cannot be used. By Bayes' Rule in Eq.~\eqref{eq:Joint:Bayes}, the expected risk can be decomposed into the risk associated with each label (positive and negative) as shown in Eq.~\eqref{eq:Risk:Bayes}.  Note that ${\varrisk{D}{\ypred}}$ represents the expected risk for samples drawn from distribution~${\pDist_{D}}$ (e.g.,~\underline{p}ositive and \underline{n}egative class-conditional distributions) and the predicted label in loss function~$\loss$ is~$\ypred$.
+
+\begin{align}
+  \risk &= \prior \mathbb{E}_{\X \sim \pcond}\sbrack{\floss{\decX}{\pcls}} + (1-\prior) \mathbb{E}_{\X \sim \ncond}\sbrack{\floss{\decX}{\ncls}} \nonumber \\
+        &= \prior \prisk{P} + (1-\prior) \nrisk{N} \label{eq:Risk:Bayes}
+\end{align}
+
+Since the unlabeled set is drawn from marginal distribution,~$\marginal$, it is clear that:
+
+\begin{align}
+  \nrisk{U} &= \mathbb{E}_{\X \sim \marginal} \sbrack{\floss{\X}{\ncls}} \nonumber \\
+            &= \prior \mathbb{E}_{\X \sim \pcond} \sbrack{\floss{\X}{\ncls}} + (1 - \prior) \mathbb{E}_{\X \sim \ncond} \sbrack{\floss{\X}{\ncls}}\nonumber \\
+            &= \prior \nrisk{P} + (1 - \prior) \nrisk{N} \label{eq:Risk:Unlabeled}
+\end{align}
+
+\noindent
+Reformatting the above and combining the above with Eq.~\eqref{eq:Risk:Bayes} yields the unbiased positive\-/unlabeled~(uPU) risk estimator in Eq.~\eqref{eq:Risk:uPU}.~\cite{duPlessis:2014}
+
+\begin{equation}\label{eq:Risk:uPU}
+  \risk = \prior \prisk{P} + \nrisk{U} - \prior \nrisk{P}
+\end{equation}
+
+\paragraph{Non\-/negativity} Given the definitions of~$\loss$ and~$\risk$, it is clear that $\nrisk{N}$~should never fall below zero.  uPU's surrogate,~${\nrisk{U} - \prior \nrisk{P}}$, often goes negative with highly expressive learner such as neural networks.  Kiryo\etal~\cite{Kiryo:2017} proposed the non\-/negative positive\-/unlabeled~(nnPU) risk estimator in Eq.~\eqref{eq:Risk:nnPU}; the only difference from with uPU is the negative risk surrogate is explicitly forced to a positive value via the~$\max$.  Although forcing the negative surrogate induces an estimation bias (i.e.,~its expected value does not equal the true expectation), nnPU often performs better in practice and satisfies ERM uniform convergence.
+
+\begin{equation}\label{eq:Risk:nnPU}
+  \risk = \prior \prisk{P} + \max\left\{0, \nrisk{U} - \prior \nrisk{P} \right\}
+\end{equation}
+
+\paragraph{Empirical Estimation} Each term in nnPU can be empirically estimated from the training set components where:
+
+\begin{equation}\label{eq:EmpRisk:Pos}
+  \evrisk{P}{\ypred} = \frac{1}{\abs{\ptrain}} \sum_{\X \in \ptrain} \floss{\decX}{\ypred}
+\end{equation}
+
+and for unlabeled set ${\utrain \sim \marginal}$,
+
+\begin{equation}\label{eq:}
+  \evrisk{U}{-} = \frac{1}{\abs{\utrain}} \sum_{\X \in \utrain} \floss{\decX}{\ncls} \text{.}
+\end{equation}
+
+\subsection{PUbN --- positive, unlabeled, biased-negative}
+
+Let $\latent$~be a latent random variable representing whether the corresponding tuple is eligible for labeling.  Therefore, the full joint distribution~$\trijoint$ becomes trivariate as it also includes this latent r.v.  By definition, ${\pDist(\latent = \pcls \vert \X, \y = \pcls) = 1}$ (i.e.,~no positive bias) or equivalently ${\pDist(\y = \ncls \vert \X, \latent = \ncls) = 1}$.  The biased negative conditional distribution is therefore~${\bncond = \pDist(\X \vert \y = \ncls, \latent = \pcls)}$.
+
+The marginal distribution can be partitioned as
+
+\begin{equation*}
+  \marginal = \pDist(\X, \y = \pcls) + \pDist(\X, \y = \ncls, \latent = \pcls) + \pDist(\X, \y = \ncls, \latent = \ncls) \text{.}
+\end{equation*}
+
+\noindent
+The expected risk therefore becomes
+
+\begin{equation}\label{eq:Risk:WithBN}
+  \risk = \prior \prisk{P} + \plabel \nrisk{bN} + (1 - \prior - \rho) \baserisk{s=1}{-}
+\end{equation}
+
+\noindent
+where ${\plabel = \pDist(\y = \ncls, \latent = \pcls)}$.

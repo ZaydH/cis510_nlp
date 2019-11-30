@@ -8,7 +8,6 @@
 \newcommand{\pcls}{{+}1}
 \newcommand{\ncls}{{-}1}
 
-\newcommand{\latent}{s}
 \newcommand{\params}{\theta}
 
 \newcommand{\pDist}{p}
@@ -17,7 +16,11 @@
 \newcommand{\posterior}{\pDist(\y \vert \X)}
 \newcommand{\pcond}{\pDist_{\textnormal{P}}}
 \newcommand{\ncond}{\pDist_{\textnormal{N}}}
+\newcommand{\bncond}{\pDist_{\textnormal{bN}}}
 \newcommand{\prior}{\pi}
+
+\newcommand{\latent}{s}
+\newcommand{\trijoint}{\pDist_{XYs}}
 
 \newcommand{\size}{n}
 \newcommand{\train}{\mathcal{X}}
@@ -29,17 +32,18 @@
 
 \newcommand{\plabel}{\rho}
 
+\newcommand{\risk}{R}
+\newcommand{\baserisk}[2]{\risk_{#1}^{#2}}
+\newcommand{\varrisk}[2]{\baserisk{\textnormal{#1}}{#2}}
+\newcommand{\prisk}[1]{\varrisk{#1}{{+}}}
+\newcommand{\nrisk}[1]{\varrisk{#1}{{-}}}
 
-% Siamese Network Related Macros
-\newcommand{\margin}{\alpha}
-\newcommand{\SiamDim}{m}
-\newcommand{\SiamFunc}{f}
-\newcommand{\distMetric}{\delta}
-\newcommand{\siamDist}[3]{\norm{#1\left(#2\right) - #1\left(#3\right)}}
-\newcommand{\lTrip}{\mathcal{L}_{\text{Triplet}}}
+\newcommand{\emprisk}{\hat{R}}
+\newcommand{\evrisk}[2]{\hat{R}_{\textnormal{#1}}^{#2}}
+\newcommand{\dec}{g}
+\newcommand{\decX}{\dec\mathopen{}\left(\X\right)\mathclose{}}
+\newcommand{\loss}{\ell}
+% mathopen/mathclose used to remove extra free space around \left and \right keywords
+\newcommand{\floss}[2]{\loss\mathopen{}\left(#1,#2\right)\mathclose{}}
 
-% Function names for the DeepPU architecture
-\newcommand{\fPU}{g}
-\newcommand{\fPUenc}{\fPU_{\text{enc}}}
-\newcommand{\fPUp}{\fPU_{p}}
-\newcommand{\fPUn}{\fPU_{n}}
+\newcommand{\ypred}{\hat{y}}
