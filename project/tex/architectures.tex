@@ -6,7 +6,7 @@ This section proposes two neural architectures for 20~newsgroups classification.
 
 \subsection{Tokenization}
 
-
+Irrespective of the classifier architecture, each newsgroup document was tokenized using the \texttt{nltk}~tokenizer.
 
 \subsection{End-to-End LSTM Network}\label{sec:Architectures:LSTM}
 
@@ -20,8 +20,12 @@ The traditional word embedding model treats each token (word) as context indepen
 
 The Allen Institute for AI provides multiple pretrained ELMo models.  We used the original model trained on the extended 5.5~billion word corpus --- 1.9~billion words from Wikipedia and 3.6~billion from the WMT monolingual news crawl. At over 93~million parameters, combining this ELMo model with long 20~newsgroups documents causes GPU memory overflow errors on our K80~GPUs.  This limited us to using ELMo to create only create a single static vector for each document --- in essence a ``document embedding.''
 
-The original ELMo embedder model has three layers --- a character CNN (for improved robustness for unknown words) followed by two bidirectional LSTMs.  The output for each layer is a 1,024\-/dimension vector.  Given an input stream of $m$~tokens, the learner output is a tensor of size~${\#Layers \times LayerDim \times \#Words}$ --- in this case ${3 \times 1024 \times m}$.
+The original ELMo embedder model has three layers --- a character CNN (for improved robustness for unknown words) followed by two bidirectional LSTMs.  The output for each layer is a 1,024\-/dimension vector.  Given an input stream of $m$~tokens, the learner output is a tensor of size~${\langle \textnormal{\#Layers} \times d_{\textnormal{layer}} \times \textnormal{\#Tokens} \rangle}$ --- in this case~${\langle 3 \times 1024 \times m \rangle}$.
 
 We used the paradigm proposed by R\"{u}ckl\'{e}\etal~\cite{Ruckle:2018} whereby given a tensor like the above, a sentence representation is formed by taking the minimum, maximum, and average value along each layer output dimension. Therefore, our model turns each document into a 9,216-dimensional vector~(${3\times3\times1024}$).
 
 Each aforementioned static aforementioned document representation is input into a feedforward network with two hidden layers of dimension~300 and ReLU~activation.  This feedforward block is the only portion of the network trained making each epoch very fast~(<500ms).\footnote{This ELMo\-/based model is based on the work of Hsieh\etal~\cite{Hsieh:2018}.}
+
+\subsection{Implementation}
+
+Both architectures are implemented in PyTorch with the source code available on~\href{\sourceCode}{Github}.  The classic LSTM model is the default. To instead use the ELMo~preprocessed vectors, enable flag~\texttt{\-/\-/preprocessed}.
