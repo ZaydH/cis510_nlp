@@ -4,13 +4,13 @@ Risk estimators are generally classifier agnostic.  They can be coupled with wha
 
 This section proposes two neural architectures for 20~newsgroups classification.  The LSTM~model in Section~\ref{sec:Architectures:LSTM} only takes limited advantage of transfer learning but is overall more flexible.  Section~\ref{sec:Architectures:ELMo}'s ELMo~model relies almost entirely on transfer learning and is more rigid. A comparison of each architecture's empirical results is provided in Section~\ref{sec:ExperimentalResults}.
 
-\subsection{End-to-End LSTM Network}\label{sec:Architectures:LSTM}
+\subsection{End-to-end LSTM network}\label{sec:Architectures:LSTM}
 
 This neural network is the ``traditional'' deep NLP classifier. Document words are encoded using GloVe and fed into a bidirectional LSTM with one or more layers.  The LSTM output for the last document token is fed into a feedforward network with one or more hidden layers and ReLU activation.
 
 In this model, the only transferred knowledge is the embedding matrix. All weights in the LSTM and feedforward block must be learned from scratch which is challenging but provides significantly learner flexibility.  We experimented with freezing and unfreezing the embedding weights.
 
-\subsection{ELMo Preprocessed Vectors}\label{sec:Architectures:ELMo}
+\subsection{ELMo preprocessed vectors}\label{sec:Architectures:ELMo}
 
 The traditional word embedding model treats each token (word) as context independent and yield token-specific representations. Proposed in~2018 by Peters\etal~\cite{Peters:2018}, ELMo (\underline{e}mbeddings for \underline{l}anguage \underline{mo}dels) extends the word embedding model such that each token representation is \textit{context dependent} --- a function of the current token as well as the entire preceding input.  ELMo training is unsupervised allowing it to be pretrained on a large scale.  ELMo representations easily integrate into many existing NLP~architectures, and often can be swapped for GloVe or other word embeddings.
 

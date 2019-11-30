@@ -1,13 +1,16 @@
 \section{Experimental results}\label{sec:ExperimentalResults}
 
 \begin{table}[t]
-  \centering
-  \caption{}\label{tab:ExperimentalResults:Lstm}
-  \input{tables/lstm_results.tex}
-\end{table}
+  \caption{Negative covariate shift accuracy results for the two classifier architectures.  Bias vector configurations are shown.  Unbiased PN~learning has no covariate shift and is the performance ceiling given the architecture and training set size.  For each experimental setup, the learner with the best performance is bolded.}\label{tab:ExperimentalResults}
+  \begin{subtable}[t]{\textwidth}
+    \centering
+    \caption{End-to-end LSTM network}\label{tab:ExperimentalResults:Lstm}
+    \input{tables/lstm_results.tex}
+  \end{subtable}
 
-\begin{table}[t]
-  \centering
-  \caption{}\label{tab:ExperimentalResults:Elmo}
-  \input{tables/elmo_results.tex}
+  \begin{subtable}[t]{\textwidth}
+    \centering
+    \caption{ELMo preprocessed vectors}\label{tab:ExperimentalResults:Elmo}
+    \input{tables/elmo_results.tex}
+  \end{subtable}
 \end{table}
