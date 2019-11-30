@@ -85,7 +85,9 @@ BATCH_SIZE=250
 
 PREPROCESS="--preprocess"
 
-for itr in {1..10}; do
+MAX_NUM_ITER=10
+for itr in {1..${MAX_NUM_ITER}}; do
+    printf "Starting iteration ${itr} of ${MAX_NUM_ITER}...\n"
     LR_ARR=( "1E-3" "5E-4" "5E-3" )
     for LR in "${LR_ARR[@]}"; do
         # Try with no bias as a baseline

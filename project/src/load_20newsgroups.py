@@ -305,7 +305,7 @@ def _select_negative_bunch(size_n: int, bunch: Bunch, neg_cls: Set[int],
         cls_idx = _get_idx_of_classes(bunch, cls_lst.value)
         assert len(cls_idx) >= num_ele, "Insufficient elements in list"
         keep_idx = _select_indexes_uar(len(cls_idx), num_ele)
-        sel_idx.append(np.array(list(itertools.compress(cls_idx, keep_idx))))
+        sel_idx.append(np.array(list(itertools.compress(cls_idx, keep_idx)), dtype=np.int))
 
     sel_idx = np.concatenate(sel_idx, axis=0)
     return _select_items_from_bunch(bunch, neg_cls, sel_idx, remove_from_bunch)
