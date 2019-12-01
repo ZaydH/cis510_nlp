@@ -1,16 +1,48 @@
 \section{Experimental results}\label{sec:ExperimentalResults}
 
+We compare the performance of the PN, nnPU, and~PUbN risk estimators on both proposed neural architectures.  The experiments are modeled after the setup in~\cite{Hsieh:2018}.
+
+For each labeled set (e.g.,~$\ptrain$, $\bntrain$,~$\ntrain$), 500~training examples were sampled from the corresponding conditional distribution.  The unlabeled consisted of 6,000~training examples.
+
+All learners were trained for 50 epochs, and a disjoint validation set, one-fifth the training set's size, was used to select the epoch. The logistic loss was used for risk estimation on the training set while the sigmoid loss was used for the validation set.  This latter choice ensures that no single training examples has outsized weight when selecting the best model.
+
+The hyperparameters tuned in this work were learning rate ${\alpha \in \set{5 \cdot 10^{-3}, 10^{-3}, 5 \cdot 10^{-4}}}$, ${\tau \in \set{0.5, 0.7, 0.9}}$, and ${\gamma \in \set{0.1, 0.3, 0.5, 0.7, 0.9, 1}}$.  Each architecture and risk estimator pairing's optimal hyperparameter setting was selected using a grid search to find the minimum average validation loss.
+
+\subsection{Baselines}
+
+The PN~learners are the performance baselines.  For unbiased~PN, ${\ptrain \sim \pcond}$ and ${\ntrain \sim \ncond}$.  It represents the corresponding architecture's classification performance ceiling given~$\abs{\ptrain}$ and~$\abs{\ntrain}$. Biased~PN follows an identical training procedure to its unbiased counterpart with the expectation that ${\bntrain \sim \bncond}$~is used instead of $\ntrain$.  It is by far the simplest approach so ideally the more advanced risk estimators should outperform it.
+
+\subsection{Selection bias profiles}
+
+Our experiments explore two types of selection bias.  First, some negative 20~newsgroup categories may not appear at all in the biased negative set.  In the second, we biased the prior probabilities of all negative categories.  The extent to which each category is biased can be determined by comparing tables~\ref{tab:20newsgroups} and~\ref{tab:ExperimentalResults}.
+
+nnPU is unaffected by the biased negative set since it considers only~$\ptrain$ and~$\utrain$.  Unbiased~PN also does not consider~$\bntrain$ by definition.  Therefore, only a single result per architecture is reported for those two risk estimators.
+
+\subsection{Architecture performance comparison}
+
+Tables~\ref{tab:ExperimentalResults:LSTM} and~\ref{tab:ExperimentalResults:ELMo} contain the test set (inductive) accuracy results for the~LSTM and preprocessed~ELMo architectures respectively.  Across all risk estimators and selection biases, the ELMo~preprocessed architecture performed substantially better (\red{XXXXX Add statistic}).
+
+ELMo's performance advantage most likely derives from its superior ability to harness transfer learning.  This indicates that when dealing with limited or biased labeled data, transfer learning importance's can dominate even sophisticated approaches to address those limitations/biases.
+
+Due to ELMo's vastly superior performance, we will focus on it exclusively in all subsequent sections.
+
+\subsection{Risk estimator comparison}
+
+Table~\ref{tab:ExperimentalResults:ELMo}'s results indicate that when the biased negative set was drawn from only a single negative category, PUbN had the best performance.  In contrast, when biased negative examples were drawn from all negative 20~newsgroup categories, biased~PN performed better.
+
+To summarize these results formally, if most of the negative class-conditional distribution's support is adequately covered by the biased negative set, biased~PN should be used since it is the simplest, fastest, and performs best.  When the biased negative subset is drawn from only a limited subset of the negative class-conditional distribution's support, PUbN may be a better choice.
+
 \begin{table}[t]
-  \caption{Negative covariate shift accuracy results for the two classifier architectures.  Bias vector configurations are shown.  Unbiased PN~learning has no covariate shift and is the performance ceiling given the architecture and training set size.  For each experimental setup, the learner with the best performance is bolded.}\label{tab:ExperimentalResults}
+  \caption{Negative covariate shift test set accuracy results for the two classifier architectures and three bias configurations.  Each configuration's category prior probability is shown along with the aggregated labeling probability~$\plabel$. For each experimental setup, the learner with the best performance is bolded.}\label{tab:ExperimentalResults}
   \begin{subtable}[t]{\textwidth}
     \centering
-    \caption{End-to-end LSTM network}\label{tab:ExperimentalResults:Lstm}
+    \caption{End-to-end LSTM network}\label{tab:ExperimentalResults:LSTM}
     \input{tables/lstm_results.tex}
   \end{subtable}
 
   \begin{subtable}[t]{\textwidth}
     \centering
-    \caption{ELMo preprocessed vectors}\label{tab:ExperimentalResults:Elmo}
+    \caption{ELMo preprocessed vectors averaged across 10~independent trials}\label{tab:ExperimentalResults:ELMo}
     \input{tables/elmo_results.tex}
   \end{subtable}
 \end{table}

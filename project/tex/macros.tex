@@ -37,6 +37,7 @@
 \newcommand{\varrisk}[2]{\baserisk{\textnormal{#1}}{#2}}
 \newcommand{\prisk}[1]{\varrisk{#1}{{+}}}
 \newcommand{\nrisk}[1]{\varrisk{#1}{{-}}}
+\newcommand{\smrisk}{\baserisk{\latent = \ncls}{-}}
 
 \newcommand{\emprisk}{\hat{R}}
 \newcommand{\evrisk}[2]{\hat{R}_{\textnormal{#1}}^{#2}}
@@ -47,3 +48,9 @@
 \newcommand{\floss}[2]{\loss\mathopen{}\left(#1,#2\right)\mathclose{}}
 
 \newcommand{\ypred}{\hat{y}}
+
+\newcommand{\sigX}{\sigma(\X)}
+\newcommand{\hsig}{\hat{\sigma}}
+\newcommand{\hsigX}{\hat{\sigma}(\X)}
+\newcommand{\xvar}[1]{\X_{\textnormal{#1}}}
+\newcommand{\sigdiff}{\big(1 - \sigX\big)}

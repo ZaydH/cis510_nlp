@@ -40,11 +40,15 @@ Reformatting the above and combining the above with Eq.~\eqref{eq:Risk:Bayes} yi
   \risk = \prior \prisk{P} + \nrisk{U} - \prior \nrisk{P}
 \end{equation}
 
-\paragraph{Non\-/negativity} Given the definitions of~$\loss$ and~$\risk$, it is clear that $\nrisk{N}$~should never fall below zero.  uPU's surrogate,~${\nrisk{U} - \prior \nrisk{P}}$, often goes negative with highly expressive learner such as neural networks.  Kiryo\etal~\cite{Kiryo:2017} proposed the non\-/negative positive\-/unlabeled~(nnPU) risk estimator in Eq.~\eqref{eq:Risk:nnPU}; the only difference from with uPU is the negative risk surrogate is explicitly forced to a positive value via the~$\max$.  Although forcing the negative surrogate induces an estimation bias (i.e.,~its expected value does not equal the true expectation), nnPU often performs better in practice and satisfies ERM uniform convergence.
+\paragraph{Non\-/negativity} Given the definitions of~$\loss$ and~$\risk$, it is clear that $\nrisk{N}$~should never fall below zero.  uPU's surrogate,~${\nrisk{U} - \prior \nrisk{P}}$, often goes negative with highly expressive learner such as neural networks.  Kiryo\etal~\cite{Kiryo:2017} proposed the non\-/negative positive\-/unlabeled~(nnPU) risk estimator in Eq.~\eqref{eq:Risk:nnPU}; the primary difference versus uPU is the negative risk surrogate is explicitly forced to a positive value via the~$\max$.
 
 \begin{equation}\label{eq:Risk:nnPU}
   \risk = \prior \prisk{P} + \max\left\{0, \nrisk{U} - \prior \nrisk{P} \right\}
 \end{equation}
+
+Whenever the negative risk surrogate is less than~0, nnPU uses a special gradient ${-\gamma \nabla \prior \nrisk{P} - \nrisk{U}}$ where~${\gamma \in (0,1]}$ is a hyperparameter to attenuate the learning rate.  Observe that the negative risk surrogate is deliberately negated; this is done to ``defit'' the learner so that it no longer under estimates the negative class' expected risk.
+
+Although forcing the negative surrogate induces an estimation bias (i.e.,~its expected value does not equal the true expectation), nnPU often performs better in practice and satisfies ERM uniform convergence.
 
 \paragraph{Empirical Estimation} Each term in nnPU can be empirically estimated from the training set components where:
 
@@ -52,11 +56,15 @@ Reformatting the above and combining the above with Eq.~\eqref{eq:Risk:Bayes} yi
   \evrisk{P}{\ypred} = \frac{1}{\abs{\ptrain}} \sum_{\X \in \ptrain} \floss{\decX}{\ypred}
 \end{equation}
 
+\noindent
 and for unlabeled set ${\utrain \sim \marginal}$,
 
-\begin{equation}\label{eq:}
+\begin{equation}
   \evrisk{U}{-} = \frac{1}{\abs{\utrain}} \sum_{\X \in \utrain} \floss{\decX}{\ncls} \text{.}
 \end{equation}
+
+\noindent
+In all experiments, $\prior$~is a hyperparameter.
 
 \subsection{PUbN --- positive, unlabeled, biased-negative}
 
@@ -72,8 +80,44 @@ The marginal distribution can be partitioned as
 The expected risk therefore becomes
 
 \begin{equation}\label{eq:Risk:WithBN}
-  \risk = \prior \prisk{P} + \plabel \nrisk{bN} + (1 - \prior - \rho) \baserisk{s=1}{-}
+  \risk = \prior \prisk{P} + \plabel \nrisk{bN} + (1 - \prior - \rho) \smrisk
 \end{equation}
 
 \noindent
-where ${\plabel = \pDist(\y = \ncls, \latent = \pcls)}$.
+where ${\plabel = \pDist(\y = \ncls, \latent = \pcls)}$ is a hyperparameter.
+
+Define ${\sigma(\X) = \pDist(\latent = \pcls \vert \X)}$.  While the proof is well beyond the scope of this document, Hsieh\etal~\cite{Hsieh:2018} demonstrated that with guaranteed estimation error bounds $\smrisk$~decomposes as
+
+\begin{equation}\label{eq:ExpectedRisk:PUbN:Latent}
+  \begin{aligned}
+    \smrisk = &\mathbb{E}_{\X \in \marginal}\sbrack{\mathbbm{1}_{\sigX \leq \eta} \floss{\decX}{\ncls} \sigdiff} \\
+              &+ \prior \mathbb{E}_{\X \sim \pcond} \sbrack{\mathbbm{1}_{\sigX > \eta} \floss{\decX}{\ncls} \frac{\sigdiff}{\sigX}} \\
+              &+ \plabel \mathbb{E}_{\X \sim \pDist(\X \vert \latent = \pcls, \y = \ncls)} \sbrack{\mathbbm{1}_{\sigX > \eta} \floss{\decX}{\ncls} \frac{\sigdiff}{\sigX}}
+  \end{aligned}
+\end{equation}
+
+\noindent
+where $\mathbbm{1}$~is the indicator function and $\eta$~is a hyperparameter that controls the importance of unlabeled data versus $\textnormal{P}$ or~$\textnormal{bN}$ data.
+
+\paragraph{Empirical Estimation} $\prisk{P}$~and~$\nrisk{bN}$ can be estimated directly from~$\ptrain$ and~$\bntrain$.  Estimating~$\smrisk$ is more challenging and actually requires the training of two classifiers.
+
+$\sigX$~can be empirically estimated by training a probabilistic classifier of ${\ptrain \sqcup \bntrain}$ versus~$\utrain$ using nnPU; refer to this learned approximation as~$\hsigX$.  Probabilistic classifiers must be adequately calibrated to generate probabilities.  Hsieh\etal\ achieve this by training using the logistic loss during this stage of training.
+
+As mentioned previously, $\eta$~is a hyperparameter.  Rather than specifying it directly, Hsieh\etal instead specify a hyperparameter~$\tau$ and calculate~$\eta$ from
+
+\begin{equation}\label{eq:EtaCalculation}
+\abs{\setbuild{\X \in \utrain}{\hsigX \leq \eta}} = \tau (1 - \prior - \plabel)\abs{\utrain} \text{.}
+\end{equation}
+
+\noindent
+This approach provides a more intuitive insight into the balance between~$\utrain$ and $\ptrain$/$\bntrain$.
+
+The expected risk for examples where ${\latent = \ncls}$ is empirically estimated via
+
+\begin{equation}\label{eq:EmpRisk:PUbN:Latent}
+  \begin{aligned}
+    \smrisk = &\frac{1}{\abs{\utrain}} \sum_{\xvar{U} \in \utrain} \sbrack{\mathbbm{1}_{\hsig(\xvar{U}) \leq \eta} \floss{\dec(\xvar{U})}{\ncls} \big(1 - \hsig(\xvar{U})\big)} \\
+              &+\frac{\prior}{\abs{\ptrain}} \sum_{\xvar{P} \in \ptrain} \sbrack{\mathbbm{1}_{\hsig(\xvar{P}) > \eta} \floss{\dec(\xvar{P})}{\ncls} \frac{1 - \hsig(\xvar{P})}{\hsig(\xvar{P})}} \\
+              &+\frac{\plabel}{\abs{\bntrain}} \sum_{\xvar{bN} \in \bntrain} \sbrack{\mathbbm{1}_{\hsig(\xvar{bN}) > \eta} \floss{\dec(\xvar{bN})}{\ncls} \frac{1 - \hsig(\xvar{bN})}{\hsig(\xvar{bN})}} \text{.}
+  \end{aligned}
+\end{equation}
