@@ -6,7 +6,7 @@ Let~$\func{\dec}{\domainX}{\real}$ be a decision function from feature vector~$\
   \risk(\dec) = \mathbb{E}_{(\X,\y) \sim \joint}\sbrack{\floss{\decX}{\y}}\text{.}
 \end{equation}
 
-Since $\joint$~is unknown, $\risk$~is also unknown so in practice empirical estimate,~$\emprisk$ is used.  In the remainder of this section, we provide an overview of the PN, PU (specifically nnPU), and PUbN risk estimators as well as their empirical estimates.\footnote{All empirical risk estimates described here support both batch and stochastic gradient descent.}
+Since $\joint$~is unknown, $\risk$~is also unknown so in practice empirical estimate,~$\emprisk$ is used.  This section provides an overview of the PN, PU (specifically nnPU), and PUbN risk estimators as well as their empirical estimates.\footnote{All empirical risk estimates described here support both batch and stochastic gradient descent.}
 
 \subsection{PN --- positive-negative}
 
@@ -20,7 +20,7 @@ PN~classification has access to both positive and negative labeled examples.  Th
 
 \subsection{nnPU --- non-negative positive-unlabeled}
 
-Since positive\-/unlabeled~(PU) learning has no negative labeled examples, traditional supervised learning cannot be used. By Bayes' Rule in Eq.~\eqref{eq:Joint:Bayes}, the expected risk can be decomposed into the risk associated with each label (positive and negative) as shown in Eq.~\eqref{eq:Risk:Bayes}.  ${\varrisk{D}{\ypred}}$ denotes the expected loss for samples drawn from distribution~${\pDist_{D}}$ (where ${D \in \set{\textnormal{P}, \textnormal{N}, \X}}$) with predicted label~$\ypred$.
+Since positive\-/unlabeled~(PU) learning has no negative labeled examples, traditional supervised learning cannot be used. By Bayes' Rule in Eq.~\eqref{eq:Joint:Bayes}, the expected risk can be decomposed into the risk associated with each label (positive and negative) as shown in Eq.~\eqref{eq:Risk:Bayes}.  ${\varrisk{D}{\ypred}}$ denotes the expected loss when predicting label~$\ypred$ for samples drawn from distribution~${\pDist_{D}}$ where ${D \in \set{\textnormal{P}, \textnormal{N}, \X}}$.
 
 \begin{align}
   \risk &= \prior \mathbb{E}_{\X \sim \pcond}\sbrack{\floss{\decX}{\pcls}} + (1-\prior) \mathbb{E}_{\X \sim \ncond}\sbrack{\floss{\decX}{\ncls}} \nonumber \\
@@ -36,23 +36,23 @@ Since the unlabeled set is drawn from marginal distribution,~$\marginal$, it is 
 \end{align}
 
 \noindent
-Reformulating the above and combining it with Eq.~\eqref{eq:Risk:Bayes} yields the unbiased positive\-/unlabeled~(uPU) risk estimator below.~\cite{duPlessis:2014}
+Rearranging the above and combining it with Eq.~\eqref{eq:Risk:Bayes} yields the unbiased positive\-/unlabeled~(uPU) risk estimator below.~\cite{duPlessis:2014}
 
 \begin{equation}\label{eq:Risk:uPU}
   \risk = \prior \prisk{P} + \nrisk{U} - \prior \nrisk{P}
 \end{equation}
 
-\paragraph{Non\-/negativity} By the definitions of~$\loss$ and~$\risk$, it is clear that $\nrisk{N}$~must be non\-/negative.  However, highly expressive learners (e.g.,~neural networks) often cause ${\nrisk{U} - \prior \nrisk{P}}$ to slip negative --- primarily due to overfitting.  Kiryo\etal~\cite{Kiryo:2017} proposed the non\-/negative positive\-/unlabeled~(nnPU) risk estimator in Eq.~\eqref{eq:Risk:nnPU}; the primary difference versus uPU is the negative risk surrogate is explicitly forced to a positive value via the~$\max$.
+\paragraph{Non\-/negativity} By the definitions of~$\loss$ and~$\risk$, it is clear that $\nrisk{N}$~must be non\-/negative.  However, highly expressive learners (e.g.,~neural networks) often cause ${\nrisk{U} - \prior \nrisk{P}}$ to slip negative --- primarily due to overfitting.  Kiryo\etal~\cite{Kiryo:2017} proposed the non\-/negative positive\-/unlabeled~(nnPU) risk estimator in Eq.~\eqref{eq:Risk:nnPU}; the primary difference versus uPU is the negative risk surrogate is explicitly forced non\-/negative by the~$\max$.
 
 \begin{equation}\label{eq:Risk:nnPU}
   \risk = \prior \prisk{P} + \max\left\{0, \nrisk{U} - \prior \nrisk{P} \right\}
 \end{equation}
 
-Whenever the negative risk surrogate is less than~0, nnPU updates the model parameters using special gradient ${-\gamma \nabla \prior \nrisk{P} - \nrisk{U}}$ where hyperparameter~${\gamma \in (0,1]}$ is used to attenuate the ``defit'' learning rate.  Observe that the negative risk surrogate is deliberately negated; this is done to ``defit'' the learner so that it no longer under estimates the negative class' expected risk.
+Whenever the negative risk surrogate is less than~0, nnPU updates the model parameters using special gradient ${-\gamma \nabla_{\theta} \prior \nrisk{P} - \nrisk{U}}$ where hyperparameter~${\gamma \in (0,1]}$ is used to attenuate the learning rate.  Observe that the negative risk surrogate is deliberately negated; this is done to ``defit'' the learner so that it no longer under estimates the negative class' expected risk.
 
-Although forcing~$\nrisk{N}$'s surrogate to be non-negative inherently induces an estimation bias (i.e.,~its expected value does not equal the true expectation), nnPU often performs better in practice and guarantees ERM uniform convergence.
+Although forcing~$\nrisk{N}$'s surrogate to be non-negative introduces an estimation bias (i.e.,~expected value does not equal the true expectation), nnPU often performs better in practice and guarantees ERM uniform convergence.
 
-\paragraph{Empirical Estimation} Each term in nnPU can be empirically estimated from the training set where:
+\paragraph{Empirical Estimation} Each risk term in nnPU can be empirically estimated from the training set where:
 
 \begin{equation}\label{eq:EmpRisk:Pos}
   \evrisk{P}{\ypred} = \frac{1}{\abs{\ptrain}} \sum_{\X \in \ptrain} \floss{\decX}{\ypred}
@@ -66,11 +66,11 @@ and for unlabeled set ${\utrain \sim \marginal}$,
 \end{equation}
 
 \noindent
-In all experiments, prior~$\prior$ and attenuator~$\gamma$ are hyperparameters.
+Prior~$\prior$ and attenuator~$\gamma$ are hyperparameters.
 
 \subsection{PUbN --- positive, unlabeled, biased-negative}
 
-Let $\latent$~be a latent random variable representing whether the corresponding ${(\X,\y)}$~tuple is eligible for labeling.  This now makes the joint distribution,~${\trijoint = \pDist(\X, \y, \latent)}$, trivariate.  By definition, ${\pDist(\latent = \pcls \vert \X, \y = \pcls) = 1}$ (i.e.,~no positive selection bias) or equivalently ${\pDist(\y = \ncls \vert \X, \latent = \ncls) = 1}$.  The biased negative conditional distribution is therefore~${\bncond = \pDist(\X \vert \y = \ncls, \latent = \pcls)}$.
+Let $\latent$~be a latent random variable representing whether tuple~${(\X,\y)}$ is eligible for labeling.  Joint distribution then becomes,~${\trijoint = \pDist(\X, \y, \latent)}$, trivariate.  By definition, ${\pDist(\latent = \pcls \vert \X, \y = \pcls) = 1}$ (i.e.,~no positive selection bias) or equivalently ${\pDist(\y = \ncls \vert \X, \latent = \ncls) = 1}$.  The biased negative conditional distribution is therefore~${\bncond = \pDist(\X \vert \y = \ncls, \latent = \pcls)}$.
 
 The marginal distribution can be partitioned as
 
@@ -104,9 +104,9 @@ where $\mathbbm{1}$~is the indicator function and $\eta$~is a hyperparameter tha
 
 \paragraph{Empirical Estimation} Similar to nnPU, $\prisk{P}$~and~$\nrisk{bN}$ can be estimated directly from~$\ptrain$ and~$\bntrain$ respectively.  Estimating~$\smrisk$ is more challenging and actually requires the training of two classifiers.
 
-First, $\sigX$~is empirically estimated by training a positive\-/unlabeled probabilistic classifier of with labeled set ${\ptrain \sqcup \bntrain}$ and unlabeled set~$\utrain$; refer to this learned approximation as~$\hsigX$.  Probabilistic classifiers must be adequately calibrated to generate probabilities.  Hsieh\etal\ tried to achieve this by training with the logistic loss but that provides no calibration guarantees.~\cite{Guo:2017}
+First, $\sigX$~is empirically estimated by training a positive\-/unlabeled probabilistic classifier with labeled set ${\ptrain \sqcup \bntrain}$ and unlabeled set~$\utrain$; refer to this learned approximation as~$\hsigX$.  Probabilistic classifiers must be adequately calibrated to generate probabilities.  Hsieh\etal\ tried to achieve this by training with the logistic loss but that provides no calibration guarantees.~\cite{Guo:2017}
 
-Rather than specifying hyperparameter~$\eta$ directly, Hsieh\etal\ instead specified a hyperparameter~$\tau$ to calculate~$\eta$ as
+Rather than specifying hyperparameter~$\eta$ directly, Hsieh\etal\ instead specified hyperparameter~$\tau$ to calculate~$\eta$ via
 
 \begin{equation}\label{eq:EtaCalculation}
   \abs{\setbuild{\X \in \utrain}{\hsigX \leq \eta}} = \tau (1 - \prior - \plabel)\abs{\utrain} \text{.}
@@ -115,7 +115,7 @@ Rather than specifying hyperparameter~$\eta$ directly, Hsieh\etal\ instead speci
 \noindent
 This approach provides a more intuitive view into the balance between~$\utrain$ and $\ptrain$/$\bntrain$.
 
-The second classifier minimizes Eq.~\eqref{eq:Risk:WithBN} and empirically estates the risk when ${\latent = \ncls}$ as
+PUbN's second classifier minimizes Eq.~\eqref{eq:Risk:WithBN} and empirically estimates the risk when ${\latent = \ncls}$ as
 
 \begin{equation}\label{eq:EmpRisk:PUbN:Latent}
   \begin{aligned}
