@@ -17,7 +17,7 @@ Supervised binary classification's training set,~$\train$, consists of samples g
 
 Ideal supervised learning often does not apply in practice.  Labeling the training set may be expensive or difficult resulting in few labeled examples but numerous unlabeled ones.  Additionally, the labeled set may not be representative of~$\joint$.  For example, the label examples only characterize a small subset of $\joint$'s support, including there being no labeled data at all for one class.
 
-One of the most common types of training set bias is \textit{covariate shift}. Define $\joint$~\eqref{eq:TrainDist} and ${\joint'}$~\eqref{eq:TestDist} as the training and test joint distributions respectively.  Posterior distribution,~${\posterior}$ is identical in both cases; rather, the joint distirbutions only differ in their respective marginals, i.e.,~${\marginal=\pDist(\X)}$ and~$\marginal'$.~\cite{Huang:2006}  This paper assumes covariate shift for only one class, i.e.,~the negative one.
+One of the most common types of training set bias is \textit{covariate shift}. Define $\joint$~\eqref{eq:TrainDist} and ${\joint'}$~\eqref{eq:TestDist} as the training and test joint distributions respectively.  Posterior distribution,~${\posterior}$ is identical in both cases; rather, the joint distirbutions only differ in their respective marginals, i.e.,~${\marginal \equiv \pDist(\X)}$ and~$\marginal'$.~\cite{Huang:2006}  This paper assumes covariate shift for only one class, i.e.,~the negative one.
 
 \begin{equation}\label{eq:TestDist}
   \joint'(\X,\y) = \underbrace{\pDist'(\X)}_{\marginal'} \posterior

@@ -36,7 +36,7 @@ Table~\ref{tab:ExperimentalResults:ELMo}'s first two rows show that when the bia
 
 To summarize formally, the most important factor in determining the best risk estimator is the extent to which the negative class-conditional distribution's support is covered.  Selecting all labeled examples from a single categories entails that a PN~learner has no guidance on how to classify examples from the remaining two negative categories.  That is why biased~PN performed so poorly in the first two experiments.
 
-In contrast when $\btrain$~has labeled examples from all categories, it is able to learn how to predict all variants and can outperform even classifiers that are provided information about the bias like~PUbN.
+In contrast when $\bntrain$~has labeled examples from all categories, it is able to learn how to predict all variants and can outperform even classifiers that are provided information about the bias like~PUbN.
 
 \begin{table}[t]
   \caption{20~newsgroups negative covariate shift test set accuracy results for the two classifier architectures and three bias configurations. Listed below each category name is its biased prior probability in that experiment. The corresponding labeling probability~$\plabel$ is also provided. The best performing learners are bolded.}\label{tab:ExperimentalResults}

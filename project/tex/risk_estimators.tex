@@ -70,7 +70,7 @@ In all experiments, prior~$\prior$ and attenuator~$\gamma$ are hyperparameters.
 
 \subsection{PUbN --- positive, unlabeled, biased-negative}
 
-Let $\latent$~be a latent random variable representing whether the corresponding ${(\X,\y)}$~tuple is eligible for labeling.  This now makes the joint distribution~${\trijoint = \pDist(\X, \y, \latent)}$ trivariate.  By definition, ${\pDist(\latent = \pcls \vert \X, \y = \pcls) = 1}$ (i.e.,~no positive selection bias) or equivalently ${\pDist(\y = \ncls \vert \X, \latent = \ncls) = 1}$.  The biased negative conditional distribution is therefore~${\bncond = \pDist(\X \vert \y = \ncls, \latent = \pcls)}$.
+Let $\latent$~be a latent random variable representing whether the corresponding ${(\X,\y)}$~tuple is eligible for labeling.  This now makes the joint distribution,~${\trijoint = \pDist(\X, \y, \latent)}$, trivariate.  By definition, ${\pDist(\latent = \pcls \vert \X, \y = \pcls) = 1}$ (i.e.,~no positive selection bias) or equivalently ${\pDist(\y = \ncls \vert \X, \latent = \ncls) = 1}$.  The biased negative conditional distribution is therefore~${\bncond = \pDist(\X \vert \y = \ncls, \latent = \pcls)}$.
 
 The marginal distribution can be partitioned as
 
