@@ -70,51 +70,52 @@ In all experiments, prior~$\prior$ and attenuator~$\gamma$ are hyperparameters.
 
 \subsection{PUbN --- positive, unlabeled, biased-negative}
 
-Let $\latent$~be a latent random variable representing whether the corresponding ${(\X,\y)}$~tuple is eligible for labeling.  This settings' full joint distribution~${\trijoint = \pDist(\X, \y, \latent)}$ becomes trivariate.  By definition, ${\pDist(\latent = \pcls \vert \X, \y = \pcls) = 1}$ (i.e.,~no positive bias) or equivalently ${\pDist(\y = \ncls \vert \X, \latent = \ncls) = 1}$.  The biased negative conditional distribution is therefore~${\bncond = \pDist(\X \vert \y = \ncls, \latent = \pcls)}$.
+Let $\latent$~be a latent random variable representing whether the corresponding ${(\X,\y)}$~tuple is eligible for labeling.  This now makes the joint distribution~${\trijoint = \pDist(\X, \y, \latent)}$ trivariate.  By definition, ${\pDist(\latent = \pcls \vert \X, \y = \pcls) = 1}$ (i.e.,~no positive selection bias) or equivalently ${\pDist(\y = \ncls \vert \X, \latent = \ncls) = 1}$.  The biased negative conditional distribution is therefore~${\bncond = \pDist(\X \vert \y = \ncls, \latent = \pcls)}$.
 
 The marginal distribution can be partitioned as
 
 \begin{equation*}
-  \marginal = \pDist(\X, \y = \pcls) + \pDist(\X, \y = \ncls, \latent = \pcls) + \pDist(\X, \y = \ncls, \latent = \ncls) \text{.}
+  \begin{aligned}
+    \marginal = &\pDist(\y = \pcls) \pDist(\X \vert \y = \pcls) \\
+                &+ \underbrace{\pDist(\y = \ncls, \latent = \pcls)}_{\plabel}\pDist(\X \vert \y = \ncls, \latent = \pcls)
+                + \underbrace{\pDist(\y = \ncls, \latent = \ncls)}_{1 - \prior - \plabel} \pDist(\X \vert \y = \ncls, \latent = \ncls)
+  \end{aligned}
 \end{equation*}
 
 \noindent
-The expected risk therefore becomes
+where ${\plabel = \pDist(\y = \ncls, \latent = \pcls)}$ is a hyperparameter. The expected risk therefore becomes
 
 \begin{equation}\label{eq:Risk:WithBN}
   \risk = \prior \prisk{P} + \plabel \nrisk{bN} + (1 - \prior - \rho) \smrisk
 \end{equation}
 
-\noindent
-where ${\plabel = \pDist(\y = \ncls, \latent = \pcls)}$ is a hyperparameter.
-
-Define ${\sigma(\X) = \pDist(\latent = \pcls \vert \X)}$.  While the proof is well beyond the scope of this document, Hsieh\etal~\cite{Hsieh:2018} demonstrated that with guaranteed estimation error bounds $\smrisk$~decomposes as
+Define ${\sigma(\X) = \pDist(\latent = \pcls \vert \X)}$.  While the proof is well beyond the scope of this document, Hsieh\etal~\cite{Hsieh:2018} proved that with guaranteed estimation error bounds $\smrisk$~decomposes as
 
 \begin{equation}\label{eq:ExpectedRisk:PUbN:Latent}
   \begin{aligned}
-    \smrisk = &\mathbb{E}_{\X \in \marginal}\sbrack{\mathbbm{1}_{\sigX \leq \eta} \floss{\decX}{\ncls} \sigdiff} \\
+    \smrisk = &\mathbb{E}_{\X \sim \marginal}\sbrack{\mathbbm{1}_{\sigX \leq \eta} \floss{\decX}{\ncls} \sigdiff} \\
               &+ \prior \mathbb{E}_{\X \sim \pcond} \sbrack{\mathbbm{1}_{\sigX > \eta} \floss{\decX}{\ncls} \frac{\sigdiff}{\sigX}} \\
-              &+ \plabel \mathbb{E}_{\X \sim \pDist(\X \vert \latent = \pcls, \y = \ncls)} \sbrack{\mathbbm{1}_{\sigX > \eta} \floss{\decX}{\ncls} \frac{\sigdiff}{\sigX}}
+              &+ \plabel \mathbb{E}_{\X \sim \bncond} \sbrack{\mathbbm{1}_{\sigX > \eta} \floss{\decX}{\ncls} \frac{\sigdiff}{\sigX}}
   \end{aligned}
 \end{equation}
 
 \noindent
-where $\mathbbm{1}$~is the indicator function and $\eta$~is a hyperparameter that controls the importance of unlabeled data versus $\textnormal{P}$ or~$\textnormal{bN}$ data.
+where $\mathbbm{1}$~is the indicator function and $\eta$~is a hyperparameter that controls the importance of unlabeled data versus $\textnormal{P}$/$\textnormal{bN}$ data.
 
-\paragraph{Empirical Estimation} $\prisk{P}$~and~$\nrisk{bN}$ can be estimated directly from~$\ptrain$ and~$\bntrain$.  Estimating~$\smrisk$ is more challenging and actually requires the training of two classifiers.
+\paragraph{Empirical Estimation} Similar to nnPU, $\prisk{P}$~and~$\nrisk{bN}$ can be estimated directly from~$\ptrain$ and~$\bntrain$ respectively.  Estimating~$\smrisk$ is more challenging and actually requires the training of two classifiers.
 
-$\sigX$~can be empirically estimated by training a probabilistic classifier of ${\ptrain \sqcup \bntrain}$ versus~$\utrain$ using nnPU; refer to this learned approximation as~$\hsigX$.  Probabilistic classifiers must be adequately calibrated to generate probabilities.  Hsieh\etal\ achieve this by training using the logistic loss during this stage of training.
+First, $\sigX$~is empirically estimated by training a positive\-/unlabeled probabilistic classifier of with labeled set ${\ptrain \sqcup \bntrain}$ and unlabeled set~$\utrain$; refer to this learned approximation as~$\hsigX$.  Probabilistic classifiers must be adequately calibrated to generate probabilities.  Hsieh\etal\ tried to achieve this by training with the logistic loss but that provides no calibration guarantees.~\cite{Guo:2017}
 
-As mentioned previously, $\eta$~is a hyperparameter.  Rather than specifying it directly, Hsieh\etal instead specify a hyperparameter~$\tau$ and calculate~$\eta$ from
+Rather than specifying hyperparameter~$\eta$ directly, Hsieh\etal\ instead specified a hyperparameter~$\tau$ to calculate~$\eta$ as
 
 \begin{equation}\label{eq:EtaCalculation}
-\abs{\setbuild{\X \in \utrain}{\hsigX \leq \eta}} = \tau (1 - \prior - \plabel)\abs{\utrain} \text{.}
+  \abs{\setbuild{\X \in \utrain}{\hsigX \leq \eta}} = \tau (1 - \prior - \plabel)\abs{\utrain} \text{.}
 \end{equation}
 
 \noindent
-This approach provides a more intuitive insight into the balance between~$\utrain$ and $\ptrain$/$\bntrain$.
+This approach provides a more intuitive view into the balance between~$\utrain$ and $\ptrain$/$\bntrain$.
 
-The expected risk for examples where ${\latent = \ncls}$ is empirically estimated via
+The second classifier minimizes Eq.~\eqref{eq:Risk:WithBN} and empirically estates the risk when ${\latent = \ncls}$ as
 
 \begin{equation}\label{eq:EmpRisk:PUbN:Latent}
   \begin{aligned}

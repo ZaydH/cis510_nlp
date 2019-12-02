@@ -1,14 +1,14 @@
 \section{20~newsgroups}\label{sec:20newsgroups}
 
-First published by Lang in 1995, the ``20~newsgroups'' dataset is a collection of internet discussion board posts.  The original dataset consisted 20,000~documents~\cite{20newsgroups} but was pruned to 18,828 documents in 2007 after duplicates and cross\-/posts were removed~\cite{Rennie:2007}.   The latest version of the dataset has a predefined split of 11,314~train and 7,532~test documents.
+First published by Lang in 1995, the ``20~newsgroups'' dataset is a collection of internet discussion board posts.  The original dataset consisted of 20,000~documents~\cite{20newsgroups} but was pruned to 18,828 documents in 2007 after duplicates and cross\-/posts were removed~\cite{Rennie:2007}.   The dataset's latest version has a predefined split of 11,314~train and 7,532~test documents.
 
-Each document is assigned one of twenty possible labels depending on the original bulletin board where the document was posted.  Basic partition on each document category is provided in Table~\ref{tab:20newsgroups}.
+Each document is assigned one of twenty possible labels depending on the original bulletin board where the document was posted.  Basic label frequency statistics are provided in Table~\ref{tab:20newsgroups}. The twenty document classes partition into seven super-classes -- referred to here as \textit{categories}.
 
-The set of twenty document classes partition into seven super-classes.  In our experiments, the positive class is composed of the first four super-classes (alt., comp., misc., \&~rec.) while the remainder (sci., soc., \&~talk.) make up the negative class.  The positive class prior probability~($\prior$) is approximately~0.56.
+In our experiments, the positive class is composed of the first four categories (alt., comp., misc., \&~rec.) while the remaining categories (sci., soc., \&~talk.) made up the negative class.  The positive class prior probability~($\prior$) is approximately~0.56.
 
 \begin{table}[t]
   \centering
-  \caption{20~newsgroup class \& category partition.  Each class' test set prior probability is listed.  For those categories composed of more than one class, the category's total prior probability is listed in the table margin.}\label{tab:20newsgroups}
+  \caption{20~newsgroup class \& category partition.  Each label's test set prior probability is listed.  For categories that contain more than one original label, the category's total prior probability is listed in the table margin.}\label{tab:20newsgroups}
   \input{tables/20newsgroups}
 \end{table}
 
