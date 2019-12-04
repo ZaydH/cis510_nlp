@@ -24,7 +24,7 @@ nnPU is unaffected by the biased negative set since it considers only~$\ptrain$ 
 
 \subsection{Architecture comparison}
 
-Tables~\ref{tab:ExperimentalResults:LSTM} and~\ref{tab:ExperimentalResults:ELMo} enumerate the test set (inductive) accuracy results for the~LSTM and preprocessed\-/ELMo architectures respectively.  Across all risk estimators and selection biases, the ELMo~preprocessed architecture performed substantially better than the LSTM model (\red{XXXXX Add statistic}).
+Tables~\ref{tab:ExperimentalResults:LSTM} and~\ref{tab:ExperimentalResults:ELMo} enumerate the test set (inductive) accuracy results for the~LSTM and preprocessed\-/ELMo architectures respectively.  Across all risk estimators and selection biases, the ELMo~preprocessed architecture performed better -- often substantially -- than the LSTM model as shown in Table~\ref{tab:ExperimentalResults:Comparison}.
 
 ELMo's performance advantage most likely derives from its more extensive leveraging of transfer learning.  This indicates that when dealing with limited or biased labeled data, transfer learning's importance may compound.
 
@@ -36,13 +36,13 @@ Table~\ref{tab:ExperimentalResults:ELMo}'s first two rows show that when the bia
 
 To summarize formally, the most important factor in determining the best risk estimator is the extent to which the negative class-conditional distribution's support is covered.  Selecting all labeled examples from a single categories entails that a PN~learner has no guidance on how to classify examples from the remaining two negative categories.  That is why biased~PN performed so poorly in these tests.
 
-In contrast when $\bntrain$~has labeled examples from all categories, PN~is able to learn how to predict all categories and can outperform even classifiers that are provided information about the selection bias like~PUbN.
+In contrast when $\bntrain$~has labeled examples from all categories, biased~PN is still able to learn how to predict all categories and can outperform even classifiers that are provided information about the selection bias like~PUbN.
 
 \begin{table}[t]
   \caption{20~newsgroups negative covariate shift test set accuracy results for the two classifier architectures and three bias configurations. Listed below each category name is its biased prior probability in that experiment. The corresponding labeling probability~$\plabel$ is also provided. The best performing learners are bolded.}\label{tab:ExperimentalResults}
   \begin{subtable}[t]{\textwidth}
     \centering
-    \caption{End-to-end LSTM architecture results}\label{tab:ExperimentalResults:LSTM}
+    \caption{End-to-end LSTM architecture results. Due to the longer LSTM training time and limited computational resoruces, the grid search used only a single trial per hyperparameter setting.}\label{tab:ExperimentalResults:LSTM}
     \input{tables/lstm_results.tex}
   \end{subtable}
 
@@ -50,5 +50,11 @@ In contrast when $\bntrain$~has labeled examples from all categories, PN~is able
     \centering
     \caption{Preprocessed\-/ELMo architecture results averaged across 10~independent trials}\label{tab:ExperimentalResults:ELMo}
     \input{tables/elmo_results.tex}
+  \end{subtable}
+
+  \begin{subtable}[t]{\textwidth}
+    \centering
+    \caption{Performance difference between the preprocessed-ELMo \& LSTM results}\label{tab:ExperimentalResults:Comparison}
+    \input{tables/results_compare.tex}
   \end{subtable}
 \end{table}
