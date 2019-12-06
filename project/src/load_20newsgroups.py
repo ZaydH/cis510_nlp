@@ -142,6 +142,7 @@ def _download_20newsgroups(subset: str, pos_cls: Set[int], neg_cls: Set[int]):
     assert subset in VALID_DATA_SUBSETS, "Invalid data subset"
 
     newsgroups_dir.mkdir(parents=True, exist_ok=True)
+    # noinspection PyUnresolvedReferences
     bunch = sklearn.datasets.fetch_20newsgroups(data_home=newsgroups_dir, shuffle=False,
                                                 remove=DATASET_REMOVE, subset=subset)
     all_cls = pos_cls | neg_cls
@@ -461,9 +462,9 @@ def _load_newsgroups_iterator(args: Namespace) -> NewsgroupsSerial:
 
 
 OPTION_FILE = "https://allennlp.s3.amazonaws.com/models/elmo/2x4096_512_2048cnn_2xhighway_5.5B" \
-              "/elmo_2x4096_512_2048cnn_2xhighway_5.5B_options.json "
+              "/elmo_2x4096_512_2048cnn_2xhighway_5.5B_options.json"
 WEIGHT_FILE = "https://allennlp.s3.amazonaws.com/models/elmo/2x4096_512_2048cnn_2xhighway_5.5B" \
-              "/elmo_2x4096_512_2048cnn_2xhighway_5.5B_weights.hdf5 "
+              "/elmo_2x4096_512_2048cnn_2xhighway_5.5B_weights.hdf5"
 
 PREPROCESSED_FIELD = "data"
 
@@ -524,6 +525,7 @@ def _generate_preprocessed_vectors(ds_name: str):
     :param ds_name: Either "test" or "train"
     """
     assert ds_name == "train" or ds_name == "test"
+    # noinspection PyUnresolvedReferences
     newsgroups = sklearn.datasets.fetch_20newsgroups(subset=ds_name, shuffle=True)
 
     n = len(newsgroups.data)
@@ -537,7 +539,7 @@ def _generate_preprocessed_vectors(ds_name: str):
                             cached_path(WEIGHT_FILE, allennlp_dir), n_device)
 
     # First learner use CUDA, second does not
-    elmos = [_make_elmo(i) for i in range(0, -2, -1)]
+    elmos = [_make_elmo(i) for i in range(0, -2, -1) if i < 0 or IS_CUDA]
     data = np.zeros([n, 9216])
 
     msg = f"Creating the preprocessed vectors for \"{ds_name}\" set"
@@ -548,10 +550,11 @@ def _generate_preprocessed_vectors(ds_name: str):
         item = [nltk.tokenize.word_tokenize(newsgroups.data[i])]
         sys.stdout.write(f"Processing {ds_name} document {i+1}/{n}\r")
         sys.stdout.flush()
-        try:
-            em = elmos[0].embed_batch(item)
-        except RuntimeError:
-            em = elmos[1].embed_batch(item)
+        with torch.no_grad():
+            try:
+                em = elmos[0].embed_batch(item)
+            except RuntimeError:
+                em = elmos[1].embed_batch(item)
         em = np.concatenate(
                 [np.mean(em[0], axis=1).flatten(),
                  np.min(em[0], axis=1).flatten(),
@@ -639,6 +642,7 @@ def _create_serialized_20newsgroups_preprocessed(args: Namespace) -> None:
         newsgroups_dir.mkdir(parents=True, exist_ok=True)
         # shuffle=True is used since ElmoEmbedder stores states between sentences so randomness
         # should reduce this effect
+        # noinspection PyUnresolvedReferences
         bunch = sklearn.datasets.fetch_20newsgroups(data_home=newsgroups_dir, shuffle=True,
                                                     remove=DATASET_REMOVE, subset=ds_name)
 

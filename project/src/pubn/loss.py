@@ -16,6 +16,8 @@ class PULoss:
         GAMMA = 1
         BETA = 0
 
+        TAU = 0.5
+
     def __init__(self, prior: float, pos_label: Union[Set[int], int],
                  train_loss: Callable, use_nnpu: bool = True,
                  valid_loss: Optional[Callable] = None):
