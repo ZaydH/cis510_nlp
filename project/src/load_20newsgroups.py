@@ -518,15 +518,13 @@ def _build_elmo_file_path(ds_name: str) -> Path:
     return newsgroups_dir / f"20newsgroups_elmo_mmm_{ds_name}.hdf5"
 
 
-def _generate_preprocessed_vectors(ds_name: str):
+def _generate_preprocessed_vectors(ds_name: str, newsgroups: Bunch) -> None:
     r"""
     Constructs the preprocessed vectors for either the test or train datasets.
     :param ds_name: Either "test" or "train"
+    :param newsgroups: Scikit-Learn object containing the 20 newsgroups dataset
     """
     assert ds_name == "train" or ds_name == "test"
-    # noinspection PyUnresolvedReferences
-    newsgroups = sklearn.datasets.fetch_20newsgroups(subset=ds_name, shuffle=True)
-
     n = len(newsgroups.data)
 
     allennlp_dir = DATA_DIR / "allennlp"
@@ -642,12 +640,12 @@ def _create_serialized_20newsgroups_preprocessed(args: Namespace) -> None:
         # shuffle=True is used since ElmoEmbedder stores states between sentences so randomness
         # should reduce this effect
         # noinspection PyUnresolvedReferences
-        bunch = sklearn.datasets.fetch_20newsgroups(data_home=newsgroups_dir, shuffle=True,
-                                                    remove=DATASET_REMOVE, subset=ds_name)
+        bunch = sklearn.datasets.fetch_20newsgroups(subset=ds_name, data_home=newsgroups_dir,
+                                                    shuffle=True, remove=DATASET_REMOVE)
 
         path = _build_elmo_file_path(ds_name)
         if not path.exists():
-            _generate_preprocessed_vectors(ds_name)
+            _generate_preprocessed_vectors(ds_name, bunch)
 
         vecs = h5py.File(str(path), 'r')
         x = preprocessing.scale(vecs[PREPROCESSED_FIELD][:])
