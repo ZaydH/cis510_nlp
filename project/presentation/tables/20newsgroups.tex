@@ -1,0 +1,27 @@
+% Table formatting based on: https://inf.ethz.ch/personal/markusp/teaching/guides/guide-tables.pdf
+\begin{tabular}{lllll@{}}
+  % \toprule[1-4]
+  \cmidrule[0.065em](lr){1-4}
+  Class                      & Category & Original Label & Prior~(\%) & \\\cmidrule(lr){1-4}
+  \multirow{11}{*}{Positive} & alt.     & atheism        & 6.5 & \\\cdashlinelr{2-4}
+  & \multirow{5}{*}{comp.} & graphics   & 5.2 & \rdelim\}{5}{3mm}[26\%]\\
+  & & os.ms-windows.misc  & 5.2 \\
+  & & sys.ibm.pc.hardware & 5.2 \\
+  & & sys.mac.hardware    & 5.1 \\
+  & & windows.x           & 5.2 \\\cdashlinelr{2-4}
+  & misc.  & forsale      & 5.4 \\\cdashlinelr{2-4}
+  &\multirow{4}{*}{rec.} & autos & 5.3 & \rdelim\}{4}{3mm}[21.1\%]\\
+  & & motorcycles    & 5.3 \\
+  & & sport.baseball & 5.3 \\
+  & & sport.hockey   & 5.3 \\\cmidrule(lr){1-4}
+  \multirow{9}{*}{Negative} & \multirow{4}{*}{sci.} & crypt & 5.3 & \rdelim\}{4}{3mm}[21\%]\\
+  & & electronics  & 5.2 \\
+  & & med          & 5.3 \\
+  & & space        & 5.2 \\\cdashlinelr{2-4}
+  & soc.  & religion.christian & 5.3 \\\cdashlinelr{2-4}
+  & \multirow{4}{*}{talk.} & politics.guns & 4.8 & \rdelim\}{4}{3mm}[17.3\%]\\
+  & & politics.mideast & 5.0 \\
+  & & politics.misc    & 4.1 \\
+  & & religion.misc    & 3.3 \\
+  \cmidrule[0.08em](lr){1-4}
+\end{tabular}

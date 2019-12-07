@@ -28,7 +28,7 @@
 
   \setbeamercolor{block title}{use=structure,fg=white,bg=title in head/foot.bg}
   \setbeamerfont{block title}{series=\bfseries}
-  \setbeamercolor{block body}{use=structure,fg=black,bg=black!1!white}
+  \setbeamercolor{block body}{use=structure,fg=black,bg=black!3!white}
 }
 
 % Support graying out frame elements
@@ -120,5 +120,42 @@
 
 \begin{frame}{Architecture Comparison}
 
+\end{frame}
+
+\begin{frame}{Experiments -- Architectural Comparison}
+  \begin{minipage}[t]{0.67\linewidth}
+    \centering
+    \vspace{-18pt}
+    \onslide<+->{
+      \begin{table}
+        \caption{\small ELMo preprocessed accuracy results}
+        \onslide<+->{
+          {\footnotesize \input{tables/elmo_results}}
+        }
+      \end{table}
+    }
+    \vspace{-20pt}
+    \onslide<+->{
+      \begin{table}
+        \caption{\small ${\left(\text{Accuracy}_{ELMo} - \text{Accuracy}_{RNN}\right)}$\onslide<+->{: ${{>}0}$ means ELMO better}}
+        \onslide<+->{
+          {\footnotesize \input{tables/results_compare}}
+        }
+      \end{table}
+    }
+    \vspace{-5pt}  % Need to fix false warning on frame size
+  \end{minipage}
+  \begin{minipage}{0.07\linewidth}
+    \hspace{\fill}
+  \end{minipage}
+  \begin{minipage}[t]{0.23\linewidth}
+    \vspace{40pt}
+    \onslide<+->{%
+      % \flushright
+      \begin{block}{Major Takeaway}
+        If training data limited/biased, transfer learning's benefits compound
+      \end{block}
+    }
+  \end{minipage}
 \end{frame}
 \end{document}
