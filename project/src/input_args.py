@@ -20,7 +20,8 @@ def parse_args() -> Namespace:
            "length as the negative class list.  Values are automatically normalized to sum to 1")
     args.add_argument("--bias", help=msg, nargs='*', type=float)
 
-    args.add_argument("--lstm", help="Use the preprocessed ELMO vectors", action="store_true")
+    args.add_argument("--preprocess", help="Use the preprocessed ELMO vectors", action="store_true")
+    # args.add_argument("--lstm", help="Train an LSTM network from scratch", action="store_true")
     args.add_argument("--rho", help="Pr[y=-1, s=+1]", type=float, default=None)
     args.add_argument("--ep", help="Number of training epochs", type=int,
                       default=NlpBiasedLearner.Config.NUM_EPOCH)
@@ -97,7 +98,7 @@ def _refactor_args(args: Namespace) -> None:
     args.pos, args.neg = set(args.pos), set(args.neg)
 
     # Switched to preprocess as default so swap LSTM flag
-    args.preprocess = not args.lstm
+    if hasattr(args, "lstm"): args.preprocess = not args.lstm
 
 
 def _transfer_args_to_config(args: Namespace):
