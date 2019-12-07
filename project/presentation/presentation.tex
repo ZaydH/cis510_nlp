@@ -1,0 +1,128 @@
+\documentclass[11pt,dvipsnames,usenames,aspectratio=169]{beamer}  % Add handout to options to disable overlays
+
+% For more themes, color themes and font themes, see:
+% http://deic.uab.es/~iblanes/beamer_gallery/index_by_theme.html
+%
+\mode<presentation>
+{%
+  \usetheme{CambridgeUS}    % or try default, Darmstadt, Warsaw, ...
+  \usecolortheme{whale}     % or try albatross, beaver, crane, ...
+  \usefonttheme{serif}          % or try default, structurebold, ...
+  % \usefonttheme[onlymath]{serif}
+  % \setbeamertemplate{navigation symbols}{}
+  % \setbeamercovered{transparent}
+
+  \setbeamercolor{title}{fg=white}
+  \setbeamerfont{title}{series=\bfseries}
+  \setbeamercolor{frametitle}{fg=black}
+  \setbeamerfont{frametitle}{series=\bfseries}
+
+  \setbeamercolor{section in head/foot}{fg=white}
+  \setbeamerfont{section in head/foot}{series=\bfseries}
+  \setbeamercolor{subsection in head/foot}{fg=white}
+  \setbeamerfont{subsection in head/foot}{series=\bfseries}
+  \setbeamercolor{author in head/foot}{fg=white}
+  \setbeamerfont{author in head/foot}{series=\bfseries}
+  \setbeamercolor{title in head/foot}{fg=white}
+  \setbeamerfont{title in head/foot}{series=\bfseries}
+
+  \setbeamercolor{block title}{use=structure,fg=white,bg=title in head/foot.bg}
+  \setbeamerfont{block title}{series=\bfseries}
+  \setbeamercolor{block body}{use=structure,fg=black,bg=black!1!white}
+}
+
+% Support graying out frame elements
+\newcommand{\FrameOpague}{\setbeamercovered{again covered={\opaqueness<1->{40}}}}
+% Transition slide
+\newcommand{\transitionFrame}[1]{%
+{%
+  \begin{frame}[plain,noframenumbering]{}{} % the plain option removes the sidebar and header from the title page
+    \setbeamertemplate{final page}[text]{\Large \textbf{#1}}
+    \usebeamertemplate{final page}
+  \end{frame}}
+}
+
+\input{macros}
+\input{global_macros}
+
+% \usepackage{hyperref}     % Loaded automatically by beamer
+\usepackage{pgfplots}       % Used to generate embedded plots
+\pgfplotsset{compat=1.13}
+
+\usepackage{color}
+\newcommand{\blue}[1]{{\color{Blue} #1}}
+\newcommand{\red}[1]{{\color{red} #1}}
+\newcommand{\green}[1]{{\color{ForestGreen} #1}}
+
+% Here's where the presentation starts, with the info for the title slide
+\title[Negative Covariate Shift]{Address Negative Covariate Shift \\ on 20~Newsgroups Classification}
+\author[Zayd Hammoudeh]{%
+  \href{mailto:zayd@cs.uoregon.edu}{\textbf{Zayd Hammoudeh}}\inst{1}  % \textsuperscript{(\Letter)}
+  % \and
+  % \href{mailto:lowd@cs.uoregon.edu}{Daniel Lowd}\inst{1}
+}
+
+\institute[Univ.\ Oregon]{%
+  \textsuperscript{1}\textbf{University of Oregon}\\
+  Eugene, OR, USA\\
+  \texttt{\href{mailto:zayd@cs.uoregon.edu}{zayd@cs.uoregon.edu}}
+  % \texttt{{zayd, lowd}@ucsc.edu}
+}
+\date{\today}
+
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{Problem Setting}
+  \begin{itemize}
+    \item Construct a supervised, binary text document classifier
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Classifier Architectures}
+  We considered two deep architectures:
+
+  \begin{itemize}
+    \setlength{\itemsep}{12pt}
+    \item \green{\textbf{``Classic'' RNN Classifier}}: Tokenize sentence, encode with embedding matrix, classify with RNN + feedforward
+
+    \item \green{\textbf{ELMo Preprocess}}: Encode entire document into a static representation with ELMo (a ``document embedding'').  Train a feedforward to classify the static vectors.
+  \end{itemize}
+
+  \onslide<+->{\green{\textbf{How Can We Summarize these Differences?}}: \blue{\textbf{Transfer learning}}}
+\end{frame}
+
+\begin{frame}{What is Transfer Learning?}
+  \onslide<+->{\blue{\textbf{Def.}}: Taking knowledge learned from solving one problem and applying it to a different (related) one}
+  \vfill
+  \onslide<+->{Let's look at how each architecture uses transfer learning...}
+  \begin{itemize}[<+->]
+    \setlength{\itemsep}{6pt}
+    \item \textbf{``Classic'' RNN}: \red{Limited}. \onslide<+->{Only (GloVe) embedding matrix}
+    \item \textbf{ELMo Preprocessing}: \green{Extensive}. \onslide<+->{Entire ELMo network parameters static.  Only train a couple feed forward layers.}
+  \end{itemize}
+  \vfill
+  \onslide<+->{\textbf{\green{Question}}: Is transfer learning a \textit{free lunch}?}
+
+  \vspace{6pt}
+  \onslide<+->{\textbf{Answer}: No -- there's never a free lunch.  \onslide<+->{Transfer learning is just an \textit{inductive bias} and like all biases limits some flexibility -- which may be good or bad.}}
+\end{frame}
+
+\begin{frame}{Experiments}
+  Study Two Types of Bias
+  \begin{itemize}
+    \setlength{\itemsep}{10pt}
+    \item Bias negative set covers only portion of ${\pDist(\X \vert \y = \pcls)}$'s support
+  \end{itemize}
+
+  \onslide<+->{We will hold off discussing the ``Classic'' RNN results until the end since it performs significantly worse}
+\end{frame}
+
+\begin{frame}{Architecture Comparison}
+
+\end{frame}
+\end{document}
