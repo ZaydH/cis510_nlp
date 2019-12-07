@@ -552,11 +552,11 @@ def _generate_preprocessed_vectors(ds_name: str, newsgroups: Bunch, path: Path) 
                 em = elmos[0].embed_batch(item)
             except RuntimeError:
                 em = elmos[1].embed_batch(item)
-        # noinspection PyArgumentList
-        em = torch.cat([em[0].mean(axis=1).flatten(),
-                        em[0].min(axis=1).flatten(),
-                        em[0].max(axis=1).flatten()])
-        data[i] = em.cpu().numpy()
+        em = np.concatenate(
+                [np.mean(em[0], axis=1).flatten(),
+                 np.min(em[0], axis=1).flatten(),
+                 np.max(em[0], axis=1).flatten()])
+        data[i] = em
         # Go back to beginning of the line. Weird formatting due to PyCharm issues
         print('\r', end="")
 
