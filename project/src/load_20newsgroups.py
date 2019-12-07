@@ -8,7 +8,6 @@ import logging
 import os
 from pathlib import Path
 import pickle as pk
-import sys
 from typing import List, Optional, Set, Tuple, Union
 
 import h5py
@@ -544,12 +543,11 @@ def _generate_preprocessed_vectors(ds_name: str):
 
     msg = f"Creating the preprocessed vectors for \"{ds_name}\" set"
     logging.info(f"Starting: {msg}")
-    if not IS_CUDA:  # Has to be out of for loop or stdout overwrite messes up
-        print('cuda fail')
+    # Has to be out of for loop or stdout overwrite messes up
+    if not IS_CUDA: logging.info('CUDA unavailable for ELMo encoding')
     for i in range(n):
         item = [nltk.tokenize.word_tokenize(newsgroups.data[i])]
-        sys.stdout.write(f"Processing {ds_name} document {i+1}/{n}\r")
-        sys.stdout.flush()
+        print(f"Processing {ds_name} document {i+1}/{n}", end="", flush=True)
         with torch.no_grad():
             try:
                 em = elmos[0].embed_batch(item)
@@ -560,7 +558,8 @@ def _generate_preprocessed_vectors(ds_name: str):
                  np.min(em[0], axis=1).flatten(),
                  np.max(em[0], axis=1).flatten()])
         data[i] = em
-    print("")
+        # Go back to beginning of the line. Weird formatting due to PyCharm issues
+        print('\r', end="")
 
     f = h5py.File(f'20newsgroups_elmo_mmm_{ds_name}.hdf5', 'w')
     f.create_dataset(PREPROCESSED_FIELD, data=data)
