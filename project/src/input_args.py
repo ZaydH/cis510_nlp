@@ -33,7 +33,7 @@ def parse_args() -> Namespace:
     args.add_argument("--lr", help="Learning rate", type=float,
                       default=NlpBiasedLearner.Config.LEARNING_RATE)
     args.add_argument("--tau", help="Hyperparameter used to determine eta", type=float,
-                      default=PULoss.Config.TAU)
+                      default=None)
     args.add_argument("--gamma", help="Hyperparameter for nnPU loss", type=float,
                       default=PULoss.Config.GAMMA)
 
@@ -68,6 +68,9 @@ def _error_check_args(args: Namespace):
     else:
         assert args.loss != LossType.PUBN.name.lower(), "bias required if PUbN used"
 
+    if args.loss == LossType.PUBN.name.lower() and args.tau is None:
+        # Specify a default tau only if PUbN
+        args.tau = PULoss.Config.TAU
     for name in ("rho", "tau"):
         val = args.__getattribute__(name)
         if val is not None:

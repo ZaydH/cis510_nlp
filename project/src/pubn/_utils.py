@@ -34,9 +34,9 @@ BASE_DIR = Path(".").absolute() if not _check_is_talapas() else Path("/home/zham
 DATA_DIR = BASE_DIR / ".data"
 
 IS_CUDA = torch.cuda.is_available()
-if IS_CUDA:
-    # noinspection PyUnresolvedReferences
-    torch.set_default_tensor_type(torch.cuda.FloatTensor)
+# if IS_CUDA:
+#     # noinspection PyUnresolvedReferences
+#     torch.set_default_tensor_type(torch.cuda.FloatTensor)
 TORCH_DEVICE = torch.device("cuda:0" if IS_CUDA else "cpu")
 
 NUM_WORKERS = 0 if IS_CUDA else 0  # For stability on a Mac/GPU
@@ -72,7 +72,7 @@ def build_loss_functions(pos_classes: Optional[Union[Set[int], int]] = None) \
 
     def _build_y_tensor(target: Tensor) -> Tensor:
         r""" Create a y vector from target since may change labels """
-        y = torch.full(target.shape, -1)
+        y = torch.full(target.shape, -1).cuda(TORCH_DEVICE)
         for pos_lbl in pos_classes:
             y[target == pos_lbl] = 1
         return y
