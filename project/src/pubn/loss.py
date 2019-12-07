@@ -6,6 +6,8 @@ import torch
 from torch import Tensor
 import torch.nn as nn
 
+from ._utils import TORCH_DEVICE
+
 
 class PULoss:
     """wrapper of loss function for PU learning"""
@@ -105,14 +107,14 @@ class PULoss:
         has_p, has_u = p_mask.any(), u_mask.any()
 
         y_unlabel = loss_func(-dec_scores)
-        neg_risk = y_unlabel[u_mask].mean() if has_u else torch.zeros(())
+        neg_risk = y_unlabel[u_mask].mean() if has_u else torch.zeros((), device=TORCH_DEVICE)
         if has_p:
             y_pos = loss_func(dec_scores[p_mask])
             pos_risk = self.prior * y_pos.mean()
 
             neg_risk -= self.prior * y_unlabel[p_mask].mean()
         else:
-            pos_risk = torch.zeros(())  # Needs to be have len(shape) == 0
+            pos_risk = torch.zeros((), device=TORCH_DEVICE)  # Needs to be have len(shape) == 0
 
         loss = gradient_var = pos_risk + neg_risk
         if self.is_nnpu and neg_risk < -self.beta:
@@ -125,7 +127,7 @@ class PULoss:
         Constructs a Boolean vector where an element is \p True if the corresponding example in
         \p labels is also \p True.
         """
-        p_mask = torch.zeros(labels.shape, dtype=torch.bool)
+        p_mask = torch.zeros(labels.shape, dtype=torch.bool, device=TORCH_DEVICE)
         for p_lbl in self.pos_label:
             p_mask |= labels == p_lbl
         return p_mask
@@ -204,8 +206,11 @@ class PUbN:
 
         has_p, has_bn = p_mask.any(), bn_mask.any()
         # Multiplicative factors included in final sum
-        l_pos = loss_func(dec_scores[p_mask]).mean() if has_p else torch.zeros(())
-        l_bn = loss_func(-dec_scores[bn_mask]).mean() if has_bn else torch.zeros(())
+        l_pos = loss_func(dec_scores[p_mask]).mean() if has_p else torch.zeros(()).to(TORCH_DEVICE)
+        if has_bn:
+            l_bn = loss_func(-dec_scores[bn_mask]).mean()
+        else:
+            l_bn = torch.zeros((), device=TORCH_DEVICE)
 
         l_u_n = self._u_n_loss(loss_func, u_mask, sigma_x, dec_scores, is_u=True) \
                 + self.prior * self._u_n_loss(loss_func, p_mask, sigma_x, dec_scores, is_u=False) \
@@ -230,7 +235,7 @@ class PUbN:
         mask = orig_mask & sigma_mask
 
         # No elements of a given type return 0
-        if not mask.any(): return torch.zeros(())
+        if not mask.any(): return torch.zeros((), device=TORCH_DEVICE)
 
         dec_scores, sigma_x = dec_scores[mask], sigma_x[mask]
         loss = loss_func(-dec_scores)
