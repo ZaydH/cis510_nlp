@@ -152,9 +152,7 @@ class NlpBiasedLearner(nn.Module):
                 if self._is_nnpu():
                     # noinspection PyUnboundLocalVariable
                     loss = nnpu.calc_loss(dec_scores, labels)
-                    # noinspection PyUnresolvedReferences
                     loss.grad_var.backward()
-                    # noinspection PyUnresolvedReferences
                     loss = loss.loss_var
                 else:
                     if self._is_pubn():
