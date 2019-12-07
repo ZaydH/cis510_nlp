@@ -45,14 +45,10 @@
 \input{macros}
 \input{global_macros}
 
-% \usepackage{hyperref}     % Loaded automatically by beamer
-\usepackage{pgfplots}       % Used to generate embedded plots
-\pgfplotsset{compat=1.13}
-
 \usepackage{color}
-\newcommand{\blue}[1]{{\color{Blue} #1}}
-\newcommand{\red}[1]{{\color{red} #1}}
-\newcommand{\green}[1]{{\color{ForestGreen} #1}}
+\renewcommand{\blue}[1]{{\color{Blue} #1}}
+\renewcommand{\red}[1]{{\color{red} #1}}
+\renewcommand{\green}[1]{{\color{ForestGreen} #1}}
 
 % Here's where the presentation starts, with the info for the title slide
 \title[Negative Covariate Shift]{Address Negative Covariate Shift \\ on 20~Newsgroups Classification}
@@ -84,15 +80,15 @@
 \end{frame}
 
 \begin{frame}{Classifier Architectures}
-  We considered two deep architectures:
+  \onslide<+->{We considered two deep architectures:}
+  \vfill
+  \begin{itemize}[<+->]
+    \setlength{\itemsep}{24pt}
+    \item \blue{\textbf{``Classic'' RNN Classifier}}: Tokenize sentence, encode with embedding matrix, classify with RNN + feedforward
 
-  \begin{itemize}
-    \setlength{\itemsep}{12pt}
-    \item \green{\textbf{``Classic'' RNN Classifier}}: Tokenize sentence, encode with embedding matrix, classify with RNN + feedforward
-
-    \item \green{\textbf{ELMo Preprocess}}: Encode entire document into a static representation with ELMo (a ``document embedding'').  Train a feedforward to classify the static vectors.
+    \item \blue{\textbf{ELMo Preprocess}}: Encode entire document into a static representation with ELMo (a ``document embedding'').  Train a feedforward to classify the static vectors.
   \end{itemize}
-
+  \vfill
   \onslide<+->{\green{\textbf{How Can We Summarize these Differences?}}: \blue{\textbf{Transfer learning}}}
 \end{frame}
 
@@ -101,7 +97,7 @@
   \vfill
   \onslide<+->{Let's look at how each architecture uses transfer learning...}
   \begin{itemize}[<+->]
-    \setlength{\itemsep}{6pt}
+    \setlength{\itemsep}{20pt}
     \item \textbf{``Classic'' RNN}: \red{Limited}. \onslide<+->{Only (GloVe) embedding matrix}
     \item \textbf{ELMo Preprocessing}: \green{Extensive}. \onslide<+->{Entire ELMo network parameters static.  Only train a couple feed forward layers.}
   \end{itemize}

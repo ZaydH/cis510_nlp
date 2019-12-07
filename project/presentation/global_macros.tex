@@ -1,1 +1,101 @@
-../tex/global_macros.tex
+\newcommand{\etal}{~et~al.}
+
+% Imported via UltiSnips
+\usepackage{array}     % Needed to make arydshln work
+\usepackage{arydshln}  % Introduces hdashline & cdashline
+\usepackage{multirow}
+\usepackage{booktabs}
+\usepackage{bigdelim}
+%%===============================================%%
+%%  Implements cdashlinelr to cut edge off table %%
+%%===============================================%%
+\makeatletter
+\def\adl@drawiv#1#2#3{%
+        \hskip.5\tabcolsep
+        \xleaders#3{#2.5\@tempdimb #1{1}#2.5\@tempdimb}%
+                #2\z@ plus1fil minus1fil\relax
+        \hskip.5\tabcolsep}
+\newcommand{\cdashlinelr}[1]{%
+  \noalign{\vskip\aboverulesep
+           \global\let\@dashdrawstore\adl@draw
+           \global\let\adl@draw\adl@drawiv}
+  \cdashline{#1}
+  \noalign{\global\let\adl@draw\@dashdrawstore
+           \vskip\belowrulesep}}
+\makeatother
+
+% Used for including standalone docs
+\usepackage{standalone}
+
+% Imported via UltiSnips
+% Unbreakable dash:
+%  Words hyphened with these dashes can also be broken at other positions than the dash
+%    \-/ hyphen
+%    \-- en-dash
+%    \--- em-dash
+%    extdash unbreakable dashes
+%
+%  No line breaks possible at the hyphen
+%    \=/ hyphen
+%    \== en-dash
+%    \=== em-dash
+\usepackage[shortcuts]{extdash}
+
+% Imported via UltiSnips
+\usepackage{color}
+\newcommand{\colortext}[2]{{\color{#1} #2}}
+\newcommand{\red}[1]{\colortext{red}{#1}}
+\newcommand{\blue}[1]{\colortext{blue}{#1}}
+\newcommand{\green}[1]{\colortext{green}{#1}}
+
+% Imported via UltiSnips
+\usepackage{amsmath}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\usepackage{amsfonts}  % Used for \mathbb and \mathcal
+\usepackage{amssymb}
+\usepackage{bbm}       % Used for \mathbbm
+
+% Imported via UltiSnips
+\usepackage{mathtools} % for "\DeclarePairedDelimiter" macro
+% \swapifbranches changes unstarred paired delimiters to starred and
+% vice versa.  This means by default, paired delimiters have the star.
+\usepackage{etoolbox}
+\newcommand\swapifbranches[3]{#1{#3}{#2}}
+\makeatletter
+\MHInternalSyntaxOn
+\patchcmd{\DeclarePairedDelimiter}{\@ifstar}{\swapifbranches\@ifstar}{}{}
+\MHInternalSyntaxOff
+\makeatother
+% Place after swap to ensure swap star
+\DeclarePairedDelimiter{\sbrack}{\lbrack}{\rbrack}
+\DeclarePairedDelimiter{\floor}{\lfloor}{\rfloor}
+\DeclarePairedDelimiter{\ceil}{\lceil}{\rceil}
+\DeclarePairedDelimiter{\abs}{\lvert}{\rvert}
+\DeclarePairedDelimiter{\norm}{\lVert}{\rVert}
+\usepackage{bm}
+\DeclarePairedDelimiterX\set[1]\lbrace\rbrace{#1}
+\DeclarePairedDelimiterX\setbuild[2]\lbrace\rbrace{#1 \bm: #2}
+\newcommand{\ints}[1]{{\sbrack{#1}}}
+\newcommand{\func}[3]{{#1:#2\rightarrow#3}}
+\newcommand{\defeq}{\stackrel{\mathclap{\mbox{\tiny def}}}{=}}
+
+\newcommand{\real}{\mathbb{R}}
+\newcommand{\integers}{\mathbb{Z}}
+
+% Imported via UltiSnips
+\usepackage{tikz}
+\usetikzlibrary{arrows,decorations.markings,shadows,positioning,calc,backgrounds,shapes}
+
+% Imported via UltiSnips
+\usepackage[noend]{algpseudocode}
+\usepackage[Algorithm,ruled]{algorithm}
+\algnewcommand\algorithmicforeach{\textbf{for each}}
+\algdef{S}[FOR]{ForEach}[1]{\algorithmicforeach\ #1\ \algorithmicdo}
+\newcommand{\algin}[1]{\hspace*{\algorithmicindent} \textbf{Input} #1\\}
+\newcommand{\algout}[1]{\hspace*{\algorithmicindent} \textbf{Output} #1\\}
+
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.13}
+\usepackage{pgfplotstable}
+% \usepackage{subcaption}
