@@ -518,11 +518,12 @@ def _build_elmo_file_path(ds_name: str) -> Path:
     return newsgroups_dir / f"20newsgroups_elmo_mmm_{ds_name}.hdf5"
 
 
-def _generate_preprocessed_vectors(ds_name: str, newsgroups: Bunch) -> None:
+def _generate_preprocessed_vectors(ds_name: str, newsgroups: Bunch, path: Path) -> None:
     r"""
     Constructs the preprocessed vectors for either the test or train datasets.
     :param ds_name: Either "test" or "train"
     :param newsgroups: Scikit-Learn object containing the 20 newsgroups dataset
+    :param path: Location to write serialized vectors
     """
     assert ds_name == "train" or ds_name == "test"
     n = len(newsgroups.data)
@@ -559,7 +560,8 @@ def _generate_preprocessed_vectors(ds_name: str, newsgroups: Bunch) -> None:
         # Go back to beginning of the line. Weird formatting due to PyCharm issues
         print('\r', end="")
 
-    f = h5py.File(f'20newsgroups_elmo_mmm_{ds_name}.hdf5', 'w')
+    path.parent.mkdir(parents=True, exist_ok=True)
+    f = h5py.File(str(path), 'w')
     f.create_dataset(PREPROCESSED_FIELD, data=data)
     f.close()
     logging.info(f"COMPLETED: {msg}")
@@ -645,7 +647,7 @@ def _create_serialized_20newsgroups_preprocessed(args: Namespace) -> None:
 
         path = _build_elmo_file_path(ds_name)
         if not path.exists():
-            _generate_preprocessed_vectors(ds_name, bunch)
+            _generate_preprocessed_vectors(ds_name, bunch, path)
 
         vecs = h5py.File(str(path), 'r')
         x = preprocessing.scale(vecs[PREPROCESSED_FIELD][:])
