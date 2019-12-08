@@ -86,7 +86,7 @@
     \setlength{\itemsep}{24pt}
     \item \blue{\textbf{``Classic'' RNN Classifier}}: Tokenize sentence, encode with embedding matrix, classify with RNN + feedforward
 
-    \item \blue{\textbf{ELMo Preprocess}}: Encode entire document into a static representation with ELMo (a ``document embedding'').  Train a feedforward to classify the static vectors.
+    \item \blue{\textbf{ELMo Preprocessed}}: Encode entire document into a static representation with ELMo (a ``document embedding'').  Train a feedforward to classify the static vectors.
   \end{itemize}
   \vfill
   \onslide<+->{\green{\textbf{How Can We Summarize these Differences?}}: \blue{\textbf{Transfer learning}}}
@@ -99,7 +99,7 @@
   \begin{itemize}[<+->]
     \setlength{\itemsep}{20pt}
     \item \textbf{``Classic'' RNN}: \red{Limited}. \onslide<+->{Only (GloVe) embedding matrix}
-    \item \textbf{ELMo Preprocessing}: \green{Extensive}. \onslide<+->{Entire ELMo network parameters static.  Only train a couple feed forward layers.}
+    \item \textbf{ELMo Preprocessed}: \green{Extensive}. \onslide<+->{Entire ELMo network parameters static.  Only train a couple feed forward layers.}
   \end{itemize}
   \vfill
   \onslide<+->{\textbf{\green{Question}}: Is transfer learning a \textit{free lunch}?}
@@ -108,14 +108,44 @@
   \onslide<+->{\textbf{Answer}: No -- there's never a free lunch.  \onslide<+->{Transfer learning is just an \textit{inductive bias} and like all biases limits some flexibility -- which may be good or bad.}}
 \end{frame}
 
-\begin{frame}{Experiments}
-  Study Two Types of Bias
-  \begin{itemize}
-    \setlength{\itemsep}{10pt}
-    \item Bias negative set covers only portion of ${\pDist(\X \vert \y = \pcls)}$'s support
+
+\begin{frame}{20 Newsgroups Dataset -- What is it?}
+  \begin{itemize}[<+->]
+    \item Collection of internet message board posts divided into 20~disjoint labels
+    % \begin{itemize}
+    %   \item Positive Prior: ${\pDist(\y = \pcls) = 0.56}$
+    %   % \item \textasciitilde18.8k~examples divided including fixed \textasciitilde7.5k~test set
+    % \end{itemize}
   \end{itemize}
 
-  \onslide<+->{We will hold off discussing the ``Classic'' RNN results until the end since it performs significantly worse}
+  % \begin{itemize}[<+->]
+  %   \item ~
+  % \end{itemize}
+\end{frame}
+
+
+\begin{frame}{Experimental Setup Overview}
+\onslide<+->{\textbf{Two Bias Types}:}
+  \begin{itemize}[<+->]
+    \setlength{\itemsep}{6pt}
+    \item $\bntrain$~covers \red{portion} of ${\pDist(\X \vert \y = \pcls)}$'s support but otherwise marginals \green{unbiased}
+    \item (\blue{Reverse}) \onslide<+->{ $\bntrain$~covers ${\pDist(\X \vert \y = \pcls)}$'s \green{complete} support but marginal \red{bias}}
+  \end{itemize}
+  \vfill
+  \onslide<+->{\textbf{Results Overview}:}
+  \begin{itemize}[<+->]
+    \setlength{\itemsep}{6pt}
+    \item Inductive: Test set classification accuracy
+    \item Discuss only ELMo results first \onslide<+->{since significantly better than LSTM}
+  \end{itemize}
+  \vfill
+  \onslide<+->{\textbf{Hyperparameter Info}:}
+  \begin{itemize}[<+->]
+    \setlength{\itemsep}{6pt}
+    \item Tuned via grid search on disjoint validation set 20\%~size of train set
+    \item ${\abs{\ptrain} = \abs{\ntrain} = \abs{\bntrain} = 500}$
+    \item ${\abs{\utrain} = 6,000}$
+  \end{itemize}
 \end{frame}
 
 \begin{frame}{Architecture Comparison}
