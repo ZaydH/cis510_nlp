@@ -1,0 +1,140 @@
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{Basic Problem Setting}
+  \onslide<+->{\blue{\textbf{Goal}}: Construct a supervised, binary text document classifier}
+  \vfill
+  \onslide<+->{\textbf{Standard Assumption}: \onslide<+->{ $\train \sim \pDist(\X, \y)$} i.i.d.}
+  \begin{itemize}[<+->]
+    \item By Bayes Rules: ${\pDist(\X) = \pDist(\y = \pcls) \pDist(\X \vert \y = \pcls) + \pDist(\y = \ncls) \pDist(\X \vert \y = \ncls)}$
+  \end{itemize}
+  \vfill
+  \onslide<+->{Training set partitions as: ${\train = \ptrain \sqcup \ntrain}$ where}
+  \begin{itemize}[<+->]
+    \item ${\ptrain \sim \pDist(\X \vert \y = \pcls)}$
+    \item ${\ntrain \sim \pDist(\X \vert \y = \ncls)}$
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{}
+  \begin{block}{Covariate Shift}
+    \blue{\textbf{Def.}} Training and test joint distributions ${\pDist(\X,\y) = \pDist(\X)\pDist(\y \vert \X)}$ and ${\pDist'(\X,\y)= \pDist'(\X)\pDist(\y \vert \X)}$ resp.\ differ only in their marginal distributions (${\pDist(\X)}$ vs.\ ${\pDist'(\X)}$) and have identical posterior~(${\pDist(\y \vert \X)}$).
+  \end{block}
+  \vfill
+  \textbf{Negative}
+\end{frame}
+
+\begin{frame}{Classifier Architectures}
+  \onslide<+->{We considered two deep architectures:}
+  \vfill
+  \begin{itemize}[<+->]
+    \setlength{\itemsep}{24pt}
+    \item \blue{\textbf{``Classic'' RNN Classifier}}: Tokenize sentence, encode with embedding matrix, classify with RNN + feedforward
+
+    \item \blue{\textbf{ELMo Preprocessed}}: Encode entire document into a static representation with ELMo (a ``document embedding'').  Train a feedforward to classify the static vectors.
+  \end{itemize}
+  \vfill
+  \onslide<+->{\green{\textbf{How Can We Summarize these Differences?}}: \blue{\textbf{Transfer learning}}}
+\end{frame}
+
+\begin{frame}{What is Transfer Learning?}
+  \onslide<+->{\blue{\textbf{Def.}}: Taking knowledge learned from solving one problem and applying it to a different (related) one}
+  \vfill
+  \onslide<+->{Let's look at how each architecture uses transfer learning...}
+  \begin{itemize}[<+->]
+    \setlength{\itemsep}{20pt}
+    \item \textbf{``Classic'' RNN}: \red{Limited}. \onslide<+->{Only (GloVe) embedding matrix}
+    \item \textbf{ELMo Preprocessed}: \green{Extensive}. \onslide<+->{Entire ELMo network parameters static.  Only train a couple feed forward layers.}
+  \end{itemize}
+  \vfill
+  \onslide<+->{\textbf{\green{Question}}: Is transfer learning a \textit{free lunch}?}
+
+  \vspace{6pt}
+  \onslide<+->{\textbf{Answer}: No -- there's never a free lunch.  \onslide<+->{Transfer learning is just an \textit{inductive bias} and like all biases limits some flexibility -- which may be good or bad.}}
+\end{frame}
+
+
+\begin{frame}{20 Newsgroups Dataset -- What is it?}
+  \onslide<+->{Collection of internet message board posts divided into 20~disjoint labels}
+  \begin{itemize}
+    \item 20~labels partition into 7~categories \onslide<+->{-- 4~positive, 3~negative}
+    \item Documents vary significantly in length from a few dozen tokens to over 1,000 tokens
+  \end{itemize}
+  \vfill
+  \onslide<+->{\textbf{Dataset Statistics}:} \onslide<+->{ ${\pDist(\y = \pcls) = 0.56}$}
+  \begin{itemize}[<+->]
+    \item \textasciitilde18.8k~examples divided including fixed \textasciitilde7.5k~test set
+  \end{itemize}
+  \vfill
+  {
+    \scriptsize
+    \onslide<+->{\input{tables/beamer_20newsgroups}}
+  }
+\end{frame}
+
+
+\begin{frame}{Experimental Setup Overview}
+\onslide<+->{\textbf{Two Bias Types}:}
+  \begin{itemize}[<+->]
+    \setlength{\itemsep}{6pt}
+    \item $\bntrain$~covers \red{portion} of ${\pDist(\X \vert \y = \pcls)}$'s support but otherwise marginals \green{unbiased}
+    \item (\blue{Reverse}) \onslide<+->{ $\bntrain$~covers ${\pDist(\X \vert \y = \pcls)}$'s \green{complete} support but marginal \red{bias}}
+  \end{itemize}
+  \vfill
+  \onslide<+->{\textbf{Results Overview}:}
+  \begin{itemize}[<+->]
+    \setlength{\itemsep}{6pt}
+    \item Inductive: Test set classification accuracy
+    \item Discuss ELMo results first \onslide<+->{(significantly better than LSTM)}
+  \end{itemize}
+  \vfill
+  \onslide<+->{\textbf{Hyperparameter Info}:}
+  \begin{itemize}[<+->]
+    \setlength{\itemsep}{6pt}
+    \item Tuned via grid search on disjoint validation set 20\%~size of train set
+    \item ${\abs{\ptrain} = \abs{\ntrain} = \abs{\bntrain} = 500}$
+    \item ${\abs{\utrain} = 6,000}$
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Experiments -- Effect of Bias}
+  \input{tables/beamer_elmo_results}
+\end{frame}
+
+\begin{frame}{Experiments -- Architectural Comparison}
+  \begin{minipage}[t]{0.67\linewidth}
+    \centering
+    \vspace{-18pt}
+    \onslide<+->{
+      \begin{table}
+        \caption{\small ELMo preprocessed accuracy results}
+        \onslide<+->{
+          {\footnotesize \input{tables/elmo_results}}
+        }
+      \end{table}
+    }
+    \vspace{-20pt}
+    \onslide<+->{
+      \begin{table}
+        \caption{\small ${\left(\text{Accuracy}_{ELMo} - \text{Accuracy}_{RNN}\right)}$\onslide<+->{: ${{>}0}$ means ELMO better}}
+        \onslide<+->{
+          {\footnotesize \input{tables/results_compare}}
+        }
+      \end{table}
+    }
+    \vspace{-5pt}  % Need to fix false warning on frame size
+  \end{minipage}
+  \begin{minipage}{0.07\linewidth}
+    \hspace{\fill}
+  \end{minipage}
+  \begin{minipage}[t]{0.23\linewidth}
+    \vspace{40pt}
+    \onslide<+->{%
+      % \flushright
+      \begin{block}{Major Takeaway}
+        If training data limited/biased, transfer learning's benefits compound
+      \end{block}
+    }
+  \end{minipage}
+\end{frame}
