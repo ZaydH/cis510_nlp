@@ -5,10 +5,16 @@
 \begin{frame}{Basic Problem Setting}
   \onslide<+->{\blue{\textbf{Goal}}: Construct a supervised, binary text document classifier}
   \vfill
-  \onslide<+->{\textbf{Standard Assumption}: \onslide<+->{ $\train \sim \pDist(\X, \y)$} i.i.d.}
-  \begin{itemize}[<+->]
-    \item By Bayes Rules: ${\pDist(\X) = \pDist(\y = \pcls) \pDist(\X \vert \y = \pcls) + \pDist(\y = \ncls) \pDist(\X \vert \y = \ncls)}$
-  \end{itemize}
+  \onslide<+->{\textbf{Standard Assumption}: Given random variables, ${\X \in \domainX}$ and ${\y \in \domainY}$}
+  \begin{equation}\label{eq:BaseSample}
+    \train \sim \pDist(\X, \y) \onslide<+->{\pDist(\X) \pDist(\y \vert \X)}
+  \end{equation}
+
+  \begin{align}
+    \action<+->{
+    \action<+->{\pDist(\X,\y) &= \pDist(\X, \pcls) + \pDist(\X, \ncls)  \\}
+    \action<+->{              &= \pDist(\y = \pcls) \pDist(\X \vert \y = \pcls) + \pDist(\y = \pcls) \pDist(\X \vert \y = \pcls) & \text{By Bayes' rule}}
+  \end{align}
   \vfill
   \onslide<+->{Training set partitions as: ${\train = \ptrain \sqcup \ntrain}$ where}
   \begin{itemize}[<+->]
@@ -19,7 +25,7 @@
 
 \begin{frame}{}
   \begin{block}{Covariate Shift}
-    \blue{\textbf{Def.}} Training and test joint distributions ${\pDist(\X,\y) = \pDist(\X)\pDist(\y \vert \X)}$ and ${\pDist'(\X,\y)= \pDist'(\X)\pDist(\y \vert \X)}$ resp.\ differ only in their marginal distributions (${\pDist(\X)}$ vs.\ ${\pDist'(\X)}$) and have identical posterior~(${\pDist(\y \vert \X)}$).
+    \blue{\textbf{Def.}} Training \& test set joint distributions ${\pDist(\X,\y) = \red{\pDist(\X)}\green{\pDist(\y \vert \X)}}$ and ${\pDist'(\X,\y)= \red{\pDist'(\X)}\green{\pDist(\y \vert \X)}}$ resp.\ \red{differ in marginals} (${\pDist(\X)}$ vs.\ ${\pDist'(\X)}$) but have \green{identical posterior}~${\pDist(\y \vert \X)}$.
   \end{block}
   \vfill
   \textbf{Negative}
@@ -68,6 +74,7 @@
   \end{itemize}
   \vfill
   {
+    \centering
     \scriptsize
     \onslide<+->{\input{tables/beamer_20newsgroups}}
   }
@@ -78,7 +85,7 @@
 \onslide<+->{\textbf{Two Bias Types}:}
   \begin{itemize}[<+->]
     \setlength{\itemsep}{6pt}
-    \item $\bntrain$~covers \red{portion} of ${\pDist(\X \vert \y = \pcls)}$'s support but otherwise marginals \green{unbiased}
+    \item $\bntrain$~covers \red{subset} ${\pDist(\X \vert \y = \pcls)}$'s support but otherwise marginals \green{unbiased}
     \item (\blue{Reverse}) \onslide<+->{ $\bntrain$~covers ${\pDist(\X \vert \y = \pcls)}$'s \green{complete} support but marginal \red{bias}}
   \end{itemize}
   \vfill

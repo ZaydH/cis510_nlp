@@ -1,16 +1,14 @@
 % Table formatting based on: https://inf.ethz.ch/personal/markusp/teaching/guides/guide-tables.pdf
-\begin{tabular}{lllll@{}}
+\begin{tabular}{@{}llll@{}}
   % \toprule[1-4]
-  \cmidrule[0.065em](lr){1-4}
-  Class                      & Category & Original Label & Prior~(\%) & \\\cmidrule(lr){1-4}
-  \multirow{9}{*}{Negative} & \multirow{4}{*}{sci.} & crypt & 5.3 & \rdelim\}{4}{3mm}[21\%]\\
-  & & electronics  & 5.2 \\
-  & & med          & 5.3 \\
-  & & space        & 5.2 \\\cdashlinelr{2-4}
-  & soc.  & religion.christian & 5.3 \\\cdashlinelr{2-4}
-  & \multirow{4}{*}{talk.} & politics.guns & 4.8 & \rdelim\}{4}{3mm}[17.3\%]\\
-  & & politics.mideast & 5.0 \\
-  & & politics.misc    & 4.1 \\
-  & & religion.misc    & 3.3 \\
-  \cmidrule[0.08em](lr){1-4}
+  \toprule
+  Class    & Category & \# Label & Prior \\\midrule
+  \multirow{4}{*}{Positive} & alt.   & 1 & 6.5\%  \\
+                            & comp.  & 5 & 26\%   \\
+                            & misc.  & 1 & 5.4\%  \\
+                            & rec.   & 4 & 21.1\% \\\midrule
+  \multirow{3}{*}{Negative} & sci.   & 4 & 21\%   \\
+                            & soc.   & 1 & 5.3\%  \\
+                            & talk.  & 4 & 17.3\% \\
+  \bottomrule
 \end{tabular}
