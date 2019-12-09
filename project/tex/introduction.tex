@@ -3,12 +3,18 @@
 \begin{document}
 \section{Introduction}\label{sec:Introduction}
 
-Consider binary classification of text documents.  Each document is represented by two random variables: independent feature vector~${\X \in \domainX}$ and dependent label~${\y \in \domainY}$. The document population is generated from an unknown, joint probability distribution~${\joint \equiv \pDist(\X,\y)}$, which by Bayes' rule can be reformulated as
+Consider binary classification of text documents.  Each document is represented by two random variables: independent feature vector~${\X \in \domainX}$ and dependent label~${\y \in \domainY}$. The document population is generated from an unknown, joint probability distribution~${\joint \equiv \pDist(\X,\y)}$ where
 
-\begin{align}
-  \underbrace{\pDist(\X,\y)}_{\joint} &= \pDist(\X) \posterior \label{eq:TrainDist} \\
-           &= \underbrace{\pDist(\y = \pcls)}_{\prior} \underbrace{\pDist(\X \vert \y = \pcls)}_{\pcond} + \underbrace{\pDist(\y = \ncls)}_{1-\prior} \underbrace{\pDist(\X \vert \y = \ncls)}_{\ncond} \label{eq:Joint:Bayes}
-\end{align}
+\begin{equation}
+  \underbrace{\pDist(\X,\y)}_{\joint} = \pDist(\X) \posterior \text{.} \label{eq:TrainDist}
+\end{equation}
+
+\noindent
+By Bayes' Rule, the marginal can be reformulated as
+
+\begin{equation}
+  \underbrace{\pDist(\X)}_{\marginal} = \underbrace{\pDist(\y = \pcls)}_{\prior} \underbrace{\pDist(\X \vert \y = \pcls)}_{\pcond} + \underbrace{\pDist(\y = \ncls)}_{1-\prior} \underbrace{\pDist(\X \vert \y = \ncls)}_{\ncond} \label{eq:Joint:Bayes}
+\end{equation}
 
 \noindent
 where $\prior$~is the positive\-/class prior while $\pcond$~and $\ncond$~are the positive and negative class-conditional distributions respectively.
@@ -17,7 +23,7 @@ Supervised binary classification's training set,~$\train$, consists of samples g
 
 Ideal supervised learning often does not apply in practice.  Labeling may be expensive or difficult resulting in few labeled examples but numerous unlabeled ones.  Additionally, the labeled set may not be representative of~$\joint$.  For example, labeled examples may only characterize a small subset of $\joint$'s support, including there being no labeled data at all for one class.
 
-One of the most common types of training set bias is \textit{covariate shift}. Define $\joint$~\eqref{eq:TrainDist} and ${\joint'}$~\eqref{eq:TestDist} as the training and test joint distributions respectively.  In covariate shit, posterior distribution,~${\posterior}$ is identical in both joint distributions. Rather, the distributions only differ in their respective marginals, i.e.,~${\marginal \equiv \pDist(\X)}$ and~$\marginal'$.~\cite{Huang:2006}  This paper assumes covariate shift for only one class --~the negative one.
+One of the most common types of training set bias is \textit{covariate shift}. Define $\joint$~\eqref{eq:TrainDist} and ${\joint'}$~\eqref{eq:TestDist} as the training and test joint distributions respectively.  In covariate shit, posterior distribution,~${\posterior}$ is identical in both joint distributions. Rather, the distributions only differ in their respective marginals, i.e.,~${\marginal}$ and~$\marginal'$.~\cite{Huang:2006}  This paper assumes covariate shift for only one class --~the negative one.
 
 \begin{equation}\label{eq:TestDist}
   \joint'(\X,\y) = \underbrace{\pDist'(\X)}_{\marginal'} \posterior
