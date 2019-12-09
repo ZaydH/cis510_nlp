@@ -168,7 +168,27 @@
 
 \subsection{Results}
 \begin{frame}{Experiments -- Effect of Bias}
-  \input{tables/beamer_elmo_results}
+  \begin{minipage}[t]{0.69\linewidth}
+    \begin{table}
+      \centering
+      \caption{ELMo preprocessed test accuracy results}
+      \input{tables/beamer_elmo_results}
+    \end{table}
+    \vfill
+    \onslide<9->{ $\red{\dagger}$ \textbf{Unbiased Marginal}: ${\sbrack{48.2\%, 12.1\%, 39.7\%}}$}
+  \end{minipage}
+  \begin{minipage}{0.05\linewidth}
+    \hspace{\fill}
+  \end{minipage}
+  \begin{minipage}[t]{0.23\linewidth}
+    \vspace{40pt}
+    \onslide<+->{%
+      % \flushright
+      \begin{block}{Major Takeaway}
+        Type of bias determines best risk estimator
+      \end{block}
+    }
+  \end{minipage}
 \end{frame}
 
 \begin{frame}{Experiments -- Architectural Comparison}
