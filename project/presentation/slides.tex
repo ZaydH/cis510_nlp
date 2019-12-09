@@ -6,16 +6,18 @@
   \onslide<+->{\blue{\textbf{Goal}}: Construct a supervised, binary text document classifier}
   \vfill
   \onslide<+->{\textbf{Standard Assumption}: Given random variables, ${\X \in \domainX}$ and ${\y \in \domainY}$}
-  \begin{equation}\label{eq:BaseSample}
-    \train \sim \pDist(\X, \y) \onslide<+->{\pDist(\X) \pDist(\y \vert \X)}
-  \end{equation}
-
-  \begin{align}
-    \action<+->{
-    \action<+->{\pDist(\X,\y) &= \pDist(\X, \pcls) + \pDist(\X, \ncls)  \\}
-    \action<+->{              &= \pDist(\y = \pcls) \pDist(\X \vert \y = \pcls) + \pDist(\y = \pcls) \pDist(\X \vert \y = \pcls) & \text{By Bayes' rule}}
-  \end{align}
-  \vfill
+  \onslide<+->{%
+    \begin{equation}\label{eq:BaseSample}
+      \train \sim \pDist(\X, \y) \onslide<+->{= \pDist(\X) \pDist(\y \vert \X)}
+    \end{equation}
+  }
+  \noindent
+  \onslide<+->{By Bayes' rule:}
+  \onslide<+->{%
+    \begin{equation}
+      \action<+->{\pDist(\X) = \pDist(\y = \pcls) \pDist(\X \vert \y = \pcls) + \pDist(\y = \ncls) \pDist(\X \vert \y = \ncls) }
+    \end{equation}
+  }
   \onslide<+->{Training set partitions as: ${\train = \ptrain \sqcup \ntrain}$ where}
   \begin{itemize}[<+->]
     \item ${\ptrain \sim \pDist(\X \vert \y = \pcls)}$
@@ -23,12 +25,69 @@
   \end{itemize}
 \end{frame}
 
-\begin{frame}{}
-  \begin{block}{Covariate Shift}
-    \blue{\textbf{Def.}} Training \& test set joint distributions ${\pDist(\X,\y) = \red{\pDist(\X)}\green{\pDist(\y \vert \X)}}$ and ${\pDist'(\X,\y)= \red{\pDist'(\X)}\green{\pDist(\y \vert \X)}}$ resp.\ \red{differ in marginals} (${\pDist(\X)}$ vs.\ ${\pDist'(\X)}$) but have \green{identical posterior}~${\pDist(\y \vert \X)}$.
-  \end{block}
+\begin{frame}{Key Terminology}
+  \onslide<+->{%
+    \begin{block}{Covariate Shift}
+      \blue{\textbf{Def.}} Training \& test set joint distributions ${\pDist(\X,\y) = \red{\pDist(\X)}\green{\pDist(\y \vert \X)}}$ and ${\pDist'(\X,\y)= \red{\pDist'(\X)}\green{\pDist(\y \vert \X)}}$ resp.\ \red{differ in marginals} (${\pDist(\X)}$ vs.\ ${\pDist'(\X)}$) but have \green{identical posterior}~${\pDist(\y \vert \X)}$.
+    \end{block}
+  }
   \vfill
-  \textbf{Negative}
+  \onslide<+->{%
+    \begin{block}{Negative Covariate Shift}
+      \blue{\textbf{Def.}} Covariate shift only \textit{biases} training samples drawn from the negative class~i.e.,~${\pDist(\X \vert \y = \ncls)}$. \onslide<+->{Refer to this biased negative training set as~$\bntrain$}
+    \end{block}
+  }
+  \vfill
+  \onslide<+->{%
+    \textit{Example}: For a document-authorship classifier, it is usually impossible to collect a \textit{representative} of the negative class
+    \begin{itemize}[<+->]
+      \item Entire document types may be missing from~$\train$
+      \item $\train$'s document proportions may be \textit{biased}
+    \end{itemize}
+  }
+\end{frame}
+
+\begin{frame}{Risk Estimation}
+  \onslide<+->{%
+    \begin{block}{Risk Estimator}
+      \blue{\textbf{Def}.} Given decision function~$\func{\dec}{\domainX}{\real}$ and loss function~$\func{\loss}{\real \times \domainY}{\real_{{\geq}0}}$ (e.g.,~logistic loss), a risk estimator quantifies the expected risk as:
+
+      \begin{equation}\label{eq:RiskEstimator}
+        \risk(\dec) = \mathbb{E}_{(\X,\y) \sim \pDist(\X,\y)}\sbrack{\floss{\decX}{\y}} \text{.}
+      \end{equation}
+    \end{block}
+  }
+  \vfill
+  \onslide<+->{ ${\pDist(\X,\y)}$ is unknown in practice so \textbf{empirical risk estimators} are used as surrogate}
+  \onslide<+->{%
+    \begin{equation}\label{eq:}
+      \emprisk(\dec) = \frac{1}{\abs{\ptrain \sqcup \ntrain}} \sum_{(\X, \y) \sim \ptrain \sqcup \ntrain} \floss{\dec(\X)}{\y}
+    \end{equation}
+    \vfill
+    \begin{itemize}[<+->]
+      \item Refer to this as \textbf{\green{unbiased} \blue{positive-negative}} risk estimator
+      \item When $\bntrain$ replaces~$\ntrain$, then \textbf{\red{biased} \blue{positive-negative}} risk estimator
+    \end{itemize}
+  }
+\end{frame}
+
+\begin{frame}{Approaches to Negative Covariate Shift for Doc.\ Classification}
+  \green{\textbf{Option~\#1}}: Biased positive\-/negative learning~\cite{Li:2010}
+  \begin{itemize}
+    \item Already saw risk estimator
+  \end{itemize}
+  \vfill
+  \green{\textbf{Option~\#2}}: Use an unlabeled set~${\utrain \sim \pDist(\X)}$
+  \begin{enumerate}
+    \item \textbf{\blue{Positive\-/Unlabeled Learning}}: Train classifier using $\ptrain$ and~$\utrain$~\cite{Fei:2015}
+      \begin{itemize}
+        \item \textbf{Risk Estimator}: Non\-/Negative PU (nnPU)~\cite{Kiryo:2017}
+      \end{itemize}
+    \item \textbf{\blue{Positive\-/Unlabeled Biased Negative Learning}}: Train classifier using $\ptrain$, $\bntrain$ and~$\utrain$
+      \begin{itemize}
+        \item \textbf{Risk Estimator}: PUbn~\cite{Hsieh:2018}
+      \end{itemize}
+  \end{enumerate}
 \end{frame}
 
 \begin{frame}{Classifier Architectures}
@@ -47,7 +106,7 @@
 \begin{frame}{What is Transfer Learning?}
   \onslide<+->{\blue{\textbf{Def.}}: Taking knowledge learned from solving one problem and applying it to a different (related) one}
   \vfill
-  \onslide<+->{Let's look at how each architecture uses transfer learning...}
+  \onslide<+->{Let's look at how each architecture uses transfer learning\ldots}
   \begin{itemize}[<+->]
     \setlength{\itemsep}{20pt}
     \item \textbf{``Classic'' RNN}: \red{Limited}. \onslide<+->{Only (GloVe) embedding matrix}
@@ -61,11 +120,11 @@
 \end{frame}
 
 
-\begin{frame}{20 Newsgroups Dataset -- What is it?}
+\begin{frame}{20 Newsgroups -- What is it?}
   \onslide<+->{Collection of internet message board posts divided into 20~disjoint labels}
   \begin{itemize}
     \item 20~labels partition into 7~categories \onslide<+->{-- 4~positive, 3~negative}
-    \item Documents vary significantly in length from a few dozen tokens to over 1,000 tokens
+    \item Documents vary in length from a few dozen tokens to over ${{>}1,000}$
   \end{itemize}
   \vfill
   \onslide<+->{\textbf{Dataset Statistics}:} \onslide<+->{ ${\pDist(\y = \pcls) = 0.56}$}
@@ -74,13 +133,15 @@
   \end{itemize}
   \vfill
   {
-    \centering
-    \scriptsize
-    \onslide<+->{\input{tables/beamer_20newsgroups}}
+    \begin{center}
+      \scriptsize
+      \onslide<+->{\input{tables/beamer_20newsgroups}}
+    \end{center}
   }
 \end{frame}
 
-
+\section{Experiments}
+\subsection{Overview}
 \begin{frame}{Experimental Setup Overview}
 \onslide<+->{\textbf{Two Bias Types}:}
   \begin{itemize}[<+->]
@@ -92,7 +153,7 @@
   \onslide<+->{\textbf{Results Overview}:}
   \begin{itemize}[<+->]
     \setlength{\itemsep}{6pt}
-    \item Inductive: Test set classification accuracy
+    \item \textit{Inductive} -- Test set classification accuracy
     \item Discuss ELMo results first \onslide<+->{(significantly better than LSTM)}
   \end{itemize}
   \vfill
@@ -105,6 +166,7 @@
   \end{itemize}
 \end{frame}
 
+\subsection{Results}
 \begin{frame}{Experiments -- Effect of Bias}
   \input{tables/beamer_elmo_results}
 \end{frame}
@@ -115,7 +177,7 @@
     \vspace{-18pt}
     \onslide<+->{
       \begin{table}
-        \caption{\small ELMo preprocessed accuracy results}
+        \caption{\small ELMo preprocessed test accuracy results}
         \onslide<+->{
           {\footnotesize \input{tables/elmo_results}}
         }
