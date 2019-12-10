@@ -1,9 +1,5 @@
-\begin{frame}
-  \titlepage
-\end{frame}
-
 \begin{frame}{Basic Problem Setting}
-  \onslide<+->{\blue{\textbf{Goal}}: Construct a supervised, binary text document classifier}
+  \onslide<+->{\blue{\textbf{Goal}}: Construct a text document binary classifier}
   \vfill
   \onslide<+->{\textbf{Standard Assumption}: Given random variables, ${\X \in \domainX}$ and ${\y \in \domainY}$}
   \onslide<+->{%
@@ -11,13 +7,14 @@
       \train \sim \pDist(\X, \y) \onslide<+->{= \pDist(\X) \pDist(\y \vert \X)}
     \end{equation}
   }
-  \noindent
+
   \onslide<+->{By Bayes' rule:}
   \onslide<+->{%
     \begin{equation}
-      \action<+->{\pDist(\X) = \pDist(\y = \pcls) \pDist(\X \vert \y = \pcls) + \pDist(\y = \ncls) \pDist(\X \vert \y = \ncls) }
+      \pDist(\X) = \pDist(\y = \pcls) \pDist(\X \vert \y = \pcls) + \pDist(\y = \ncls) \pDist(\X \vert \y = \ncls)
     \end{equation}
   }
+
   \onslide<+->{Training set partitions as: ${\train = \ptrain \sqcup \ntrain}$ where}
   \begin{itemize}[<+->]
     \item ${\ptrain \sim \pDist(\X \vert \y = \pcls)}$
@@ -39,7 +36,7 @@
   }
   \vfill
   \onslide<+->{%
-    \textit{Example}: For a document-authorship classifier, it is usually impossible to collect a \textit{representative} of the negative class
+    \textit{Example}: For a document-authorship classifier, it is usually impossible to collect a \textit{representative} sample of the negative class
     \begin{itemize}[<+->]
       \item Entire document types may be missing from~$\train$
       \item $\train$'s document proportions may be \textit{biased}
@@ -119,7 +116,7 @@
   \onslide<+->{\textbf{Answer}: No -- there's never a free lunch.  \onslide<+->{Transfer learning is just an \textit{inductive bias} and like all biases limits some flexibility -- which may be good or bad.}}
 \end{frame}
 
-
+\section{Dataset}
 \begin{frame}{20 Newsgroups -- What is it?}
   \onslide<+->{Collection of internet message board posts divided into 20~disjoint labels}
   \begin{itemize}
@@ -190,6 +187,22 @@
     }
   \end{minipage}
 \end{frame}
+
+\begin{frame}{List of References}
+  \bibliography{bib/ref.bib}
+  \bibliographystyle{ieeetr}
+\end{frame}
+
+\appendix
+
+\begin{frame}
+  \tableofcontents
+\end{frame}
+
+\transitionFrame{Appendix}
+
+%% ========================================================================= %%
+%% ========================================================================= %%
 
 \begin{frame}{Experiments -- Architectural Comparison}
   \begin{minipage}[t]{0.67\linewidth}
