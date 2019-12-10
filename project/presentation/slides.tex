@@ -1,11 +1,13 @@
+\section{Introduction}
 \begin{frame}{Basic Problem Setting}
-  \onslide<+->{\blue{\textbf{Goal}}: Construct a text document binary classifier}
+  \onslide<+->{\blue{\textbf{Goal}}: Construct a 20~newsgroups document (binary) classifier}
   \vfill
   \onslide<+->{\textbf{Standard Assumption}: Given random variables, ${\X \in \domainX}$ and ${\y \in \domainY}$}
   \onslide<+->{%
     \begin{equation}\label{eq:BaseSample}
       \train \sim \pDist(\X, \y) \onslide<+->{= \pDist(\X) \pDist(\y \vert \X)}
     \end{equation}
+    \vspace{-6pt}
   }
 
   \onslide<+->{By Bayes' rule:}
@@ -13,6 +15,7 @@
     \begin{equation}
       \pDist(\X) = \pDist(\y = \pcls) \pDist(\X \vert \y = \pcls) + \pDist(\y = \ncls) \pDist(\X \vert \y = \ncls)
     \end{equation}
+    \vspace{-6pt}
   }
 
   \onslide<+->{Training set partitions as: ${\train = \ptrain \sqcup \ntrain}$ where}
@@ -23,27 +26,35 @@
 \end{frame}
 
 \begin{frame}{Key Terminology}
+  \small
   \onslide<+->{%
     \begin{block}{Covariate Shift}
-      \blue{\textbf{Def.}} Training \& test set joint distributions ${\pDist(\X,\y) = \red{\pDist(\X)}\green{\pDist(\y \vert \X)}}$ and ${\pDist'(\X,\y)= \red{\pDist'(\X)}\green{\pDist(\y \vert \X)}}$ resp.\ \red{differ in marginals} (${\pDist(\X)}$ vs.\ ${\pDist'(\X)}$) but have \green{identical posterior}~${\pDist(\y \vert \X)}$.
+      \blue{\textbf{Def.}} Training \& test set joint distributions
+
+      \begin{center}
+      ${\pDist(\X,\y) = \blue{\pDist(\X)}\green{\pDist(\y \vert \X)}}$ \textbf{\&} ${\pDist\red{'}(\X,\y) = \blue{\pDist}\red{'}\blue{(\X)}\green{\pDist(\y \vert \X)}}$
+      \end{center}
+
+      resp.\ \blue{differ in marginals} (${\pDist(\X)}$ vs.\ ${\pDist'(\X)}$) but have \green{identical posterior}~${\pDist(\y \vert \X)}$.
     \end{block}
   }
   \vfill
   \onslide<+->{%
     \begin{block}{Negative Covariate Shift}
-      \blue{\textbf{Def.}} Covariate shift only \textit{biases} training samples drawn from the negative class~i.e.,~${\pDist(\X \vert \y = \ncls)}$. \onslide<+->{Refer to this biased negative training set as~$\bntrain$}
+      \blue{\textbf{Def.}} Covariate shift only \textit{biases} training samples drawn from the negative class~i.e.,~${\pDist(\X \vert \y = \ncls)}$. \only<+->{When under such bias, the negative training samples~${\ntrain \rightarrow \bntrain}$}
     \end{block}
   }
   \vfill
   \onslide<+->{%
-    \textit{Example}: For a document-authorship classifier, it is usually impossible to collect a \textit{representative} sample of the negative class
+    \textit{Example}: \onslide<+->{For a document-authorship classifier, it is usually impossible to collect a \textit{representative} sample of the negative class}
     \begin{itemize}[<+->]
-      \item Entire document types may be missing from~$\train$
-      \item $\train$'s document proportions may be \textit{biased}
+      \item Entire document types may be missing from~$\bntrain$
+      \item $\bntrain$'s document proportions may be \textit{biased}
     \end{itemize}
   }
 \end{frame}
 
+\section{Risk Estimation}
 \begin{frame}{Risk Estimation}
   \onslide<+->{%
     \begin{block}{Risk Estimator}
@@ -69,20 +80,21 @@
 \end{frame}
 
 \begin{frame}{Approaches to Negative Covariate Shift for Doc.\ Classification}
-  \green{\textbf{Option~\#1}}: Biased positive\-/negative learning~\cite{Li:2010}
-  \begin{itemize}
-    \item Already saw risk estimator
+  \onslide<+->{\textbf{Option~\#1}: Biased positive\-/negative learning~\cite{Li:2010}}
+  \begin{itemize}[<+->]
+    \item Already saw on previous slide
   \end{itemize}
   \vfill
-  \green{\textbf{Option~\#2}}: Use an unlabeled set~${\utrain \sim \pDist(\X)}$
-  \begin{enumerate}
+  \onslide<+->{\textbf{Option~\#2}: Use an unlabeled set~${\utrain \sim \pDist(\X)}$}
+  \begin{enumerate}[<+->][a]
+    \setlength{\itemsep}{12pt}
     \item \textbf{\blue{Positive\-/Unlabeled Learning}}: Train classifier using $\ptrain$ and~$\utrain$~\cite{Fei:2015}
       \begin{itemize}
         \item \textbf{Risk Estimator}: Non\-/Negative PU (nnPU)~\cite{Kiryo:2017}
       \end{itemize}
-    \item \textbf{\blue{Positive\-/Unlabeled Biased Negative Learning}}: Train classifier using $\ptrain$, $\bntrain$ and~$\utrain$
+    \item \textbf{\blue{Positive\-/Unlabeled Biased Negative Learner}}: Train using $\ptrain$, $\bntrain$ and~$\utrain$
       \begin{itemize}
-        \item \textbf{Risk Estimator}: PUbn~\cite{Hsieh:2018}
+        \item \textbf{Risk Estimator}: PUbN~\cite{Hsieh:2018}
       \end{itemize}
   \end{enumerate}
 \end{frame}
@@ -97,23 +109,7 @@
     \item \blue{\textbf{ELMo Preprocessed}}: Encode entire document into a static representation with ELMo (a ``document embedding'').  Train a feedforward to classify the static vectors.
   \end{itemize}
   \vfill
-  \onslide<+->{\green{\textbf{How Can We Summarize these Differences?}}: \blue{\textbf{Transfer learning}}}
-\end{frame}
-
-\begin{frame}{What is Transfer Learning?}
-  \onslide<+->{\blue{\textbf{Def.}}: Taking knowledge learned from solving one problem and applying it to a different (related) one}
-  \vfill
-  \onslide<+->{Let's look at how each architecture uses transfer learning\ldots}
-  \begin{itemize}[<+->]
-    \setlength{\itemsep}{20pt}
-    \item \textbf{``Classic'' RNN}: \red{Limited}. \onslide<+->{Only (GloVe) embedding matrix}
-    \item \textbf{ELMo Preprocessed}: \green{Extensive}. \onslide<+->{Entire ELMo network parameters static.  Only train a couple feed forward layers.}
-  \end{itemize}
-  \vfill
-  \onslide<+->{\textbf{\green{Question}}: Is transfer learning a \textit{free lunch}?}
-
-  \vspace{6pt}
-  \onslide<+->{\textbf{Answer}: No -- there's never a free lunch.  \onslide<+->{Transfer learning is just an \textit{inductive bias} and like all biases limits some flexibility -- which may be good or bad.}}
+  \onslide<+->{\green{\textbf{How Can We Summarize the Architectural Difference?}} \blue{\textbf{Transfer learning}}}
 \end{frame}
 
 \section{Dataset}
@@ -140,18 +136,19 @@
 \section{Experiments}
 \subsection{Overview}
 \begin{frame}{Experimental Setup Overview}
-\onslide<+->{\textbf{Two Bias Types}:}
+  \onslide<+->{}
+  \onslide<+->{\textbf{Two Negative Covariate Shift Types}:}
   \begin{itemize}[<+->]
     \setlength{\itemsep}{6pt}
-    \item $\bntrain$~covers \red{subset} ${\pDist(\X \vert \y = \pcls)}$'s support but otherwise marginals \green{unbiased}
-    \item (\blue{Reverse}) \onslide<+->{ $\bntrain$~covers ${\pDist(\X \vert \y = \pcls)}$'s \green{complete} support but marginal \red{bias}}
+    \item $\bntrain$~covers only \red{subset} of ${\pDist(\X \vert \y = \ncls)}$'s support but otherwise marginals are \green{unbiased}
+    \item (\blue{Reverse}) \onslide<+->{ $\bntrain$~covers ${\pDist(\X \vert \y = \ncls)}$'s \green{complete} support but with marginal \red{bias}}
   \end{itemize}
   \vfill
   \onslide<+->{\textbf{Results Overview}:}
   \begin{itemize}[<+->]
     \setlength{\itemsep}{6pt}
     \item \textit{Inductive} -- Test set classification accuracy
-    \item Discuss ELMo results first \onslide<+->{(significantly better than LSTM)}
+    % \item Discuss ELMo results only \onslide<+->{(significantly better than LSTM)}
   \end{itemize}
   \vfill
   \onslide<+->{\textbf{Hyperparameter Info}:}
@@ -174,14 +171,15 @@
     \vfill
     \onslide<9->{ $\red{\dagger}$ \textbf{Unbiased Marginal}: ${\sbrack{48.2\%, 12.1\%, 39.7\%}}$}
   \end{minipage}
-  \begin{minipage}{0.05\linewidth}
+  \begin{minipage}{0.02\linewidth}
     \hspace{\fill}
   \end{minipage}
-  \begin{minipage}[t]{0.23\linewidth}
+  \begin{minipage}[t]{0.26\linewidth}
     \vspace{40pt}
-    \onslide<+->{%
+    \onslide<11->{%
       % \flushright
       \begin{block}{Major Takeaway}
+        \small
         Type of bias determines best risk estimator
       \end{block}
     }
@@ -203,6 +201,23 @@
 
 %% ========================================================================= %%
 %% ========================================================================= %%
+
+\begin{frame}{What is Transfer Learning?}
+  \onslide<+->{\blue{\textbf{Def.}}: Taking knowledge learned from solving one problem and applying it to a different (related) one}
+  \vfill
+  \onslide<+->{Let's look at how each architecture uses transfer learning\ldots}
+  \begin{itemize}[<+->]
+    \setlength{\itemsep}{20pt}
+    \item \textbf{``Classic'' RNN}: \red{Limited}. \onslide<+->{Only (GloVe) embedding matrix}
+    \item \textbf{ELMo Preprocessed}: \green{Extensive}. \onslide<+->{Entire ELMo network parameters static.  Only train a couple feed forward layers.}
+  \end{itemize}
+  \vfill
+  \onslide<+->{\textbf{\green{Question}}: Is transfer learning a \textit{free lunch}?}
+
+  \vspace{6pt}
+  \onslide<+->{\textbf{Answer}: No -- there's never a free lunch.  \onslide<+->{Transfer learning is just an \textit{inductive bias} and like all biases limits some flexibility -- which may be good or bad.}}
+\end{frame}
+
 
 \begin{frame}{Experiments -- Architectural Comparison}
   \begin{minipage}[t]{0.67\linewidth}
