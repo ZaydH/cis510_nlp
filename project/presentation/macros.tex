@@ -1,1 +1,56 @@
-../tex/macros.tex
+\newcommand{\sourceCode}{https://github.com/ZaydH/covariate_shift_risk_estimation}
+
+\newcommand{\X}{x}
+\newcommand{\domainX}{\real^{d}}
+\newcommand{\y}{y}
+\newcommand{\domainY}{\set{{\pm}1}}
+
+\newcommand{\pcls}{{+}1}
+\newcommand{\ncls}{{-}1}
+
+\newcommand{\params}{\theta}
+
+\newcommand{\pDist}{p}
+\newcommand{\joint}{\pDist_{\X\y}}
+\newcommand{\marginal}{\pDist_{\X}}
+\newcommand{\posterior}{\pDist(\y \vert \X)}
+\newcommand{\pcond}{\pDist_{\textnormal{P}}}
+\newcommand{\ncond}{\pDist_{\textnormal{N}}}
+\newcommand{\bncond}{\pDist_{\textnormal{bN}}}
+\newcommand{\prior}{\pi}
+
+\newcommand{\latent}{s}
+\newcommand{\trijoint}{\pDist_{\X\y\latent}}
+
+\newcommand{\size}{n}
+\newcommand{\train}{\mathcal{X}}
+\newcommand{\trainVar}[1]{\train_{\textnormal{#1}}}
+\newcommand{\utrain}{\trainVar{U}}
+\newcommand{\ptrain}{\trainVar{P}}
+\newcommand{\ntrain}{\trainVar{N}}
+\newcommand{\bntrain}{\trainVar{bN}}
+
+\newcommand{\plabel}{\rho}
+
+\newcommand{\risk}{R}
+\newcommand{\baserisk}[2]{\risk_{#1}^{#2}}
+\newcommand{\varrisk}[2]{\baserisk{\textnormal{#1}}{#2}}
+\newcommand{\prisk}[1]{\varrisk{#1}{{+}}}
+\newcommand{\nrisk}[1]{\varrisk{#1}{{-}}}
+\newcommand{\smrisk}{\baserisk{\latent = \ncls}{-}}
+
+\newcommand{\emprisk}{\hat{R}}
+\newcommand{\evrisk}[2]{\hat{R}_{\textnormal{#1}}^{#2}}
+\newcommand{\dec}{g}
+\newcommand{\decX}{\dec\mathopen{}\left(\X\right)\mathclose{}}
+\newcommand{\loss}{\ell}
+% mathopen/mathclose used to remove extra free space around \left and \right keywords
+\newcommand{\floss}[2]{\loss\mathopen{}\left(#1,#2\right)\mathclose{}}
+
+\newcommand{\ypred}{\hat{y}}
+
+\newcommand{\sigX}{\sigma(\X)}
+\newcommand{\hsig}{\hat{\sigma}}
+\newcommand{\hsigX}{\hat{\sigma}(\X)}
+\newcommand{\xvar}[1]{\X_{\textnormal{#1}}}
+\newcommand{\sigdiff}{\big(1 - \sigX\big)}

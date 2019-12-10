@@ -56,17 +56,22 @@
 
 \section{Risk Estimation}
 \begin{frame}{Risk Estimation}
+  \small
   \onslide<+->{%
     \begin{block}{Risk Estimator}
-      \blue{\textbf{Def}.} Given decision function~$\func{\dec}{\domainX}{\real}$ and loss function~$\func{\loss}{\real \times \domainY}{\real_{{\geq}0}}$ (e.g.,~logistic loss), a risk estimator quantifies the expected risk as:
-
+      \blue{\textbf{Def}.} Given classifier~$\func{\dec}{\domainX}{\real}$ and loss function~$\func{\loss}{\real \times \domainY}{\real_{{\geq}0}}$ (e.g.,~logistic loss), a \textit{risk estimator} quantifies the expected loss as:
       \begin{equation}\label{eq:RiskEstimator}
         \risk(\dec) = \mathbb{E}_{(\X,\y) \sim \pDist(\X,\y)}\sbrack{\floss{\decX}{\y}} \text{.}
       \end{equation}
     \end{block}
   }
   \vfill
-  \onslide<+->{ ${\pDist(\X,\y)}$ is unknown in practice so \textbf{empirical risk estimators} are used as surrogate}
+  \onslide<+->{\textbf{Restating our Original Goal}: Minimize the expected \textit{test} loss}
+  \begin{itemize}[<+->]
+    \setlength{\itemsep}{7pt}
+    \item \red{\textbf{Problem}}: Test joint distribution is unknown
+    \item \green{\textbf{Solution}}: Use an \textit{empirical estimate} as a surrogate
+  \end{itemize}
   \onslide<+->{%
     \begin{equation}\label{eq:}
       \emprisk(\dec) = \frac{1}{\abs{\ptrain \sqcup \ntrain}} \sum_{(\X, \y) \sim \ptrain \sqcup \ntrain} \floss{\dec(\X)}{\y}
