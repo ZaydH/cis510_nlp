@@ -57,8 +57,8 @@
 \section{Risk Estimation}
 \begin{frame}{Risk Estimation}
   \small
-  \onslide<+->{}
-  \onslide<+->{%
+  \onslide<1->{}
+  \onslide<2->{%
     \begin{block}{Risk Estimator}
       \blue{\textbf{Def}.} Given classifier~$\func{\dec}{\domainX}{\real}$ and loss function~$\func{\loss}{\real \times \domainY}{\real_{{\geq}0}}$ (e.g.,~logistic loss), a \textit{risk estimator} quantifies the expected loss as:
       \begin{equation}\label{eq:RiskEstimator}
@@ -67,25 +67,28 @@
     \end{block}
   }
   \vfill
-  \onslide<+->{\textbf{Restating our Original Goal}: Minimize the expected \textit{test} loss, i.e.,~${\mathcal{D} = \text{te}}$}
-  \begin{itemize}[<+->]
+  \onslide<3->{\textbf{Restating our Original Goal}: Minimize the expected \textit{test} loss, i.e.,~${\mathcal{D} = \text{te}}$}
+  \begin{itemize}
     \setlength{\itemsep}{7pt}
-    \item \red{\textbf{Problem}}: Test joint distribution is unknown
-    \item \green{\textbf{Solution}}: Use an \textit{empirical estimate} as a surrogate
+    \item \onslide<4->{\red{\textbf{Problem}}: Test joint distribution is unknown}
+    \item \onslide<5->{\textbf{Solution}: Use an \textit{empirical estimate} as a surrogate}
   \end{itemize}
-  \onslide<+->{%
+  \onslide<6->{%
     \begin{equation}\label{eq:}
-      \emprisk(\dec) = \frac{1}{\abs{\ptrain \sqcup \ntrain}} \sum_{(\X, \y) \sim \ptrain \sqcup \ntrain} \floss{\dec(\X)}{\y}
+      \emprisk(\dec) = \frac{1}{\abs{\ptrain \sqcup \only<6-8>{\ntrain}\only<9-9>{\green{\ntrain}}\only<10->{\red{\bntrain}}}} \sum_{(\X, \y) \sim \ptrain \sqcup \only<6-8>{\ntrain}\only<9-9>{\green{\ntrain}}\only<10->{\red{\bntrain}}} \floss{\dec(\X)}{\y}
     \end{equation}
     \vfill
-    \begin{itemize}[<+->]
-      \item Refer to this as \textbf{\green{unbiased} \blue{positive-negative}} risk estimator
-      \item When $\bntrain$ replaces~$\ntrain$, then \textbf{\red{biased} \blue{positive-negative}} risk estimator
+    \begin{itemize}
+      \item \onslide<7->{Refer to this as \textbf{\green{unbiased} \blue{positive-negative}} risk estimator}
+      \item \onslide<8->{When $\bntrain$ replaces~$\ntrain$, then \textbf{\red{biased} \blue{positive-negative}} risk estimator}
     \end{itemize}
   }
 \end{frame}
 
-\begin{frame}{Approaches to Negative Covariate Shift for Doc.\ Classification}
+\begin{frame}{Negative Covariate Shift in Text Classification}
+  \onslide<+->{}
+  \onslide<+->{Three primary approaches in the literature\ldots}
+  \vfill
   \onslide<+->{\textbf{Option~\#1}: Biased positive\-/negative learning~\cite{Li:2010}}
   \begin{itemize}[<+->]
     \item Already saw on previous slide
@@ -94,11 +97,11 @@
   \onslide<+->{\textbf{Option~\#2}: Use an unlabeled set~${\utrain \sim \pDist(\X)}$}
   \begin{enumerate}[<+->][a]
     \setlength{\itemsep}{12pt}
-    \item \textbf{\blue{Positive\-/Unlabeled Learning}}: Train classifier using $\ptrain$ and~$\utrain$~\cite{Fei:2015}
+    \item \textbf{\blue{Positive\-/Unlabeled} Estimator}: Train classifier using $\ptrain$ and~$\utrain$~\cite{Fei:2015}
       \begin{itemize}
         \item \textbf{Risk Estimator}: Non\-/Negative PU (nnPU)~\cite{Kiryo:2017}
       \end{itemize}
-    \item \textbf{\blue{Positive\-/Unlabeled Biased Negative Learner}}: Train using $\ptrain$, $\bntrain$ and~$\utrain$
+    \item \textbf{\blue{Positive\-/Unlabeled Biased Negative} Estimator}: Train using $\ptrain$, $\bntrain$ and~$\utrain$
       \begin{itemize}
         \item \textbf{Risk Estimator}: PUbN~\cite{Hsieh:2018}
       \end{itemize}
@@ -107,10 +110,10 @@
 
 \section{Dataset}
 \begin{frame}{20 Newsgroups -- What is it?}
-  \onslide<+->{Collection of internet message board posts divided into 20~disjoint labels}
+  \onslide<+->{Collection of internet message board posts}
   \begin{itemize}
+    \item Examples vary in length from a few dozen tokens to over ${{>}1,000}$
     \item 20~labels partition into 7~categories \onslide<+->{-- 4~positive, 3~negative}
-    \item Documents vary in length from a few dozen tokens to over ${{>}1,000}$
   \end{itemize}
   \vfill
   \onslide<+->{\textbf{Dataset Statistics}:} \onslide<+->{ ${\pDist(\y = \pcls) = 0.56}$}
@@ -142,8 +145,8 @@
   \onslide<+->{\textbf{Two Negative Covariate Shift Types}:}
   \begin{itemize}[<+->]
     \setlength{\itemsep}{6pt}
-    \item $\bntrain$~covers only \red{subset} of ${\pDist(\X \vert \y = \ncls)}$'s support but otherwise marginals are \green{unbiased}
-    \item (\blue{Reverse}) \onslide<+->{ $\bntrain$~covers ${\pDist(\X \vert \y = \ncls)}$'s \green{complete} support but with marginal \red{bias}}
+    \item $\bntrain$~covers only \red{subset} of ${\pDist(\X \vert \y = \ncls)}$'s support
+    \item $\bntrain$~biases the 20~newsgroup categories' marginal probabilities
   \end{itemize}
   \vfill
   \onslide<+->{\textbf{Results Overview}:}
@@ -171,7 +174,7 @@
       \input{tables/beamer_elmo_results}
     \end{table}
     \vfill
-    \onslide<9->{ $\red{\dagger}$ \textbf{Unbiased Marginal}: ${\sbrack{48.2\%, 12.1\%, 39.7\%}}$}
+    \onslide<9->{ $\red{\dagger}$ \textbf{Test Set Marginal}: ${\sbrack{48.2\%, 12.1\%, 39.7\%}}$}
   \end{minipage}
   \begin{minipage}{0.02\linewidth}
     \hspace{\fill}
@@ -188,17 +191,16 @@
   \end{minipage}
 \end{frame}
 
+\begin{frame}[noframenumbering]
+  \tableofcontents
+\end{frame}
+
 \begin{frame}{List of References}
   \bibliography{bib/ref.bib}
   \bibliographystyle{ieeetr}
 \end{frame}
 
 \appendix
-
-\begin{frame}
-  \tableofcontents
-\end{frame}
-
 \transitionFrame{Appendix}
 
 %% ========================================================================= %%
