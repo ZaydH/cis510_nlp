@@ -32,10 +32,10 @@
       \blue{\textbf{Def.}} Training \& test set joint distributions
 
       \begin{center}
-      ${\pDist(\X,\y) = \blue{\pDist(\X)}\green{\pDist(\y \vert \X)}}$ \textbf{\&} ${\pDist\red{'}(\X,\y) = \blue{\pDist}\red{'}\blue{(\X)}\green{\pDist(\y \vert \X)}}$
+        ${\pDist_{\text{tr}}(\X,\y) = \blue{\pDist_{\text{tr}}(\X)}\green{\pDist(\y \vert \X)}}$ \textbf{\&} ${\pDist_{\text{\red{te}}}(\X,\y) = \blue{\pDist_{\text{\red{te}}}(\X)}\green{\pDist(\y \vert \X)}}$
       \end{center}
 
-      resp.\ \blue{differ in marginals} (${\pDist(\X)}$ vs.\ ${\pDist'(\X)}$) but have \green{identical posterior}~${\pDist(\y \vert \X)}$.
+      resp.\ differ in marginals (${\blue{\pDist_{\text{tr}}(\X)}}$ vs.\ ${\blue{\pDist_{\red{\text{te}}}(\X)}}$) but have identical posterior~${\green{\pDist(\y \vert \X)}}$.
     \end{block}
   }
   \vfill
@@ -44,29 +44,30 @@
       \blue{\textbf{Def.}} Covariate shift only \textit{biases} training samples drawn from the negative class~i.e.,~${\pDist(\X \vert \y = \ncls)}$. \only<+->{When under such bias, the negative training samples~${\ntrain \rightarrow \bntrain}$}
     \end{block}
   }
-  \vfill
-  \onslide<+->{%
-    \textit{Example}: \onslide<+->{For a document-authorship classifier, it is usually impossible to collect a \textit{representative} sample of the negative class}
-    \begin{itemize}[<+->]
-      \item Entire document types may be missing from~$\bntrain$
-      \item $\bntrain$'s document proportions may be \textit{biased}
-    \end{itemize}
-  }
+  % \vfill
+  % \onslide<+->{%
+  %   \textit{Example}: \onslide<+->{For a document-authorship classifier, it is usually impossible to collect a \textit{representative} sample of the negative class}
+  %   \begin{itemize}[<+->]
+  %     \item Entire document types may be missing from~$\bntrain$
+  %     \item $\bntrain$'s document proportions may be \textit{biased}
+  %   \end{itemize}
+  % }
 \end{frame}
 
 \section{Risk Estimation}
 \begin{frame}{Risk Estimation}
   \small
+  \onslide<+->{}
   \onslide<+->{%
     \begin{block}{Risk Estimator}
       \blue{\textbf{Def}.} Given classifier~$\func{\dec}{\domainX}{\real}$ and loss function~$\func{\loss}{\real \times \domainY}{\real_{{\geq}0}}$ (e.g.,~logistic loss), a \textit{risk estimator} quantifies the expected loss as:
       \begin{equation}\label{eq:RiskEstimator}
-        \risk(\dec) = \mathbb{E}_{(\X,\y) \sim \pDist(\X,\y)}\sbrack{\floss{\decX}{\y}} \text{.}
+        \risk_{\mathcal{D}}(\dec) = \mathbb{E}_{(\X,\y) \sim \pDist_{\mathcal{D}}(\X,\y)}\sbrack{\floss{\decX}{\y}} \text{.}
       \end{equation}
     \end{block}
   }
   \vfill
-  \onslide<+->{\textbf{Restating our Original Goal}: Minimize the expected \textit{test} loss}
+  \onslide<+->{\textbf{Restating our Original Goal}: Minimize the expected \textit{test} loss, i.e.,~${\mathcal{D} = \text{te}}$}
   \begin{itemize}[<+->]
     \setlength{\itemsep}{7pt}
     \item \red{\textbf{Problem}}: Test joint distribution is unknown
@@ -104,19 +105,6 @@
   \end{enumerate}
 \end{frame}
 
-\begin{frame}{Classifier Architectures}
-  \onslide<+->{We considered two deep architectures:}
-  \vfill
-  \begin{itemize}[<+->]
-    \setlength{\itemsep}{24pt}
-    \item \blue{\textbf{``Classic'' RNN Classifier}}: Tokenize sentence, encode with embedding matrix, classify with RNN + feedforward
-
-    \item \blue{\textbf{ELMo Preprocessed}}: Encode entire document into a static representation with ELMo (a ``document embedding'').  Train a feedforward to classify the static vectors.
-  \end{itemize}
-  \vfill
-  \onslide<+->{\green{\textbf{How Can We Summarize the Architectural Difference?}} \blue{\textbf{Transfer learning}}}
-\end{frame}
-
 \section{Dataset}
 \begin{frame}{20 Newsgroups -- What is it?}
   \onslide<+->{Collection of internet message board posts divided into 20~disjoint labels}
@@ -136,6 +124,15 @@
       \onslide<+->{\input{tables/beamer_20newsgroups}}
     \end{center}
   }
+\end{frame}
+
+\section{Architecture}
+\begin{frame}{Classifier Architectures}
+  \onslide<+->{Risk estimators can be applied to (almost) any learning architecture}
+  \vfill
+  \begin{itemize}[<+->]
+    \item \blue{\textbf{ELMo Preprocessed}}: Encode entire document into a static representation with ELMo (a ``document embedding'').  Train a feedforward to classify the static vectors.
+  \end{itemize}
 \end{frame}
 
 \section{Experiments}
@@ -160,8 +157,8 @@
   \begin{itemize}[<+->]
     \setlength{\itemsep}{6pt}
     \item Tuned via grid search on disjoint validation set 20\%~size of train set
-    \item ${\abs{\ptrain} = \abs{\ntrain} = \abs{\bntrain} = 500}$
-    \item ${\abs{\utrain} = 6,000}$
+    % \item ${\abs{\ptrain} = \abs{\ntrain} = \abs{\bntrain} = 500}$
+    % \item ${\abs{\utrain} = 6,000}$
   \end{itemize}
 \end{frame}
 
@@ -206,6 +203,51 @@
 
 %% ========================================================================= %%
 %% ========================================================================= %%
+
+\begin{frame}{Key Terminology}
+  \small
+  \onslide<+->{%
+    \begin{block}{Covariate Shift}
+      \blue{\textbf{Def.}} Training \& test set joint distributions
+
+      \begin{center}
+        ${\pDist_{\text{tr}}(\X,\y) = \blue{\pDist_{\text{tr}}(\X)}\green{\pDist(\y \vert \X)}}$ \textbf{\&} ${\pDist_{\text{\red{te}}}(\X,\y) = \blue{\pDist_{\text{\red{te}}}(\X)}\green{\pDist(\y \vert \X)}}$
+      \end{center}
+
+      resp.\ differ in marginals (${\blue{\pDist_{\text{tr}}(\X)}}$ vs.\ ${\blue{\pDist_{\red{\text{te}}}(\X)}}$) but have identical posterior~${\green{\pDist(\y \vert \X)}}$.
+    \end{block}
+  }
+  \vfill
+  \onslide<+->{%
+    \begin{block}{Negative Covariate Shift}
+      \blue{\textbf{Def.}} Covariate shift only \textit{biases} training samples drawn from the negative class~i.e.,~${\pDist(\X \vert \y = \ncls)}$. \only<+->{When under such bias, the negative training samples~${\ntrain \rightarrow \bntrain}$}
+    \end{block}
+  }
+  \vfill
+  \onslide<+->{%
+    \textit{Example}: \onslide<+->{For a document-authorship classifier, it is usually impossible to collect a \textit{representative} sample of the negative class}
+    \begin{itemize}[<+->]
+      \item Entire document types may be missing from~$\bntrain$
+      \item $\bntrain$'s document proportions may be \textit{biased}
+    \end{itemize}
+  }
+\end{frame}
+
+\begin{frame}{Classifier Architectures}
+  \onslide<+->{We considered two deep architectures:}
+  \vfill
+  \begin{itemize}[<+->]
+    \setlength{\itemsep}{24pt}
+    \item \blue{\textbf{``Classic'' RNN Classifier}}: Tokenize sentence, encode with embedding matrix, classify with RNN + feedforward
+      \begin{itemize}[<+->]
+        \item Will not discuss since much worse results
+      \end{itemize}
+
+    \item \blue{\textbf{ELMo Preprocessed}}: Encode entire document into a static representation with ELMo (a ``document embedding'').  Train a feedforward to classify the static vectors.
+  \end{itemize}
+  \vfill
+  \onslide<+->{\green{\textbf{How Can We Summarize the Architectural Difference?}} \blue{\textbf{Transfer learning}}}
+\end{frame}
 
 \begin{frame}{What is Transfer Learning?}
   \onslide<+->{\blue{\textbf{Def.}}: Taking knowledge learned from solving one problem and applying it to a different (related) one}
